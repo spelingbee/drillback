@@ -200,6 +200,10 @@ func maybeNudge(cmd *cobra.Command, g *globals, f *checkFlags, rec *recipe.Recip
 	if g.noNudge || f.noNudge || g.json || rec.Bundled {
 		return
 	}
+	// `nudge: false` in restored.yaml is the config equivalent of --no-nudge.
+	if nudge.Silenced("") {
+		return
+	}
 	if !isTerminal(cmd.OutOrStdout()) && !isTerminal(cmd.ErrOrStderr()) {
 		return
 	}
