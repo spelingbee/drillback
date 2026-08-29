@@ -43,4 +43,7 @@ status=$?
 set -e
 
 say "restored exited $status"
+# The script's exit code is the tool's, because that is the thing being demonstrated.
+# Anything other than 1 means the demo did not reproduce the failure it exists for.
 [ "$status" -eq 1 ] || die "expected exit 1 (RESTORE UNUSABLE), got $status"
+exit 1

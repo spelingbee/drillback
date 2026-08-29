@@ -61,7 +61,16 @@ demo_start() {
   # The scratch root is kept in the host's own path form from the start. Git Bash
   # understands C:/... perfectly well, and it means every path handed to docker or to
   # restored is already the one they expect.
-  DEMO=$(hostpath "$(mktemp -d 2>/dev/null || mktemp -d -t restored-demo)")
+  #
+  # RESTORED_DEMO_DIR pins it, so captured output does not churn on a random name
+  # every time scripts/capture-demo.sh runs.
+  if [ -n "${RESTORED_DEMO_DIR:-}" ]; then
+    rm -rf "$RESTORED_DEMO_DIR"
+    mkdir -p "$RESTORED_DEMO_DIR"
+    DEMO=$(hostpath "$RESTORED_DEMO_DIR")
+  else
+    DEMO=$(hostpath "$(mktemp -d 2>/dev/null || mktemp -d -t restored-demo)")
+  fi
   SRV="$DEMO/srv"
   REPO="$DEMO/repo"
   PROJECT="restored-demo-$DEMO_NAME-$$"

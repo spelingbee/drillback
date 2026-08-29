@@ -1,0 +1,52 @@
+restored 0.1.0-dev · recipe gitea · run en5bklxe
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
+  snapshot   c06074e4  2026-08-29 20:27:45  host=demo-host  tags=[gitea-broken]
+  inputs     data  /srv/gitea/data    102.2 KiB  54 files
+             db    /srv/gitea/db.sql      489 B  plain SQL
+
+  restore    ok          1.8s   2 inputs
+  compose    ok          2.0s   2 services, db first for the dump
+  load db    ok          3.0s   db: psql, 0 stderr lines
+  ready      ok          6.7s   postgres accepts connections, gitea answers on the internal network
+
+  CHECKS
+  ✔  web-ui-renders      The web UI renders the instance home page       0.91s
+  ✘  repos-in-db         The database contains at least one repository   0.75s
+                         row
+                           query   SELECT count(*) FROM repository;
+                           expect  scalar_int_min: 1
+                           got     0
+  ✘  users-in-db         The database contains at least one real user    0.70s
+                         account
+                           query   SELECT count(*) FROM "user" WHERE lower_name <> 'ghost';
+                           expect  scalar_int_min: 1
+                           got     0
+  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
+                         → 1 match for */*.git/HEAD
+  ✘  api-lists-repos     The API lists repositories, so the database     0.84s
+                         and the disk agree
+                           expect  json_path_len_min: 1
+                           got     0
+
+  RESTORE UNUSABLE  2/5 checks  ·  total 18.6s  ·  teardown ok
+
+  LIKELY CAUSE
+    The application's tables are there, but they are empty
+
+    Every table the checks read exists and holds nothing. Two causes produce
+    exactly this. Either the dump was taken from the wrong database, or with
+    `pg_dump --schema-only`, or narrowed with `--table`, so it carried a
+    schema and none of the rows. Or the dump carried nothing at all and the
+    application rebuilt an empty schema for itself on start, which is what
+    an application with automatic migrations does the moment it meets an
+    empty database. Compare the size of the dump with the size of the data
+    directory in the report above: a forge with repositories on disk and a
+    half-kilobyte dump is not a backup.
+
+      grep -c 'INSERT INTO' /srv/gitea/db.sql
+      ls -l /srv/gitea/db.sql
+                                                      (hint: db/tables-empty)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

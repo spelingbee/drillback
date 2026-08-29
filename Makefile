@@ -30,8 +30,10 @@ fmt:
 demo: build
 	./scripts/demo.sh
 
+# demo-broken demonstrates a broken backup, so it exits 1 on success. The negation is
+# deliberate: `make demo-broken` passes when restored correctly says RESTORE UNUSABLE.
 demo-broken: build
-	./scripts/demo-broken.sh
+	! ./scripts/demo-broken.sh
 
 demo-kuma: build
 	./scripts/demo-kuma.sh
