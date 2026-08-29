@@ -349,6 +349,8 @@ CLAUDE.md's command list assumes it.
 - **golangci-lint 2.13.2** - `go install
   github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`.
 - **No C toolchain**, so `go test -race` needs the container command shown above.
+- **No `make`.** The Makefile is correct and is what CI runs; on this host, type the
+  command a target wraps. CLAUDE.md lists the four that matter.
 
 Pinned images the project pulls: `curlimages/curl:8.16.0` (the check helper),
 `gitea/gitea:1.22.6`, `postgres:16.4-alpine`, `louislam/uptime-kuma:1.23.16-alpine`,

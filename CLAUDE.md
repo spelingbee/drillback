@@ -11,7 +11,9 @@ architectural — 50 decisions are already made, and re-deciding one costs a ses
 
 ## Commands
 
-These run. Anything below that stops being true is a bug in this file.
+These run, with one exception noted under *On this machine*: there is no `make` here,
+so the `make` targets are what CI uses and the bare commands are what to type locally.
+Anything below that stops being true is a bug in this file.
 
 ```sh
 # build
@@ -49,6 +51,16 @@ The toolchain is not on the default PATH. Every command above assumes:
 
 ```sh
 export PATH="/c/My/Projects/Work/gotool/go/bin:/c/Users/kadyr/go/bin:$PATH"
+```
+
+**There is no `make` on this host.** The Makefile is correct and is what CI runs; here,
+run the command a target wraps:
+
+```sh
+go build -o bin/restored ./cmd/restored     # make build
+go test ./...                               # make test, minus -race, see below
+go test -tags integration ./... -timeout 30m  # make test-integration
+./scripts/capture-demo.sh                   # make capture-demo
 ```
 
 There is no C compiler here, so `-race` cannot run on the host. Run it in the same
