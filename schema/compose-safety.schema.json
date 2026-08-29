@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/spelingbee/restored/schema/compose-safety.schema.json",
+  "title": "restored compose safety rules",
+  "type": "object",
+  "required": ["services", "networks"],
+  "properties": {
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["image", "networks"],
+        "not": {
+          "anyOf": [
+            { "required": ["ports"] },
+            { "required": ["privileged"] },
+            { "required": ["network_mode"] },
+            { "required": ["pid"] },
+            { "required": ["ipc"] },
+            { "required": ["userns_mode"] },
+            { "required": ["devices"] },
+            { "required": ["device_cgroup_rules"] },
+            { "required": ["cgroup_parent"] },
+            { "required": ["build"] },
+            { "required": ["extends"] },
+            { "required": ["external_links"] }
+          ]
+        },
+        "properties": {
+          "image": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._/-]*(:[A-Za-z0-9._-]+)?(@sha256:[a-f0-9]{64})?$",
+            "not": { "pattern": ":latest$" },
+            "description": "Pinned tag required. `latest` makes a recipe untestable over time."
+          },
+          "cap_add": {
+            "type": "array",
+            "items": { "enum": ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"] },
+            "description": "Allowlist. Anything outside it, and NET_ADMIN / SYS_ADMIN in particular, is rejected."
+          },
+          "volumes": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(\\$\\{RESTORED_(INPUT|TEST_ASSETS|EXPORT)[A-Za-z0-9_]*\\}|[a-z][a-z0-9_-]*):/[^:]+(:(ro|rw|z|Z|ro,z|rw,z))?$",
+                  "description": "Left side must be a named volume declared in this file, or a ${RESTORED_*} placeholder that restored resolves inside the workspace. An absolute host path is rejected."
+                },
+                {
+                  "type": "object",
+                  "required": ["type", "target"],
+                  "properties": {
+                    "type": { "enum": ["volume", "tmpfs"] },
+                    "target": { "type": "string", "pattern": "^/" }
+                  },
+                  "description": "Long syntax may not use type: bind. Bind mounts are only expressible through the ${RESTORED_*} short form, which restored controls."
+                }
+              ]
+            }
+          },
+          "security_opt": {
+            "type": "array",
+            "items": { "not": { "pattern": "(?i)(seccomp[:=]unconfined|apparmor[:=]unconfined|systempaths=unconfined)" } }
+          }
+        }
+      }
+    },
+    "networks": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["internal"],
+        "properties": {
+          "internal": { "const": true },
+          "external": { "const": false }
+        }
+      }
+    }
+  },
+  "not": { "required": ["include"] }
+}

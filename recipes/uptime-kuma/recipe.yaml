@@ -1,0 +1,116 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: uptime-kuma
+  title: Uptime Kuma (SQLite)
+  description: >
+    Verifies that an Uptime Kuma backup restores: the dashboard is served, the SQLite
+    database passes an integrity check, and the configured monitors and users are
+    still in it.
+  maintainers: ["@example-handle"]
+  upstream: https://github.com/louislam/uptime-kuma
+  tags: [monitoring, sqlite]
+
+vars:
+  kuma_port: 3001
+
+inputs:
+  data:
+    kind: dir
+    title: Uptime Kuma data directory
+    description: The whole /app/data directory, including kuma.db and upload/.
+    default_path: /srv/uptime-kuma/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: kuma:/app/data
+
+  db:
+    kind: sqlite
+    title: The Uptime Kuma SQLite database
+    description: >
+      kuma.db, which lives inside the data directory. It is declared separately so the
+      SQL checks have something to point at, and so that a zero-byte database, or one
+      whose -wal companion was not backed up, is reported as a restore failure instead
+      of as a mysteriously empty dashboard.
+    default_path: /srv/uptime-kuma/data/kuma.db
+    within: data           # this file is inside the `data` input; not restored twice
+    required: true
+    load:
+      integrity_check: true   # sqlite needs no loading; restored only verifies it
+
+ready:
+  - name: kuma serves HTTP
+    kind: http
+    url: http://kuma:{{ .vars.kuma_port }}/
+    expect_status: 200
+    timeout: 180s
+    interval: 3s
+
+checks:
+  - id: dashboard-renders
+    title: The dashboard entrypoint renders
+    kind: http
+    url: http://kuma:{{ .vars.kuma_port }}/dashboard
+    expect:
+      status: 200
+      body_matches: "(?i)uptime[ -]?kuma"
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: monitors-present
+    title: At least one monitor survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM monitor;"
+    expect:
+      scalar_int_min: 1
+
+  - id: users-present
+    title: At least one user account survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM user;"
+    expect:
+      scalar_int_min: 1
+
+  - id: heartbeats-present
+    title: Heartbeat history survived the restore, so this is not a fresh database
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM heartbeat;"
+    expect:
+      scalar_int_min: 1
+
+  - id: api-entry-page
+    title: The API entry point answers
+    kind: http
+    url: http://kuma:{{ .vars.kuma_port }}/api/entry-page
+    expect:
+      status: 200
+      json_path: "$.type"
+      json_path_equals: "entryPage"
+
+test:
+  seed:
+    # Uptime Kuma's first-run setup is a socket.io wizard, which is expensive to drive
+    # from a shell. The checks above read the database, so seeding rows directly is
+    # sufficient to make stage A fail and stage B pass. Documented tradeoff: this
+    # exercises the restore path, not Kuma's own migration path. See SPEC.md § 7.4.
+    - name: seed a user, a monitor, and a heartbeat
+      kind: exec
+      service: seeder
+      command: ["sh", "-c", "sqlite3 /app/data/kuma.db < /seed/seed.sql"]
+      timeout: 120s
+  export: []   # everything lives inside the `data` dir input, exported automatically

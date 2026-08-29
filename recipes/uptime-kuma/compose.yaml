@@ -1,0 +1,22 @@
+services:
+  kuma:
+    image: louislam/uptime-kuma:1.23.16-alpine
+    environment:
+      UPTIME_KUMA_PORT: "${RESTORED_VAR_kuma_port}"
+    volumes:
+      - ${RESTORED_INPUT_data}:/app/data
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile.
+  seeder:
+    image: keinos/sqlite3:3.46.0
+    profiles: [test]
+    volumes:
+      - ${RESTORED_INPUT_data}:/app/data
+      - ${RESTORED_TEST_ASSETS}:/seed:ro
+    command: ["sleep", "infinity"]
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

@@ -1,0 +1,254 @@
+// Package safety enforces the isolation rules on a recipe's compose.yaml.
+//
+// The rules are hard failures, never warnings, and they are enforced by a schema
+// rather than by discipline. See SPEC.md sections 3.5 and 9.
+package safety
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
+	"gopkg.in/yaml.v3"
+
+	restored "github.com/spelingbee/restored"
+	"github.com/spelingbee/restored/internal/recipe"
+)
+
+var composeSchema = mustCompile("schema/compose-safety.schema.json")
+
+func mustCompile(path string) *jsonschema.Schema {
+	b, err := restored.Schemas.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(string(b)))
+	if err != nil {
+		panic(err)
+	}
+	c := jsonschema.NewCompiler()
+	if err := c.AddResource(path, doc); err != nil {
+		panic(err)
+	}
+	s, err := c.Compile(path)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+// Compose is the small typed view of a compose file that the Go-only rules need.
+type Compose struct {
+	Services map[string]struct {
+		Image   string   `yaml:"image"`
+		Volumes []any    `yaml:"volumes"`
+		Profile []string `yaml:"profiles"`
+	} `yaml:"services"`
+	Networks map[string]any `yaml:"networks"`
+	Volumes  map[string]any `yaml:"volumes"`
+}
+
+// ServiceNames returns the compose services, sorted, so error messages are stable.
+func (c *Compose) ServiceNames() []string {
+	names := make([]string, 0, len(c.Services))
+	for n := range c.Services {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Parse reads a compose file, refusing YAML tags before anything else looks at it.
+func Parse(raw []byte) (*Compose, error) {
+	if err := recipe.RejectYAMLTags(raw); err != nil {
+		return nil, fmt.Errorf("compose.yaml: %w", err)
+	}
+	var c Compose
+	if err := yaml.Unmarshal(raw, &c); err != nil {
+		return nil, fmt.Errorf("compose.yaml: parsing YAML: %w", err)
+	}
+	if len(c.Services) == 0 {
+		return nil, errors.New("compose.yaml: no services")
+	}
+	return &c, nil
+}
+
+// ValidateSchema checks compose.yaml against schema/compose-safety.schema.json.
+//
+// It runs on the file as written, with ${RESTORED_*} placeholders still in it: the
+// schema's volume rule can only recognise a bind mount restored controls while the
+// placeholder is intact. Containment of the resolved paths is checked separately by
+// CheckResolvedMounts, after interpolation. See DECISIONS.md ADR-039.
+func ValidateSchema(raw []byte) error {
+	var doc any
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		return fmt.Errorf("compose.yaml: parsing YAML: %w", err)
+	}
+	norm, err := recipe.Normalise(doc)
+	if err != nil {
+		return fmt.Errorf("compose.yaml: %w", err)
+	}
+	if err := composeSchema.Validate(norm); err != nil {
+		return fmt.Errorf("compose.yaml: %w", recipe.FlattenSchemaError(err))
+	}
+	return nil
+}
+
+var placeholderRe = regexp.MustCompile(`\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))`)
+
+// Placeholders lists the distinct ${NAME} and $NAME references in a compose file,
+// ignoring the $$ escape.
+func Placeholders(raw []byte) []string {
+	s := stripEscapes(string(raw))
+	seen := map[string]bool{}
+	var out []string
+	for _, m := range placeholderRe.FindAllStringSubmatch(s, -1) {
+		name := m[1]
+		if name == "" {
+			name = m[2]
+		}
+		if !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// stripEscapes removes $$ pairs so they cannot look like a reference.
+func stripEscapes(s string) string { return strings.ReplaceAll(s, "$$", "") }
+
+// KnownNames is the set of placeholders restored itself defines for a resolution.
+func KnownNames(r *recipe.Resolved) map[string]bool {
+	known := map[string]bool{
+		"RESTORED_RUN_ID":      true,
+		"RESTORED_TEST_ASSETS": true,
+		"RESTORED_EXPORT":      true,
+	}
+	for k := range r.Vars {
+		known["RESTORED_VAR_"+k] = true
+	}
+	for _, in := range r.Inputs {
+		if in.Mount != nil {
+			known[in.Mount.Env] = true
+		}
+	}
+	return known
+}
+
+// CheckPlaceholders is Go-only rule 2: every ${...} in compose.yaml must be one
+// restored defines. An unset variable silently expanding to the empty string is how a
+// volume mount becomes "/".
+func CheckPlaceholders(raw []byte, r *recipe.Resolved) error {
+	known := KnownNames(r)
+	var unknown []string
+	for _, name := range Placeholders(raw) {
+		if !known[name] {
+			unknown = append(unknown, name)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	return fmt.Errorf("compose.yaml refers to %s, which restored does not define; "+
+		"only ${RESTORED_VAR_<var>}, ${RESTORED_INPUT_<input>}, ${RESTORED_TEST_ASSETS}, "+
+		"${RESTORED_EXPORT} and ${RESTORED_RUN_ID} are available",
+		quoteAll(unknown))
+}
+
+// CheckServiceReferences is Go-only rule 3: every service named by a mount, a probe,
+// a check, or a harness step must exist in compose.yaml. A typo in a service name is
+// caught here, not sixty seconds into a run.
+func CheckServiceReferences(c *Compose, r *recipe.Recipe) error {
+	var problems []string
+	note := func(where, service string) {
+		if service == "" {
+			return
+		}
+		if _, ok := c.Services[service]; !ok {
+			problems = append(problems, fmt.Sprintf("%s refers to service %q", where, service))
+		}
+	}
+	for _, name := range r.InputOrder {
+		in := r.Inputs[name]
+		if in.Mount != nil {
+			svc, _, ok := strings.Cut(in.Mount.Into, ":")
+			if !ok {
+				return fmt.Errorf("input %q: mount.into %q is not service:path", name, in.Mount.Into)
+			}
+			note(fmt.Sprintf("input %q mount.into", name), svc)
+		}
+		if in.Load != nil {
+			note(fmt.Sprintf("input %q load.service", name), in.Load.Service)
+		}
+	}
+	for _, p := range r.Ready {
+		note(fmt.Sprintf("ready probe %q", p.Name), p.Service)
+	}
+	for _, ch := range r.Checks {
+		note(fmt.Sprintf("check %q", ch.ID), ch.Service)
+	}
+	if r.Test != nil {
+		for _, s := range append(append([]*recipe.Step{}, r.Test.Seed...), r.Test.Export...) {
+			note(fmt.Sprintf("test step %q", s.Name), s.Service)
+		}
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%s, but compose.yaml defines only %s",
+		strings.Join(problems, "; "), strings.Join(c.ServiceNames(), ", "))
+}
+
+// Validate runs every rule against a recipe's compose.yaml: the schema, and the three
+// rules that JSON Schema cannot express.
+func Validate(raw []byte, r *recipe.Resolved) error {
+	c, err := Parse(raw)
+	if err != nil {
+		return err
+	}
+	if err := ValidateSchema(raw); err != nil {
+		return err
+	}
+	if err := CheckPlaceholders(raw, r); err != nil {
+		return err
+	}
+	return CheckServiceReferences(c, r.Recipe)
+}
+
+func quoteAll(names []string) string {
+	q := make([]string, len(names))
+	for i, n := range names {
+		q[i] = fmt.Sprintf("${%s}", n)
+	}
+	return strings.Join(q, ", ")
+}
+
+// Warnings are the --strict findings: not isolation problems, but the things a
+// maintainer would otherwise have to ask for in review.
+func Warnings(r *recipe.Recipe, composeRaw []byte) []string {
+	var w []string
+	if len(r.Metadata.Maintainers) == 0 {
+		w = append(w, "metadata.maintainers is empty: nobody is named as the contact for this recipe")
+	}
+	if len(r.Checks) < 2 {
+		w = append(w, fmt.Sprintf("the recipe has %d check(s): one check cannot distinguish "+
+			"an application that started from a restore that worked", len(r.Checks)))
+	}
+	if c, err := Parse(composeRaw); err == nil {
+		for _, name := range c.ServiceNames() {
+			img := c.Services[name].Image
+			if img == "" {
+				continue
+			}
+			if !strings.Contains(img, ":") && !strings.Contains(img, "@") {
+				w = append(w, fmt.Sprintf("service %q uses image %q with no tag", name, img))
+			}
+		}
+	}
+	return w
+}

@@ -1,0 +1,155 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: gitea
+  title: Gitea + PostgreSQL
+  description: >
+    Verifies that a Gitea backup restores: the web UI renders, the repository and user
+    rows are in the database, and at least one bare repository is present on disk.
+  maintainers: ["@example-handle"]
+  upstream: https://github.com/go-gitea/gitea
+  tags: [git, forge, postgres]
+
+vars:
+  db_name: gitea
+  db_user: gitea
+  # Not a secret. This database exists for about ninety seconds on an internal
+  # network with no published ports, and is destroyed with `compose down -v`.
+  db_password: restored-throwaway
+  gitea_port: 3000
+
+inputs:
+  data:
+    kind: dir
+    title: Gitea data directory
+    description: >
+      Contains gitea-repositories/, attachments, avatars, and the SQLite-free app
+      state. On a default docker-compose install this is the host side of /data.
+    default_path: /srv/gitea/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data      # compose.yaml refers to ${RESTORED_INPUT_data}
+      into: gitea:/data/gitea       # service:path, for `file` checks and exports
+
+  db:
+    kind: postgres-dump
+    title: Gitea database dump
+    description: >
+      Plain SQL from `pg_dump`, or a custom-format dump from `pg_dump -Fc`. The format
+      is detected from the file's magic bytes, not from its extension.
+    default_path: /srv/gitea/db.sql
+    required: true
+    load:
+      service: db
+      database: "{{ .vars.db_name }}"
+      user: "{{ .vars.db_user }}"
+      timeout: 5m
+
+ready:
+  - name: postgres accepts connections
+    kind: exec
+    service: db
+    command: ["pg_isready", "-U", "{{ .vars.db_user }}", "-d", "{{ .vars.db_name }}"]
+    timeout: 90s
+    interval: 2s
+
+  - name: gitea answers on the internal network
+    kind: http
+    url: http://gitea:{{ .vars.gitea_port }}/api/healthz
+    expect_status: 200
+    timeout: 180s
+    interval: 3s
+
+checks:
+  - id: web-ui-renders
+    title: The web UI renders the instance home page
+    kind: http
+    url: http://gitea:{{ .vars.gitea_port }}/
+    expect:
+      status: 200
+      body_matches: "(?i)<title>[^<]*gitea"
+
+  - id: repos-in-db
+    title: The database contains at least one repository row
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM repository;"
+    expect:
+      scalar_int_min: 1
+
+  - id: users-in-db
+    title: The database contains at least one real user account
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: 'SELECT count(*) FROM "user" WHERE lower_name <> ''ghost'';'
+    expect:
+      scalar_int_min: 1
+
+  - id: repo-files-on-disk
+    title: At least one bare repository exists on disk
+    kind: file
+    service: gitea
+    path: /data/gitea/gitea-repositories
+    expect:
+      exists: true
+      glob: "*/*.git/HEAD"
+      glob_min_count: 1
+
+  - id: api-lists-repos
+    title: The API lists repositories, so the database and the disk agree
+    kind: http
+    url: http://gitea:{{ .vars.gitea_port }}/api/v1/repos/search?limit=1
+    expect:
+      status: 200
+      json_path: "$.data"
+      json_path_len_min: 1
+
+test:
+  seed:
+    - name: create an admin user
+      kind: exec
+      service: gitea
+      user: git
+      command:
+        - gitea
+        - admin
+        - user
+        - create
+        - --username=drilluser
+        - --password=drill-pass-123
+        - --email=drill@example.invalid
+        - --admin
+        - --must-change-password=false
+      timeout: 120s
+
+    - name: create a repository through the API
+      kind: http
+      method: POST
+      url: http://gitea:{{ .vars.gitea_port }}/api/v1/user/repos
+      basic_auth: ["drilluser", "drill-pass-123"]
+      json_body: '{"name":"drill-repo","auto_init":true,"private":false}'
+      expect_status: 201
+      timeout: 120s
+
+  export:
+    # `data` is a dir input: the harness exports it automatically by copying
+    # gitea:/data/gitea back out into the staging tree. Only non-dir inputs need an
+    # explicit export step.
+    - name: dump the database into the staging tree
+      kind: exec
+      service: db
+      # $RESTORED_EXPORT is mounted into every service by the harness, and only by
+      # the harness. It does not exist during `restored check`.
+      command:
+        - sh
+        - -c
+        - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+      timeout: 5m
+      produces: db      # the file lands at the `db` input's path in the staging tree

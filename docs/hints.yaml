@@ -1,0 +1,183 @@
+# docs/hints.yaml — error pattern catalog.
+#
+# Matched in order; first match wins; at most one hint is shown per run.
+# `match` is an RE2 regular expression (Go's regexp), applied to check errors,
+# response bodies, and service logs.
+#
+# Adding a rule here is the easiest useful contribution to restored. If you hit a
+# confusing restore failure, the fix is often just twenty lines in this file.
+version: 1
+
+rules:
+  - id: postgres/relation-missing
+    when: { driver: postgres }
+    match: 'relation "([^"]+)" does not exist'
+    title: The dump loaded but the application's tables are missing
+    text: >
+      psql reported no error, yet the table the application needs is not there. A dump
+      taken with `pg_dump --schema-only`, from the wrong database, or narrowed with
+      `--table`/`--schema`, produces exactly this. It can also happen when the dump
+      restored into a different schema than the one on the application's search_path.
+    commands:
+      - "grep -ci 'CREATE TABLE' {{ .input.db.path }}"
+      - "pg_restore --list {{ .input.db.path }} | head -30"
+
+  - id: postgres/empty-dump
+    when: { driver: postgres }
+    match: '(?i)(input file is too short|archive is empty|unexpected end of file|pg_restore: error: did not find magic string)'
+    title: The dump file is truncated or empty
+    text: >
+      The dump is not a complete file. The usual cause is a backup script that pipes
+      `pg_dump` into a file without checking the exit code, so a failed or interrupted
+      dump is backed up as a truncated file every night. Add `set -o pipefail` and check
+      the exit status before the backup runs.
+    commands:
+      - "ls -l {{ .input.db.path }}"
+      - "tail -c 200 {{ .input.db.path }}"
+
+  - id: postgres/role-missing
+    when: { driver: postgres }
+    match: 'role "([^"]+)" does not exist'
+    title: The dump references a database role that does not exist here
+    text: >
+      The dump carries ownership and GRANT statements for roles that live in the source
+      cluster's globals, which `pg_dump` of a single database does not include. For a
+      restore drill this is usually harmless noise — restored loads custom-format dumps
+      with `--no-owner --no-acl` for exactly this reason — but with a plain-SQL dump the
+      statements run and fail. Re-dump with `--no-owner --no-acl`, or back up globals
+      too with `pg_dumpall --globals-only`.
+
+  - id: postgres/version-mismatch
+    when: { driver: postgres }
+    match: '(?i)(unsupported version .* in file header|server version mismatch|pg_restore: error: unsupported version)'
+    title: The dump was made by a newer PostgreSQL than the recipe's image
+    text: >
+      A dump from PostgreSQL N cannot be restored into N-1. Set the image tag in the
+      recipe's compose.yaml, or the `pg_version` variable if the recipe has one, to
+      match the server the dump came from.
+    commands:
+      - "head -c 512 {{ .input.db.path }} | strings | head -5"
+
+  - id: postgres/auth-failed
+    when: { driver: postgres }
+    match: '(?i)(password authentication failed|no pg_hba.conf entry|FATAL:.*role .* does not exist)'
+    title: The recipe's database credentials do not match its compose file
+    text: >
+      This is a recipe bug, not a backup problem. The `db_user`/`db_name` variables in
+      recipe.yaml and the POSTGRES_* environment in compose.yaml have drifted apart.
+      `restored recipe show <name>` prints the resolved values.
+
+  - id: sqlite/not-a-database
+    when: { driver: sqlite }
+    match: '(?i)(file is not a database|file is encrypted or is not a database)'
+    title: The SQLite file is not a database
+    text: >
+      Either the file was replaced by something else (an HTML error page and a
+      zero-length file are both common when a download or an rclone copy failed), or it
+      is encrypted, or only part of it was backed up. Check the first 16 bytes: a real
+      SQLite file starts with `SQLite format 3`.
+    commands:
+      - "head -c 16 {{ .input.db.path }} | xxd"
+      - "ls -l {{ .input.db.path }}"
+
+  - id: sqlite/wal-missing
+    when: { driver: sqlite }
+    match: '(?i)(database disk image is malformed|integrity_check.*(row [0-9]+ missing|page [0-9]+)|database is locked)'
+    title: The database was copied while the application was writing to it
+    text: >
+      A live SQLite database is a `.db` plus a `-wal` and a `-shm` file, and copying only
+      the `.db` gives you a torn image — sometimes valid but stale, sometimes malformed.
+      Back up with `sqlite3 db '.backup out.db'`, or stop the container for the copy, or
+      include the `-wal` and `-shm` files.
+    commands:
+      - "ls -l {{ .input.db.path }}*"
+
+  - id: sqlite/empty-schema
+    when: { driver: sqlite }
+    match: '(?i)no such table: ([A-Za-z0-9_]+)'
+    title: The database restored, but it has none of the application's tables
+    text: >
+      The file is a valid SQLite database with a different, or empty, schema. The usual
+      cause is backing up the path where the application *would* keep its database
+      rather than where it does — a named Docker volume is not the bind-mounted
+      directory next to it.
+    commands:
+      - "sqlite3 {{ .input.db.path }} '.tables'"
+
+  - id: compose/image-pull-failed
+    match: '(?i)(manifest unknown|pull access denied|repository does not exist|toomanyrequests|failed to resolve reference)'
+    title: The recipe's image could not be pulled
+    text: >
+      Not a backup problem. Either the tag pinned in the recipe has been deleted
+      upstream, or this host has hit an anonymous Docker Hub rate limit, or there is no
+      network. `docker login` raises the rate limit; `--pull never` uses whatever is
+      already in the local image cache.
+
+  - id: compose/port-conflict
+    match: '(?i)(bind: address already in use|port is already allocated)'
+    title: A recipe is publishing a port, which restored does not allow
+    text: >
+      restored never publishes ports; every check runs on the run's internal network.
+      If you see this, a recipe has a `ports:` entry that slipped past validation.
+      Please open an issue with the recipe name — `restored recipe validate` should have
+      caught it.
+
+  - id: permissions/eacces
+    match: '(?i)(permission denied|EACCES|operation not permitted|chown.*Operation not permitted)'
+    title: The restored files are owned by a UID the container cannot use
+    text: >
+      The application inside the container runs as a fixed UID (Gitea 1000, Nextcloud
+      33, Paperless 1000). The backup preserved the ownership from the original host,
+      and it does not match. On rootless Docker the mismatch is systematic, because the
+      user namespace shifts every UID. Set USER_UID/USER_GID or PUID/PGID in the
+      recipe's compose.yaml to the UID the files actually have — `restored check --keep`
+      then `ls -ln` in the workspace shows you which.
+
+  - id: restore/empty-input
+    match: '(?i)restored input "([a-z0-9_]+)" is empty'
+    title: The path exists in the snapshot but contains nothing
+    text: >
+      The backup ran, the directory was included, and it was empty when it ran. The
+      classic cause is backing up a bind-mount path while the application actually
+      stores its data in a *named volume* mounted over the top of it, so the host
+      directory the backup reads is a hollow shell. `docker inspect <container>
+      --format '{{ .Mounts }}'` on the live system shows where the data really is.
+
+  - id: restore/path-not-in-snapshot
+    match: '(?i)(no matching files found for|path .* not found in snapshot|ls: .*: no such file or directory)'
+    title: The recipe's default path is not where your backup keeps that data
+    text: >
+      Recipe defaults are a guess at the most common layout. Point the input at your
+      path with `--input <name>=/your/path`, or record it in restored.yaml. To see what
+      the snapshot actually contains, use `restic ls latest | head -50`.
+    commands:
+      - "restic ls {{ .snapshot.id }} | head -50"
+
+  - id: app/still-in-setup
+    match: '(?i)(install|setup) (wizard|page)|/install\?|first[- ]run setup'
+    title: The application booted into its first-run setup wizard
+    text: >
+      The app started with an empty configuration, which means the config file, not just
+      the data, is missing from the backup. Everything looks healthy and nothing is
+      restored. Many recipes set an INSTALL_LOCK-style variable to make this failure
+      loud instead of quiet; if this recipe does not, that is worth an issue.
+
+  - id: docker/daemon-unreachable
+    match: '(?i)(cannot connect to the docker daemon|docker daemon is not running|/var/run/docker\.sock.*permission denied)'
+    title: Docker is not reachable from here
+    text: >
+      restored needs a working `docker` and `docker compose` v2. On rootless Docker,
+      check that DOCKER_HOST points at your user socket. If you are inside WSL2, the
+      Docker Desktop integration for this distribution may be switched off.
+    commands:
+      - "docker version"
+      - "docker compose version"
+
+  - id: workspace/no-space
+    match: '(?i)(no space left on device|ENOSPC|write .*: disk quota exceeded)'
+    title: The workspace ran out of disk
+    text: >
+      The whole restore is materialised on disk before the stack starts, so you need
+      roughly as much free space as the inputs are large. Point --workspace at a
+      filesystem with room; the default is the OS temp directory, which is often a small
+      tmpfs in RAM.
