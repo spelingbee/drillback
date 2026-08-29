@@ -1,0 +1,46 @@
+# A trimmed copy of the docker-compose.postgres.yml that Paperless-ngx ships, kept as
+# a fixture for `restored recipe init --compose`. It has everything the detector has
+# to cope with: a published port, a database service, a cache, named volumes, an
+# environment that references the operator's own shell, and an untagged image.
+services:
+  broker:
+    image: docker.io/library/redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+
+  db:
+    image: docker.io/library/postgres:16
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: ${PAPERLESS_DB_PASSWORD}
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx
+    restart: unless-stopped
+    depends_on:
+      - db
+      - broker
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export
+      - ./consume:/usr/src/paperless/consume
+      - ./paperless.conf:/usr/src/paperless/paperless.conf:ro
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_TIME_ZONE: Europe/Berlin
+
+volumes:
+  data:
+  media:
+  pgdata:
+  redisdata:

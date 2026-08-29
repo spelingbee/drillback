@@ -287,6 +287,7 @@ func newRecipeInit() *cobra.Command {
 		withDirs []string
 		image    string
 		force    bool
+		from     string
 	)
 	cmd := &cobra.Command{
 		Use:   "init <name>",
@@ -299,6 +300,9 @@ func newRecipeInit() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
+			if from != "" {
+				return initFromCompose(cmd, name, dir, from, force)
+			}
 			switch db {
 			case "none", "sqlite", "postgres-dump":
 			default:
@@ -332,5 +336,8 @@ func newRecipeInit() *cobra.Command {
 	cmd.Flags().StringSliceVar(&withDirs, "with-dir", []string{"data"}, "Scaffold a dir input with this name (repeatable)")
 	cmd.Flags().StringVar(&image, "image", "", "Application image to write into compose.yaml")
 	cmd.Flags().BoolVar(&force, "force", false, "Overwrite an existing directory")
+	cmd.Flags().StringVar(&from, "compose", "",
+		"Read an existing compose file and propose a recipe from it: volumes become dir inputs, "+
+			"a database service becomes a dump or sqlite input, an exposed port becomes the ready probe")
 	return cmd
 }
