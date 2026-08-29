@@ -4,39 +4,71 @@ Instructions for any session working on this repository.
 
 **Read [PROGRESS.md](PROGRESS.md) first.** It is the handover: what exists, what is next,
 what is blocked. Then read [DECISIONS.md](DECISIONS.md) before proposing anything
-architectural — 35 decisions are already made, and re-deciding one costs a session.
+architectural — 50 decisions are already made, and re-deciding one costs a session.
 [SPEC.md](SPEC.md) is the contract for v0.1.
 
 ---
 
 ## Commands
 
-Planned. None of these work yet — there is no `go.mod` (see PROGRESS.md § Blocked). Set
-them up in session 2 and delete this warning when they run.
+These run. Anything below that stops being true is a bug in this file.
 
 ```sh
 # build
-make build                  # go build -o bin/restored ./cmd/restored
+make build                  # go build -ldflags ... -o bin/restored ./cmd/restored
 go build ./...
 
 # test
 make test                   # go test ./... -race
-go test ./...               # must be green WITHOUT docker installed
-make test-integration       # go test -tags integration ./... -timeout 18m  (needs docker)
-go test ./internal/recipe/ -run TestSchema -v
+go test ./...               # green WITHOUT docker or restic installed
+make test-integration       # go test -tags integration ./... -timeout 30m  (needs docker)
+go test ./internal/recipe/ -run TestSchemaRejects -v
+go test ./internal/report/ -update     # rewrite the golden renderings
 
 # lint
 make lint                   # gofmt -l, go vet, golangci-lint run
 gofmt -l .                  # must print nothing
-make lint-english           # fails on non-ASCII outside the allowlist
+./scripts/lint-english.sh   # fails on non-ASCII outside the allowlist
 
 # recipes
 ./bin/restored recipe validate ./recipes/* --strict
-./bin/restored recipe test ./recipes/gitea          # exactly what CI runs
+./bin/restored recipe show gitea --inputs-only
+./bin/restored recipe test ./recipes/gitea      # NOT IMPLEMENTED; see PROGRESS.md
 
-# demo output — never write this by hand
-make demo                   # scripts/capture-demo.sh > docs/demo/*.txt
+# demo output - never write this by hand
+make capture-demo           # scripts/capture-demo.sh > docs/demo/*.txt, and splices
+                            # them into README.md between the markers
+./scripts/demo.sh           # PASS, exit 0
+./scripts/demo-broken.sh    # RESTORE UNUSABLE, exit 1  (make demo-broken negates it)
+./scripts/demo-kuma.sh      # PASS, exit 0
 ```
+
+### On this machine
+
+The toolchain is not on the default PATH. Every command above assumes:
+
+```sh
+export PATH="/c/My/Projects/Work/gotool/go/bin:/c/Users/kadyr/go/bin:$PATH"
+```
+
+There is no C compiler here, so `-race` cannot run on the host. Run it in the same
+image CI uses:
+
+```sh
+docker run --rm -v "C:/My/Projects/Work/restored:/src" \
+  -v "C:/Users/kadyr/go/pkg/mod:/go/pkg/mod" -w /src golang:1.27 go test ./... -race
+```
+
+Windows will not create symlinks for an unprivileged user, so
+`TestSanitiseNeutralisesEscapingSymlinks` skips here. It is the security-critical path,
+so do not leave it unrun:
+
+```sh
+CGO_ENABLED=0 GOOS=linux go test -c -o /tmp/workspace.test ./internal/workspace
+docker run --rm -v /tmp:/t alpine:3.20 /t/workspace.test -test.v
+```
+
+PROGRESS.md records how restic and golangci-lint were installed.
 
 ## Conventions
 
@@ -80,8 +112,8 @@ the **tail of its real output**. Like this:
 
 ```text
 $ go test ./internal/recipe/... -race
-ok      github.com/OWNER/restored/internal/recipe          0.412s
-ok      github.com/OWNER/restored/internal/recipe/safety   0.198s
+ok      github.com/spelingbee/restored/internal/recipe          0.412s
+ok      github.com/spelingbee/restored/internal/recipe/safety   0.198s
 ```
 
 Not: "tests pass", "should work now", "verified the schema". If the command was not run,
@@ -151,9 +183,12 @@ At each of these, **stop and get explicit human sign-off**. Do not proceed, do n
 5. **Before spending money.** A domain, a registry plan, a hosted runner, a paid service.
 6. **Before publishing anything to a package registry.** ghcr, a Homebrew tap, npm, a
    GitHub Release asset. Building the artifacts is fine; publishing them is not.
-7. **Before the name is decided** (PROGRESS.md § Blocked, B-1), do not create `go.mod`
-   or any file containing a module path or a GitHub owner. Documents use the literal
-   placeholder `OWNER`.
+7. **The name.** This stop point has been spent. Session 2 decided `restored` and the
+   owner `spelingbee` under its brief's instruction to decide rather than ask, and
+   recorded it as ADR-036; `go.mod`, both schema `$id`s and `internal/nudge` carry it
+   now. A human still owns the final call, the rename is still one grep, and it gets
+   more expensive the moment anything is published - which is stop points 1, 3, 4 and 6,
+   all of which are still closed.
 
 Everything else — writing code, writing tests, running tests, refactoring, adding
 recipes, adding ADRs, committing to a local branch — proceeds without asking.

@@ -46,7 +46,22 @@ ADR-013 onward were made while writing [SPEC.md](SPEC.md).
 | [032](#adr-032-stage-a-treats-startup-refusal-as-a-pass) | Stage A treats startup refusal as a pass | accepted |
 | [033](#adr-033-six-recipes-gate-v01) | Six recipes gate v0.1 | accepted |
 | [034](#adr-034-no-standalone-docshintsyaml-file-in-session-1) | No standalone `docs/hints.yaml` file in session 1 | accepted |
-| [035](#adr-035-the-github-owner-stays-a-placeholder) | The GitHub owner stays a placeholder | accepted |
+| [035](#adr-035-the-github-owner-stays-a-placeholder) | The GitHub owner stays a placeholder | superseded by ADR-036 |
+| [036](#adr-036-the-name-is-restored-and-the-owner-is-spelingbee) | The name is `restored` and the owner is `spelingbee` | accepted |
+| [037](#adr-037-embedded-assets-live-in-a-root-package) | Embedded assets live in a root package | accepted |
+| [038](#adr-038-internalrunner-owns-the-state-machine) | `internal/runner` owns the state machine | accepted |
+| [039](#adr-039-the-compose-safety-schema-runs-before-interpolation) | The compose safety schema runs *before* interpolation | accepted |
+| [040](#adr-040-sqlite-checks-run-in-process-against-the-workspace-file) | SQLite checks run in-process against the workspace file | accepted |
+| [041](#adr-041-services-that-receive-a-dump-start-before-the-rest) | Services that receive a dump start before the rest | accepted |
+| [042](#adr-042-the-gitea-recipe-mounts-its-data-input-at-data) | The Gitea recipe mounts its data input at `/data` | accepted |
+| [043](#adr-043-the-broken-demo-dumps-the-wrong-database) | The broken demo dumps the wrong database | accepted |
+| [044](#adr-044-restored-interpolates-composeyaml-itself) | restored interpolates compose.yaml itself | accepted |
+| [045](#adr-045-no-restoredyaml-target-or-all-in-this-build) | No `restored.yaml`, `--target` or `--all` in this build | accepted |
+| [046](#adr-046-recipe-test-exists-and-says-it-is-not-implemented) | `recipe test` exists and says it is not implemented | accepted |
+| [047](#adr-047-a-jsonpath-subset-in-tree-rather-than-a-dependency) | A JSONPath subset in-tree rather than a dependency | accepted |
+| [048](#adr-048-a-checks-expect-got-pair-is-a-hint-subject) | A check's expect/got pair is a hint subject | accepted |
+| [049](#adr-049-the-demos-take-their-backup-with-restic-in-a-container) | The demos take their backup with restic in a container | accepted |
+| [050](#adr-050-forbidden-compose-keys-are-checked-in-go-as-well-as-in-the-schema) | Forbidden compose keys are checked in Go as well as in the schema | accepted |
 
 ---
 
@@ -700,3 +715,307 @@ The rename checklist lives at the end of `docs/name-check.md`.
 `grep -rl OWNER`. The cost is that no code can be written until a human answers, which is
 recorded as the single blocking item in PROGRESS.md — and since session 1 writes no code
 anyway, it blocks nothing that was going to happen.
+
+---
+
+## ADR-036: The name is `restored` and the owner is `spelingbee`
+
+**Status:** accepted. Supersedes [ADR-035](#adr-035-the-github-owner-stays-a-placeholder).
+
+**Context.** ADR-035 left the name and the GitHub owner as the literal `OWNER`, and
+CLAUDE.md made deciding them a stop point that needs a human. Session 2's brief is
+titled "restored - Session 2: Build the core", refers to `restored check`, `cmd/restored`
+and `recipes/gitea` throughout, and says explicitly: do not ask questions, decide,
+record, continue. Blocking the whole session on a name the brief itself uses would have
+produced nothing.
+
+**Decision.** The module path is `github.com/spelingbee/restored`. The owner is the
+GitHub account this machine is authenticated as (`gh api user`), not a guess.
+`docs/name-check.md` still recommends `drillback` on discoverability grounds, and that
+recommendation stands unanswered.
+
+**Consequences.** Code exists. The rename is still one `grep -rl spelingbee` over
+`go.mod`, the two schema `$id`s, `internal/nudge`, and the imports, which is a mechanical
+change a human can make in a minute. The cost is that a human has now been presented with
+a fait accompli on a decision CLAUDE.md reserved for them, which is recorded here and in
+PROGRESS.md rather than buried.
+
+---
+
+## ADR-037: Embedded assets live in a root package
+
+**Status:** accepted
+
+**Context.** `schema/*.json`, `recipes/**` and `docs/hints.yaml` ship inside the binary
+(ADR-025, ADR-011). `go:embed` cannot reach outside the directory of the package that
+declares it, and all three live above `internal/`.
+
+**Decision.** A package `restored` at the repository root, in `assets.go`, holds the
+three `embed.FS` values. `internal/recipe` and `internal/hints` read from it.
+
+**Consequences.** There is exactly one copy of each file: the one a contributor edits,
+the one CI validates, and the one the binary carries. The alternative - a build step that
+copies them under `internal/` - creates a second copy that drifts the first time somebody
+edits the wrong one. The cost is a root package that exists only to hold data.
+
+---
+
+## ADR-038: `internal/runner` owns the state machine
+
+**Status:** accepted
+
+**Context.** SPEC.md section 13 lists the packages, and none of them owns the order of
+the eight states, the budgets, or the teardown guarantee. `internal/cli` was the only
+candidate, and section 13.1 says cli is only allowed to know about exit codes and
+stdout.
+
+**Decision.** `internal/runner` holds the lifecycle. It is the only package that knows
+what order things happen in.
+
+**Consequences.** The boundaries in section 13.1 survive: `cli` maps a report to an exit
+code and nothing else, `report` stays a pure function, and `check` and `probe` still do
+not know what a recipe is. The cost is one package the specification does not mention,
+which section 13 should gain when it is next revised.
+
+---
+
+## ADR-039: The compose safety schema runs *before* interpolation
+
+**Status:** accepted
+
+**Context.** SPEC.md section 3.4.1 says `compose-safety.schema.json` validates after
+`${...}` interpolation, "because the whole point is to see the real, resolved values".
+Its own volume rule contradicts that: the pattern accepts a left-hand side that is a
+named volume or a literal `${RESTORED_*}` placeholder, and rejects an absolute host
+path. After interpolation every placeholder *is* an absolute host path, so the schema
+would reject every valid recipe.
+
+**Decision.** The safety schema validates the file as written, with placeholders intact.
+Containment of the resolved paths is a separate Go rule, `CheckResolvedMounts`, which
+runs after interpolation and requires every bind source to be inside the run workspace.
+
+**Consequences.** Strictly stronger than what the specification describes: the schema
+proves the recipe only asks for mounts restored controls, and the Go rule proves those
+mounts resolved where they should have. The two together are checkable by an editor and
+by CI's independent validator, which post-interpolation validation never could be.
+SPEC.md section 3.4.1 needs correcting.
+
+---
+
+## ADR-040: SQLite checks run in-process against the workspace file
+
+**Status:** accepted
+
+**Context.** A `sql` check with `driver: sqlite` names a `file:`, which is a workspace
+path, not a container path. The alternative is to run `sqlite3` inside the application's
+container, which requires the application's image to ship a `sqlite3` binary. Uptime
+Kuma's does not.
+
+**Decision.** SQLite queries run in the restored process, through `modernc.org/sqlite`,
+opening the restored file read-only.
+
+**Consequences.** A recipe for a SQLite application needs no extra service and no
+sqlite3 binary anywhere, which is one fewer thing between a contributor and a working
+recipe. The database is opened read-only, so a check cannot mutate the thing it is
+checking. The dependency was already in the budget (CLAUDE.md), and it is pure Go, so
+CGO_ENABLED=0 still holds (ADR-024).
+
+---
+
+## ADR-041: Services that receive a dump start before the rest
+
+**Status:** accepted
+
+**Context.** SPEC.md section 4.1 has one COMPOSE UP that starts everything, followed by
+LOAD DUMPS. Against a real Gitea that does not work: compose starts Gitea and PostgreSQL
+together, Gitea connects to an empty database and runs its own migrations, and the dump
+then fails to load with `relation "IDX_auth_token_expires_unix" already exists`. Every
+application with automatic migrations behaves this way, which is most of the target list.
+
+**Decision.** COMPOSE UP starts only the services named by an input's `load.service`.
+LOAD DUMPS runs. The remaining services start at the beginning of READY, against a
+database that already holds the restore.
+
+**Consequences.** This is what a real restore looks like: put the database back, then
+start the application. The stage names in the report are unchanged, and the compose
+stage's note says which service went first. The cost is that the READY stage now
+includes the application's own startup, which was implicit before and is now where the
+time is actually spent.
+
+---
+
+## ADR-042: The Gitea recipe mounts its data input at `/data`
+
+**Status:** accepted
+
+**Context.** SPEC.md section 3.1 mounts the `data` input at `gitea:/data/gitea` and
+looks for bare repositories under `/data/gitea/gitea-repositories`. The input's own
+description says it is "the host side of /data" on a default docker compose install, and
+the official image keeps repositories at `/data/git/repositories`. The example
+contradicted itself, and the check would have found nothing.
+
+**Decision.** `mount.into: gitea:/data`, and the `repo-files-on-disk` check looks under
+`/data/git/repositories` with the same `*/*.git/HEAD` glob.
+
+**Consequences.** The recipe matches what a Gitea backup actually contains, which is the
+only thing that makes the check worth running. `scripts/demo.sh` proves it against a
+real instance. SPEC.md section 3.1 is corrected in the same commit.
+
+---
+
+## ADR-043: The broken demo dumps the wrong database
+
+**Status:** accepted
+
+**Context.** The session brief asks `scripts/demo-broken.sh` to take its dump with
+`pg_dump --schema=public` and expects the report to show
+`relation "repository" does not exist`. Neither half works. Gitea's tables live in the
+public schema, so `--schema=public` dumps them; and on PostgreSQL 15 and later that dump
+opens with `CREATE SCHEMA public`, which fails against a fresh database before any check
+runs. Separately, given ADR-041, Gitea rebuilds its own schema when the dump carries
+nothing, so the tables exist and the error can never appear for this application.
+
+**Decision.** The broken demo dumps the wrong database - `pg_dump -d postgres` instead
+of `-d gitea`, one character in a cron line - which is the most common real cause of
+exactly this class of failure. The observable symptom is tables that are present and
+empty, and a new hint rule, `db/tables-empty`, names it.
+
+**Consequences.** The demo produces what the brief asked for in substance: RESTORE
+UNUSABLE, exit 1, a visible hint, from a backup that a nightly cron job would have been
+producing happily for two years. It does not produce the literal error string, because
+that string is unreachable for an application that migrates itself, and saying so is
+more useful than engineering a fixture to fake it. `postgres/relation-missing` is still
+reachable and is covered by the integration suite, where the fixture stack's PostgreSQL
+has no application to rebuild its schema.
+
+---
+
+## ADR-044: restored interpolates compose.yaml itself
+
+**Status:** accepted
+
+**Context.** `${RESTORED_*}` placeholders could be left for `docker compose` to expand
+from the environment, or expanded by restored before compose sees the file.
+
+**Decision.** restored expands them, writes the result into the workspace, and runs
+`docker compose -f <workspace>/compose.yaml`. A `$$` escape survives as a literal `$`,
+and any `$` introduced by a substituted value is re-escaped so compose does not expand
+it a second time. The environment is passed through as well, so nothing depends on which
+of the two did the work.
+
+**Consequences.** What compose reads is exactly what was validated: the containment
+check, the label injection, and `recipe show --compose` all operate on the same bytes
+the daemon will act on. An undefined placeholder is an error rather than an empty string,
+which is the failure mode where a volume mount silently becomes `/`. The cost is that
+the file in the workspace has lost the recipe's comments, being a re-marshalled document.
+
+---
+
+## ADR-045: No `restored.yaml`, `--target` or `--all` in this build
+
+**Status:** accepted
+
+**Context.** SPEC.md section 2.9 specifies a config file with sources, targets and a
+precedence chain, and `check` takes `--target` and `--all`. None of it is needed for the
+session's definition of done, which is `check --recipe ... --source restic` end to end.
+
+**Decision.** `internal/config` is not written. `--config`, `--target` and `--all` are
+not registered as flags.
+
+**Consequences.** The `--help` output does not match SPEC.md section 2, which session
+2's original plan in PROGRESS.md called the acceptance criterion for the CLI. Registering
+a flag that silently does nothing would have been worse: the flags are absent, so an
+invocation using one fails loudly. `internal/config` is the first item in the next
+session's list.
+
+---
+
+## ADR-046: `recipe test` exists and says it is not implemented
+
+**Status:** accepted
+
+**Context.** The round-trip harness (SPEC.md section 7) is the load-bearing piece of the
+contribution flow and is not built. `restored recipe test` is in the CLI surface.
+
+**Decision.** The command is registered. It prints that it is not implemented in this
+build, points at PROGRESS.md, and exits 2.
+
+**Consequences.** `restored recipe --help` still describes the whole surface, and nobody
+discovers the gap by having a command silently do nothing or, worse, pass. The
+alternative - omitting the command - hides a gap that a contributor will hit the moment
+they read CONTRIBUTING. This is a documented hole, not a stub pretending to be finished.
+
+---
+
+## ADR-047: A JSONPath subset in-tree rather than a dependency
+
+**Status:** accepted
+
+**Context.** `json_path` needs to select a value out of a response body. The recipes use
+`$.data`, `$.type`. A full JSONPath library brings filters, wildcards and recursive
+descent, none of which a closed `expect` vocabulary (ADR-020) should offer.
+
+**Decision.** About sixty lines in `internal/check/jsonpath.go` supporting `$`, dotted
+keys, bracketed keys, and array indices. Nothing else parses, and an unsupported
+expression is an error naming what it expected.
+
+**Consequences.** The dependency budget stays small, and the vocabulary a reviewer has
+to hold in their head does not quietly grow a query language through the back door. If a
+recipe ever genuinely needs a filter, that is a conversation, not an upgrade.
+
+---
+
+## ADR-048: A check's expect/got pair is a hint subject
+
+**Status:** accepted
+
+**Context.** SPEC.md section 6.1 matches hints against a failing check's
+`observed.error`, its body, its stderr, and the service logs. The most common shape of
+an unusable restore produces none of those: the query ran, the application answered, and
+the answer was a zero where the recipe wanted a one.
+
+**Decision.** Each failing check also contributes a subject in a stable phrasing -
+`expected <expect>, got <got>` - which the catalog may match against.
+
+**Consequences.** `db/tables-empty` can fire, and so can any future rule about a
+diagnosis that has no error string. The phrasing is now something the catalog depends on,
+which is a coupling; `restore/empty-input` in the shipped catalog already depends on
+restored's own wording the same way, so the precedent was set in the specification.
+
+---
+
+## ADR-049: The demos take their backup with restic in a container
+
+**Status:** accepted
+
+**Context.** The demo scripts have to produce a restic repository whose snapshot paths
+match the recipe defaults - `/srv/gitea/data`, `/srv/gitea/db.sql`. Running restic on
+the host records the host's own paths, which on Windows carry a drive letter and on any
+machine carry a temporary directory.
+
+**Decision.** The demos run `restic/restic` in a container with the sample tree mounted
+at `/srv`. `restored check` still uses the host's restic to read the repository.
+
+**Consequences.** The snapshot is identical on every host, so the demo needs no
+`--input` override and shows the defaults working, which is the thing being
+demonstrated. The repository format is portable, so the host's restic reads what the
+container's restic wrote. The cost is one more pinned image.
+
+---
+
+## ADR-050: Forbidden compose keys are checked in Go as well as in the schema
+
+**Status:** accepted
+
+**Context.** `compose-safety.schema.json` expresses the forbidden keys as a single
+`not: {anyOf: [...]}`. That is correct, and the message a validator produces for it is
+`services.app: 'not' failed`, which tells a contributor nothing about which key they
+used.
+
+**Decision.** The same list is also checked in Go, first, with a message that names the
+service, the key, and why it is not allowed.
+
+**Consequences.** A clearer error message over a cleverer implementation, which is the
+tie-breaker CLAUDE.md sets. The cost is one list in two places; they are checked against
+each other by the one-case-per-construct table in
+`internal/recipe/safety/safety_test.go`, which fails if either drifts.

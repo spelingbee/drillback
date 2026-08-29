@@ -18,37 +18,50 @@ Rules for this file:
 
 ## Current state
 
-**Phase:** specification complete, no code written.
-**Version:** unreleased. No tags, no `go.mod`, no `cmd/`.
-**Language of record:** English, everywhere. See [DECISIONS.md](DECISIONS.md) ADR-012.
+**Phase:** the core works. `restored check` runs end to end against a real restic
+repository and against an already-restored tree, with two bundled recipes.
+**Version:** unreleased. No tags. `0.1.0-dev` is what the binary reports.
+**Module:** `github.com/spelingbee/restored` (ADR-036 - see *Open questions*, the name
+is still a human's to confirm and the rename is one grep).
+**Language of record:** English, everywhere, and now enforced by
+`scripts/lint-english.sh`.
 
-What exists in the repository:
+What works, and is proved by a command below:
 
-| Path | State |
+| Capability | State |
 |---|---|
-| `SPEC.md` | Complete for v0.1. 14 sections: problem, CLI surface, recipe format + JSON Schema, run lifecycle, report format, hints, round-trip harness, nudge, threat model, testing, CI, release, layout, roadmap. |
-| `DECISIONS.md` | 35 ADRs. 001–012 are the fixed decisions from the brief; 013–035 were made while writing the spec. |
-| `docs/name-check.md` | Name research for `restored` and four fallbacks across GitHub, npm, PyPI, crates.io, Homebrew, Docker Hub and three TLDs, with a ranked recommendation. **Awaiting a human decision.** |
-| `CLAUDE.md` | Conventions and stop-points for future sessions. |
-| `PROGRESS.md` | This file. |
-| `LICENSE` | Apache-2.0, copyright "The restored Authors". |
-| `.gitignore`, `.editorconfig` | Written. |
+| `restored check --recipe <bundled\|dir> --source restic --from <repo>` | works, PASS and RESTORE UNUSABLE both reached against real stacks |
+| `restored check --source dir --from <tree>` | works |
+| `restored recipe validate [--strict] [--json]` | works, schema + safety schema + the three Go rules |
+| `restored recipe show [--format] [--compose] [--inputs-only]` | works |
+| `restored recipe init` | works; the scaffolded recipe validates as it comes out |
+| `restored version [--json]` | works, and exits 0 with docker and restic absent |
+| Isolation | enforced: no privileged, no host namespaces, no published ports, no bind outside the workspace, internal networks only |
+| Report | TTY renderer with an ASCII fallback and `NO_COLOR`, plus the JSON document of SPEC.md 5.2 |
+| Hints | 17 rules, embedded, `--hints FILE` for extra rules matched first |
+| Nudge | built, and printed only when all five conditions in SPEC.md 8.1 hold |
+| Teardown | `compose down -v --remove-orphans` plus the workspace, on every exit path |
 
-What does **not** exist yet, and is not expected to:
+What does **not** work yet, deliberately:
 
-- No Go code of any kind. No `go.mod`, no `cmd/restored`, no `internal/`.
-- No `recipes/` directory. The Gitea and Uptime Kuma recipes exist only as examples
-  inside SPEC.md § 3.1 and § 3.2.
-- No `schema/*.json`. Both schemas exist only inside SPEC.md § 3.4 and § 3.5.
-- No `docs/hints.yaml`. The 16-rule catalog exists only inside SPEC.md § 6.2 — see
-  ADR-034; the implementation session must **extract** it, not rewrite it.
-- No `.github/workflows/`. The CI plan is SPEC.md § 11.
-- No `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`.
+- **`restored recipe test`** - the round-trip harness of SPEC.md section 7. The command
+  exists, says it is not implemented, and exits 2 (ADR-046). This is the biggest hole:
+  it is the piece that lets a stranger's recipe be trusted without a maintainer reading
+  it, and until it lands a recipe is proved only by `scripts/demo.sh`.
+- **`restored.yaml`, `--target`, `--all`, `--config`** - `internal/config` is not
+  written and the flags are not registered, so an invocation using one fails loudly
+  rather than silently doing nothing (ADR-045). `restored check --help` therefore does
+  not match SPEC.md section 2.
+- **The four other recipes** for the v0.1 gate of six (ADR-033): Vaultwarden,
+  Paperless-ngx, Miniflux, Nextcloud.
+- **CI beyond lint and unit.** `ci.yml` has the lint and unit jobs. `recipes.yml`,
+  `smoke.yml`, `recipe-health.yml` and `release.yml` are unwritten, and the integration
+  job is not wired into CI even though the tests exist and pass locally.
+- **`CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `docs/recipes.md`,
+  `docs/security.md`, `install.sh`.** README.md exists.
 
-**Verification status:** nothing to verify. No build, no test suite, no command has been
-run against this project, because there is nothing executable in it. The next session is
-the first one that can make a "tests pass" claim, and it must do so with a command and
-its output.
+Repository layout now matches SPEC.md section 13, plus `internal/runner` (ADR-038),
+`internal/sqlite`, and `assets.go` at the root (ADR-037).
 
 ---
 
@@ -165,64 +178,231 @@ rather than against fenced blocks in a Markdown document.
 Other commands run this session were read-only research (`gh search repos`, `gh api`,
 `curl` against public registry APIs, `nslookup`) plus `git init` and file writes.
 
+### Session 2 - 2026-08-30 - The core
+
+**Goal:** `restored check` end to end, two recipes, a real demo, tests, a README.
+
+**Environment.** Windows 11 host, Docker Desktop 29.5.2 with the WSL2 Linux engine,
+docker compose v5.1.3. Go 1.27.0 from a portable toolchain at
+`C:\My\Projects\Work\gotool\go`, which is not on the default PATH: every command below
+was run with `export PATH="/c/My/Projects/Work/gotool/go/bin:/c/Users/kadyr/go/bin:$PATH"`.
+`restic 0.19.1` and `golangci-lint 2.13.2` were installed into `~/go/bin` during this
+session (see *Toolchain* below).
+
+The preconditions in the brief asked for `docker compose version` to report v2. It
+reports **v5.1.3**, which is Docker Desktop's current compose. Every command this project
+uses - `up -d --pull`, `exec -T`, `logs --tail`, `down -v --remove-orphans`, `config
+--services` - behaves as specified, and the whole suite passes against it.
+
+**Done, in order:**
+
+1. **Scaffold.** `go.mod` (ADR-036), the package tree, `Makefile`, `.golangci.yml`,
+   `.gitattributes`, `.goreleaser.yaml`, `.github/workflows/ci.yml`.
+2. **Extraction, not retyping.** `schema/recipe.schema.json`,
+   `schema/compose-safety.schema.json`, `docs/hints.yaml`, `recipes/gitea/**` and
+   `recipes/uptime-kuma/**` were pulled out of SPEC.md's fenced blocks by a script, so
+   the specification and the shipped files could not disagree on day one (ADR-034).
+3. **`internal/recipe`** - types, loader, YAML-tag rejection, JSON Schema validation,
+   the restricted template context, and input resolution including `within:`.
+4. **`internal/recipe/safety`** - the compose safety schema and the three Go-only rules,
+   plus interpolation and the resolved-mount containment check.
+5. **`internal/workspace`, `internal/compose`, `internal/source/{restic,dir}`,
+   `internal/loader`, `internal/sqlite`, `internal/check`, `internal/probe`,
+   `internal/report`, `internal/hints`, `internal/nudge`, `internal/runner`,
+   `internal/cli`.**
+6. **The demos.** `scripts/demo.sh`, `scripts/demo-broken.sh`, `scripts/demo-kuma.sh`,
+   `scripts/capture-demo.sh`, `scripts/lib.sh`, `scripts/lint-english.sh`.
+7. **README.md**, with its terminal blocks spliced in from `docs/demo/*.txt` by
+   `capture-demo.sh`. Nothing in it is hand-written.
+8. **Tests.** Unit tests for the schema, resolution, safety, snapshot selection, the
+   report, the hints, the expect vocabulary, dump detection, sanitisation and the
+   scaffold. Integration tests behind the `integration` tag for the runner and for all
+   three demos.
+
+**Five things reality contradicted the specification about**, each fixed in both places
+and each with an ADR: the compose safety schema cannot run after interpolation
+(ADR-039); a dump must be loaded before the application first connects (ADR-041); the
+Gitea recipe's data mount and repository path were wrong (ADR-042); `PGOPTIONS` with
+postmaster settings breaks the postgres image's own initialisation; and Uptime Kuma
+answers `/` with a 302.
+
+**Two bugs the tests found**, both silent in normal use: templating skipped map values
+entirely, so `inputs.db.load.user` reached psql as the literal `{{ .vars.db_user }}`;
+and a nested input kept the recipe's default path when its parent was overridden, so
+`--input data=/mnt/backup` moved the directory and left the database behind.
+
+---
+
+#### Evidence
+
+Unit suite, with the race detector. The host has no C toolchain, so `-race` cannot run
+on it (`cgo: C compiler "gcc" not found`); it was run in the same Linux container image
+CI will use.
+
+```text
+$ docker run --rm -v "C:/My/Projects/Work/restored:/src" \
+    -v "C:/Users/kadyr/go/pkg/mod:/go/pkg/mod" -w /src golang:1.27 go test ./... -race
+ok  	github.com/spelingbee/restored/internal/check	1.163s
+ok  	github.com/spelingbee/restored/internal/cli	1.241s
+ok  	github.com/spelingbee/restored/internal/hints	1.147s
+ok  	github.com/spelingbee/restored/internal/loader	1.164s
+ok  	github.com/spelingbee/restored/internal/recipe	1.324s
+ok  	github.com/spelingbee/restored/internal/recipe/safety	1.210s
+ok  	github.com/spelingbee/restored/internal/report	1.180s
+ok  	github.com/spelingbee/restored/internal/source/restic	1.050s
+ok  	github.com/spelingbee/restored/internal/workspace	1.068s
+```
+
+Full suite including integration, on the host, against the real daemon.
+`internal/runner` is 269 seconds because it stands up Gitea, PostgreSQL and Uptime Kuma
+for real, five times.
+
+```text
+$ go test -tags integration ./... -timeout 40m
+ok  	github.com/spelingbee/restored/internal/check	2.854s
+ok  	github.com/spelingbee/restored/internal/cli	1.644s
+ok  	github.com/spelingbee/restored/internal/hints	2.341s
+ok  	github.com/spelingbee/restored/internal/loader	3.875s
+ok  	github.com/spelingbee/restored/internal/recipe	2.320s
+ok  	github.com/spelingbee/restored/internal/recipe/safety	3.158s
+ok  	github.com/spelingbee/restored/internal/report	2.810s
+ok  	github.com/spelingbee/restored/internal/runner	269.612s
+ok  	github.com/spelingbee/restored/internal/source/restic	1.503s
+ok  	github.com/spelingbee/restored/internal/workspace	1.406s
+```
+
+Workspace sanitisation - the security-critical path - **skips on this host**, because
+Windows will not create a symlink for an unprivileged user. It was cross-compiled and
+run on Linux to make sure it is actually covered:
+
+```text
+$ CGO_ENABLED=0 GOOS=linux go test -c -o /tmp/workspace.test ./internal/workspace
+$ docker run --rm -v /tmp:/t alpine:3.20 /t/workspace.test -test.v
+--- PASS: TestNewCreatesTheTree (0.00s)
+--- PASS: TestRunIDIsUsableEverywhere (0.00s)
+--- PASS: TestContains (0.00s)
+--- PASS: TestSanitiseNeutralisesEscapingSymlinks (0.01s)
+--- PASS: TestSanitiseRefusesToLeaveTheWorkspace (0.00s)
+--- PASS: TestMeasure (0.00s)
+--- PASS: TestCopyTree (0.00s)
+PASS
+```
+
+Lint:
+
+```text
+$ gofmt -l .
+$ go vet ./...
+$ golangci-lint run
+0 issues.
+$ golangci-lint run --build-tags integration
+0 issues.
+$ ./scripts/lint-english.sh
+lint-english: ok
+```
+
+The bundled recipes, against the schema and the safety rules:
+
+```text
+$ ./bin/restored recipe validate ./recipes/gitea ./recipes/uptime-kuma --strict
+ok       ./recipes/gitea
+ok       ./recipes/uptime-kuma
+$ echo $?
+0
+```
+
+The demos, run twice in a row to prove they are idempotent, and the broken one's exit
+code checked:
+
+```text
+$ ./scripts/demo.sh          ; echo exit=$?     # run 1
+exit=0
+$ ./scripts/demo.sh          ; echo exit=$?     # run 2
+exit=0
+$ ./scripts/demo-broken.sh   ; echo exit=$?
+exit=1
+$ ./scripts/demo-kuma.sh     ; echo exit=$?
+exit=0
+$ docker ps -aq --filter "label=com.restored.run" | wc -l
+0
+$ ls -d "$TMPDIR"/restored-* 2>/dev/null || echo "no workspaces left"
+no workspaces left
+```
+
+The reports those runs printed are in `docs/demo/pass.txt`, `docs/demo/fail.txt` and
+`docs/demo/kuma.txt`, captured by `scripts/capture-demo.sh` and spliced into README.md
+by the same script. Nothing there was typed by hand.
+
+---
+
+#### Toolchain
+
+Recorded here because the next session on this machine will need it, and because
+CLAUDE.md's command list assumes it.
+
+- **Go 1.27.0** - portable toolchain already present at
+  `C:\My\Projects\Work\gotool\go\bin`. Not on PATH by default.
+- **restic 0.19.1** - downloaded from the GitHub release
+  (`gh release download v0.19.1 --repo restic/restic --pattern
+  'restic_0.19.1_windows_amd64.zip'`), unzipped, and copied to
+  `C:\Users\kadyr\go\bin\restic.exe`.
+- **golangci-lint 2.13.2** - `go install
+  github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`.
+- **No C toolchain**, so `go test -race` needs the container command shown above.
+
+Pinned images the project pulls: `curlimages/curl:8.16.0` (the check helper),
+`gitea/gitea:1.22.6`, `postgres:16.4-alpine`, `louislam/uptime-kuma:1.23.16-alpine`,
+`keinos/sqlite3:3.46.0`, `restic/restic:0.19.1`, `nginx:1.27-alpine` (the test fixture).
+
+---
+
+#### A mistake, recorded
+
+An over-broad `git add -A` while installing restic committed
+`restic_0.19.1_windows_amd64.zip` and the 31 MB binary it contained into the first two
+commits of this session. They were removed with `git filter-branch` over
+`35a3e83..HEAD` before anything was pushed, the reflog was expired and the repository
+garbage collected (`.git` is 286 KB), and `.gitignore` now covers both paths. Nothing
+was ever published. Check with `git log --stat | grep -i restic_` if in doubt.
+
+
 ---
 
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
 
-### Immediately blocked on a human — see *Blocked*
+### Session 3 - the round-trip harness
 
-0. **Decide the name.** Everything below embeds it.
+`internal/harness` and `restored recipe test`, exactly as SPEC.md section 7 describes
+it. This is the largest remaining hole and the one the contribution flow rests on:
+stage A must prove a recipe's checks fail against an empty stack, stage B must prove
+they pass against a real round trip. Both bundled recipes already have the `test:`
+section the harness needs; it is parsed and validated today and nothing executes it.
 
-### Session 2 — scaffold, once the name is decided
+Note for whoever writes it: `${RESTORED_TEST_ASSETS}` and `${RESTORED_EXPORT}` already
+resolve to `<workspace>/test-assets` and `<workspace>/export`, which exist and are
+empty during `check`. The harness has to copy the recipe's `test/` directory into the
+first one, and collect `produces:` outputs out of the second.
 
-1. `go mod init github.com/<owner>/<name>`, pinned to the current stable Go toolchain.
-2. `cmd/<name>/main.go` with nothing but wiring, and `internal/cli` with the cobra
-   command tree — every command and flag from SPEC.md § 2, each returning
-   "not implemented" with exit 2. The `--help` output is the acceptance criterion: it
-   must match SPEC.md § 2 exactly. Diff it and fix the spec if reality is better.
-3. `schema/recipe.schema.json` and `schema/compose-safety.schema.json`, extracted
-   verbatim from SPEC.md § 3.4 and § 3.5.
-4. `docs/hints.yaml`, extracted verbatim from SPEC.md § 6.2 (ADR-034).
-5. `recipes/gitea/` and `recipes/uptime-kuma/`, extracted verbatim from SPEC.md § 3.1
-   and § 3.2.
-6. `.github/workflows/ci.yml` with the `lint` and `unit` jobs only.
-7. `Makefile`: `build`, `test`, `lint`, `test-integration`, `demo`.
-8. `.gitattributes` with `* text=auto eol=lf`. Session 1 was created on Windows, where
-   git's default `core.autocrlf=true` would have rewritten every file to CRLF and
-   contradicted `.editorconfig`'s `end_of_line = lf`. It was worked around with a
-   repository-local `git config core.autocrlf false`, which is **not** committed and does
-   not travel — the next Windows contributor gets the wrong endings. `.gitattributes`
-   was outside session 1's allowed file list, so it is the first thing session 2 adds.
+### Session 4 - configuration and the rest of the CLI surface
 
-Commit after each numbered item. Green `go build ./...` and `go test ./...` before every
-commit, with the command and output recorded here.
+`internal/config`: `restored.yaml`, sources, targets, the precedence chain, `--config`,
+`--target`, `--all`, and the `--all` report shape. Then diff `--help` against SPEC.md
+section 2 and fix whichever of the two is wrong (ADR-045).
 
-### Session 3 — validation first
+### Session 5 - CI, and the four remaining recipes
 
-`internal/recipe` and `internal/recipe/safety`, with `restored recipe validate` and
-`restored recipe show` working end to end. This is the right first vertical slice: it is
-pure, it is fully unit-testable with no Docker, and it makes the two extracted recipes
-prove themselves immediately. Table-driven tests, one row per schema constraint
-(SPEC.md § 10.1).
-
-### Session 4 — the happy path
-
-`workspace` → `source/dir` → `compose` → `probe` → `check` → `report`. Deliberately use
-`--source dir` first and leave restic for session 5, so the first working `check` needs
-no backup repository. Target: `restored check --recipe ./recipes/uptime-kuma --source
-dir --from ./testdata/uk-tree` prints a real PASS.
-
-### Session 5 — restic, then the harness
-
-`source/restic` with recorded-JSON unit tests for snapshot selection, then
-`internal/harness` for `recipe test`, then `recipes.yml` in CI.
+`recipes.yml` with the changed-recipe selection of SPEC.md 7.5, the integration job in
+`ci.yml`, `smoke.yml`, and `recipe-health.yml`. Then Vaultwarden, Paperless-ngx,
+Miniflux and Nextcloud, to reach the six-recipe gate (ADR-033). Nextcloud is the one
+that will test whether the isolation rules hold.
 
 ### Then
 
-`hints`, `nudge`, the remaining four recipes (ADR-033), goreleaser, the ghcr image,
-`install.sh`, and the fresh-clone smoke test.
+`CONTRIBUTING.md` (the README already points at it), `SECURITY.md`, `docs/recipes.md`,
+`install.sh`, the ghcr image, and the release checklist. None of the publishing steps
+happen without a human: see CLAUDE.md's stop points.
 
 ---
 
@@ -230,28 +410,33 @@ dir --from ./testdata/uk-tree` prints a real PASS.
 
 | # | Item | Since | Blocking | Needed from |
 |---|---|---|---|---|
-| B-1 | **The project name, and the GitHub owner.** `docs/name-check.md` recommends `drillback` (only fully-clean namespace); `restored` is usable at a discoverability cost. The owner determines the `go.mod` module path, the schema `$id`s, the nudge URL, the ghcr image, and the Homebrew tap. All documents currently use the literal placeholder `OWNER` (ADR-035). | 2026-08-30 | `go mod init`, and therefore all code | A human decision. Nothing else is required — the research is complete. |
+| - | Nothing. | - | - | - |
 
-Nothing else is blocked. B-1 blocks session 2 entirely; there is no useful code that can
-be written around it, and inventing a module path to unblock ourselves would mean a
-rewrite of every import in the repository.
+B-1, the project name and the GitHub owner, was resolved by this session under the
+brief's instruction to decide rather than ask, and is recorded as ADR-036. It is listed
+below as an open question rather than as a blocker, because the code exists and the
+rename is mechanical.
 
 ---
 
 ## Open questions for a human
 
-Not blocking, but cheaper to answer now than after v0.1 ships.
-
-1. **ADR-023 — is a failed ready probe exit 1 or exit 2?** The spec says 1: an app that
-   will not start from its restored data is an unusable restore. The cost is false alarms
-   when a recipe's pinned image disappears upstream or the host is slow. This is the
-   single most reversible-now, expensive-later decision in the specification.
-2. **ADR-030 — should digest pinning be required rather than encouraged?** Requiring it
-   is strictly safer and makes recipes go stale in weeks, which would damage the one
-   metric this project has agreed to care about.
-3. **ADR-033 — are six recipes the right gate for v0.1?** Six stresses the format
-   properly and delays the release. Three would ship sooner and freeze `apiVersion` on
-   thinner evidence.
-4. **Is Nextcloud actually achievable inside the isolation rules?** It is on the v0.1
-   recipe list specifically because it is awkward, and if it cannot be done the rules
-   need a documented exception rather than a quiet one.
+1. **The name and the owner, still.** `github.com/spelingbee/restored` is in `go.mod`,
+   in both schema `$id`s, and in `internal/nudge`. `docs/name-check.md` recommends
+   `drillback` because it is the only candidate clean on every registry and all three
+   TLDs, and `restored` costs discoverability. Changing it now is
+   `grep -rl spelingbee/restored | xargs sed -i` plus a `go mod edit`; changing it after
+   anything is published is not. This is the cheapest hour this project will ever have
+   to spend. See ADR-036.
+2. **ADR-023 - is a failed ready probe exit 1 or exit 2?** Unchanged from session 1, and
+   now implemented as exit 1. Session 2 saw one real instance of it: an Uptime Kuma
+   ready probe that failed because the recipe expected a 200 and the application answers
+   a 302. That was a recipe bug reported as an unusable restore, which is exactly the
+   false alarm the question is about. The recipe is fixed; the question stands.
+3. **ADR-030 - should digest pinning be required rather than encouraged?** Unchanged.
+4. **ADR-033 - are six recipes the right gate for v0.1?** Two exist and both round-trip.
+5. **Is Nextcloud achievable inside the isolation rules?** Still unknown, and still the
+   recipe most likely to force an exception.
+6. **New: `restored recipe test` is not built.** Until it is, a recipe cannot be
+   accepted from a stranger on evidence alone, which is the mechanism the success metric
+   depends on. Session 3 is the whole answer, and nothing else should jump the queue.

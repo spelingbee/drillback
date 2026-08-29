@@ -2,11 +2,15 @@
 
 > **Your backup is a lie until it boots.**
 
-Status: **draft, pre-implementation.** This document is the contract for v0.1. Any
-change to it must be accompanied by an entry in [DECISIONS.md](DECISIONS.md).
+Status: **partly implemented.** This document is the contract for v0.1. Any change to
+it must be accompanied by an entry in [DECISIONS.md](DECISIONS.md), and session 2
+changed five things in it where reality disagreed: see ADR-039, ADR-041, ADR-042,
+ADR-043 and the `PGOPTIONS` note in section 3.1. [PROGRESS.md](PROGRESS.md) records what
+is built and what is not.
 
-Working name: `restored`. See [docs/name-check.md](docs/name-check.md) — the name is
-not final and the rename is a single grep.
+Working name: `restored`, owner `spelingbee` (ADR-036). See
+[docs/name-check.md](docs/name-check.md) — the name is still not final, and the rename
+is still a single grep.
 
 ---
 
@@ -151,11 +155,11 @@ Exit codes:
   2   tool or runtime error — docker missing, restic failed, recipe invalid, timeout
       before any check could run
 
-Docs: https://github.com/OWNER/restored
+Docs: https://github.com/spelingbee/restored
 ```
 
-> `OWNER` is a placeholder until the name and the GitHub organisation are decided.
-> See [PROGRESS.md](PROGRESS.md) § Blocked.
+> The owner is `spelingbee` (ADR-036). A human has not confirmed the name; the rename
+> is one grep and it is listed under *Open questions* in [PROGRESS.md](PROGRESS.md).
 
 ### 2.2 `restored check --help`
 
@@ -985,7 +989,7 @@ pattern repeats; every constraint that matters is present.
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OWNER/restored/schema/recipe.schema.json",
+  "$id": "https://github.com/spelingbee/restored/schema/recipe.schema.json",
   "title": "restored recipe",
   "type": "object",
   "additionalProperties": false,
@@ -1321,7 +1325,7 @@ section 9 explains why each rule exists.
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OWNER/restored/schema/compose-safety.schema.json",
+  "$id": "https://github.com/spelingbee/restored/schema/compose-safety.schema.json",
   "title": "restored compose safety rules",
   "type": "object",
   "required": ["services", "networks"],
@@ -2140,7 +2144,7 @@ When a `check` run finishes and **all** of these hold:
   This recipe is not in the bundled registry, and it just proved a restore.
   Other people running Paperless-ngx would use it. Adding it is one click:
 
-    https://github.com/OWNER/restored/new/main?filename=recipes/paperless/recipe.yaml&value=apiVersion%3A%20restored%2Fv1%0Akind%3A%20Recipe%0A…
+    https://github.com/spelingbee/restored/new/main?filename=recipes/paperless/recipe.yaml&value=apiVersion%3A%20restored%2Fv1%0Akind%3A%20Recipe%0A…
 
   (silence this with --no-nudge, or `nudge: false` in restored.yaml)
   ────────────────────────────────────────────────────────────────────────
@@ -2156,7 +2160,7 @@ verdict, never before it.
 ### 8.2 The URL
 
 ```text
-https://github.com/OWNER/restored/new/main
+https://github.com/spelingbee/restored/new/main
   ?filename=recipes/<name>/recipe.yaml
   &value=<percent-encoded recipe.yaml>
 ```
@@ -2185,7 +2189,7 @@ Above it, `restored` prints instead:
   This recipe is not in the bundled registry, and it just proved a restore.
   It is too large for a prefilled link (7.4 KB encoded), so:
 
-    1. fork  https://github.com/OWNER/restored
+    1. fork  https://github.com/spelingbee/restored
     2. cp -r /home/you/recipes/immich recipes/immich
     3. restored recipe test ./recipes/immich     # this is what CI runs
     4. open a PR
@@ -2379,7 +2383,7 @@ changed recipes per PR and on all recipes weekly.
 The test that catches everything the others assume. On a clean runner, from nothing:
 
 ```sh
-git clone https://github.com/OWNER/restored && cd restored
+git clone https://github.com/spelingbee/restored && cd restored
 go build ./cmd/restored          # builds with no network beyond the module cache
 ./restored version               # exits 0 with docker/restic absent
 ./restored recipe validate ./recipes/* --strict
@@ -2501,7 +2505,7 @@ Targets: `linux`, `darwin`, `windows` x `amd64`, `arm64` — six archives.
 
 ### 12.3 Container image
 
-`ghcr.io/OWNER/restored`, tagged `vX.Y.Z`, `vX.Y`, `vX`, and `latest`, multi-arch
+`ghcr.io/spelingbee/restored`, tagged `vX.Y.Z`, `vX.Y`, `vX`, and `latest`, multi-arch
 `linux/amd64,linux/arm64`.
 
 The image bundles what `restored` shells out to, so a user can drill without installing
@@ -2521,7 +2525,7 @@ docker run --rm \
   -v /var/tmp/restored:/workspace \
   -e RESTIC_REPOSITORY=/repo \
   -e RESTIC_PASSWORD_FILE=/run/secrets/restic \
-  ghcr.io/OWNER/restored:v0.1.0 check --recipe gitea --workspace /workspace
+  ghcr.io/spelingbee/restored:v0.1.0 check --recipe gitea --workspace /workspace
 ```
 
 ### 12.4 Homebrew tap
