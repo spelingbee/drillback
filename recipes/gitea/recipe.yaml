@@ -30,7 +30,7 @@ inputs:
     required: true
     mount:
       env: RESTORED_INPUT_data      # compose.yaml refers to ${RESTORED_INPUT_data}
-      into: gitea:/data/gitea       # service:path, for `file` checks and exports
+      into: gitea:/data             # service:path, for `file` checks and exports
 
   db:
     kind: postgres-dump
@@ -96,7 +96,10 @@ checks:
     title: At least one bare repository exists on disk
     kind: file
     service: gitea
-    path: /data/gitea/gitea-repositories
+    # The official image keeps bare repositories under /data/git/repositories, one
+    # directory per owner. The input is the host side of /data, so this is the path a
+    # default docker compose install actually produces.
+    path: /data/git/repositories
     expect:
       exists: true
       glob: "*/*.git/HEAD"
@@ -140,7 +143,7 @@ test:
 
   export:
     # `data` is a dir input: the harness exports it automatically by copying
-    # gitea:/data/gitea back out into the staging tree. Only non-dir inputs need an
+    # gitea:/data back out into the staging tree. Only non-dir inputs need an
     # explicit export step.
     - name: dump the database into the staging tree
       kind: exec

@@ -122,19 +122,34 @@ func renderValue(v reflect.Value, c TemplateContext, skip map[string]bool) error
 			}
 		}
 	case reflect.Map:
+		// Map values are not addressable, so anything that is not reached through a
+		// pointer is rendered into a copy and written back.
 		for _, k := range v.MapKeys() {
 			val := v.MapIndex(k)
 			if val.Kind() == reflect.Interface {
 				val = val.Elem()
 			}
-			if val.Kind() != reflect.String {
+			switch val.Kind() {
+			case reflect.Invalid:
 				continue
+			case reflect.Pointer:
+				if err := renderValue(val, c, skip); err != nil {
+					return fmt.Errorf("%v: %w", k, err)
+				}
+			case reflect.String:
+				out, err := c.Render(val.String())
+				if err != nil {
+					return fmt.Errorf("%v: %w", k, err)
+				}
+				v.SetMapIndex(k, reflect.ValueOf(out))
+			default:
+				cp := reflect.New(val.Type()).Elem()
+				cp.Set(val)
+				if err := renderValue(cp, c, skip); err != nil {
+					return fmt.Errorf("%v: %w", k, err)
+				}
+				v.SetMapIndex(k, cp)
 			}
-			out, err := c.Render(val.String())
-			if err != nil {
-				return err
-			}
-			v.SetMapIndex(k, reflect.ValueOf(out))
 		}
 	case reflect.String:
 		if !v.CanSet() {

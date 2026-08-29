@@ -41,9 +41,12 @@ inputs:
       integrity_check: true   # sqlite needs no loading; restored only verifies it
 
 ready:
+  # Uptime Kuma answers / with a 302 to /dashboard, so the readiness question is asked
+  # of the API entry point instead: it is the cheapest endpoint that proves the server
+  # is serving rather than merely listening.
   - name: kuma serves HTTP
     kind: http
-    url: http://kuma:{{ .vars.kuma_port }}/
+    url: http://kuma:{{ .vars.kuma_port }}/api/entry-page
     expect_status: 200
     timeout: 180s
     interval: 3s

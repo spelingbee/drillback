@@ -11,8 +11,17 @@ services:
       POSTGRES_DB: ${RESTORED_VAR_db_name}
       POSTGRES_USER: ${RESTORED_VAR_db_user}
       POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
-      # Speed only. This database is thrown away; durability is not a goal.
-      PGOPTIONS: "-c fsync=off -c full_page_writes=off -c synchronous_commit=off"
+    # Speed only. This database is thrown away; durability is not a goal. These are
+    # postmaster settings, so they go on the server's own command line: putting them
+    # in PGOPTIONS breaks the image's own initialisation, which connects as a client.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
     volumes:
       - db-data:/var/lib/postgresql/data
     networks: [restored]
@@ -37,7 +46,7 @@ services:
       GITEA__security__INSTALL_LOCK: "true"
       GITEA__cron__ENABLED: "false"
     volumes:
-      - ${RESTORED_INPUT_data}:/data/gitea
+      - ${RESTORED_INPUT_data}:/data
     networks: [restored]
 
 volumes:

@@ -553,7 +553,7 @@ inputs:
     required: true
     mount:
       env: RESTORED_INPUT_data      # compose.yaml refers to ${RESTORED_INPUT_data}
-      into: gitea:/data/gitea       # service:path, for `file` checks and exports
+      into: gitea:/data             # service:path, for `file` checks and exports
 
   db:
     kind: postgres-dump
@@ -619,7 +619,10 @@ checks:
     title: At least one bare repository exists on disk
     kind: file
     service: gitea
-    path: /data/gitea/gitea-repositories
+    # The official image keeps bare repositories under /data/git/repositories, one
+    # directory per owner. The input is the host side of /data, so this is the path a
+    # default docker compose install actually produces.
+    path: /data/git/repositories
     expect:
       exists: true
       glob: "*/*.git/HEAD"
@@ -663,7 +666,7 @@ test:
 
   export:
     # `data` is a dir input: the harness exports it automatically by copying
-    # gitea:/data/gitea back out into the staging tree. Only non-dir inputs need an
+    # gitea:/data back out into the staging tree. Only non-dir inputs need an
     # explicit export step.
     - name: dump the database into the staging tree
       kind: exec
@@ -694,8 +697,17 @@ services:
       POSTGRES_DB: ${RESTORED_VAR_db_name}
       POSTGRES_USER: ${RESTORED_VAR_db_user}
       POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
-      # Speed only. This database is thrown away; durability is not a goal.
-      PGOPTIONS: "-c fsync=off -c full_page_writes=off -c synchronous_commit=off"
+    # Speed only. This database is thrown away; durability is not a goal. These are
+    # postmaster settings, so they go on the server's own command line: putting them
+    # in PGOPTIONS breaks the image's own initialisation, which connects as a client.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
     volumes:
       - db-data:/var/lib/postgresql/data
     networks: [restored]
@@ -720,7 +732,7 @@ services:
       GITEA__security__INSTALL_LOCK: "true"
       GITEA__cron__ENABLED: "false"
     volumes:
-      - ${RESTORED_INPUT_data}:/data/gitea
+      - ${RESTORED_INPUT_data}:/data
     networks: [restored]
 
 volumes:
@@ -779,9 +791,12 @@ inputs:
       integrity_check: true   # sqlite needs no loading; restored only verifies it
 
 ready:
+  # Uptime Kuma answers / with a 302 to /dashboard, so the readiness question is asked
+  # of the API entry point instead: it is the cheapest endpoint that proves the server
+  # is serving rather than merely listening.
   - name: kuma serves HTTP
     kind: http
-    url: http://kuma:{{ .vars.kuma_port }}/
+    url: http://kuma:{{ .vars.kuma_port }}/api/entry-page
     expect_status: 200
     timeout: 180s
     interval: 3s
@@ -1827,6 +1842,22 @@ rules:
       - "ls -l {{ .input.db.path }}"
       - "tail -c 200 {{ .input.db.path }}"
 
+  - id: db/tables-empty
+    match: 'expected scalar_int_min: [1-9][0-9]*, got 0'
+    title: The application's tables are there, but they are empty
+    text: >
+      Every table the checks read exists and holds nothing. Two causes produce exactly
+      this. Either the dump was taken from the wrong database, or with
+      `pg_dump --schema-only`, or narrowed with `--table`, so it carried a schema and
+      none of the rows. Or the dump carried nothing at all and the application rebuilt
+      an empty schema for itself on start, which is what an application with automatic
+      migrations does the moment it meets an empty database. Compare the size of the
+      dump with the size of the data directory in the report above: a forge with
+      repositories on disk and a half-kilobyte dump is not a backup.
+    commands:
+      - "grep -c 'INSERT INTO' {{ .input.db.path }}"
+      - "ls -l {{ .input.db.path }}"
+
   - id: postgres/role-missing
     when: { driver: postgres }
     match: 'role "([^"]+)" does not exist'
@@ -1975,7 +2006,7 @@ rules:
       tmpfs in RAM.
 ```
 
-That is 16 rules. `commands` are rendered with the same restricted template context as
+That is 17 rules. `commands` are rendered with the same restricted template context as
 recipes and are printed verbatim — `restored` never executes them.
 
 ---

@@ -108,7 +108,6 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	debug := o.Debug
 	logFile, logErr := os.Create(filepath.Join(ws.LogsDir(), "debug.log"))
 	if logErr == nil {
-		defer logFile.Close()
 		if debug == nil {
 			debug = logFile
 		} else {
@@ -128,6 +127,11 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	composeUp := false
 	defer func() {
 		keepIt := o.Keep || (o.KeepOnFail && (err != nil || rep.Verdict != report.VerdictPass))
+		if logFile != nil {
+			// The debug log has to be closed before the directory holding it can be
+			// removed. On Windows an open handle makes the whole teardown fail.
+			_ = logFile.Close()
+		}
 		if keepIt {
 			kept = &Kept{Workspace: ws.Root, Project: ws.ProjectName()}
 			rep.Run.WorkspaceRemoved = false
@@ -151,10 +155,12 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	}()
 
 	res, err := recipe.Resolve(o.Recipe, recipe.Options{
-		InputPaths: o.InputPaths,
-		Vars:       o.SetVars,
-		InputsDir:  ws.InputsDir(),
-		RunID:      ws.RunID,
+		InputPaths:    o.InputPaths,
+		Vars:          o.SetVars,
+		InputsDir:     ws.InputsDir(),
+		TestAssetsDir: ws.TestAssetsDir(),
+		ExportDir:     ws.ExportDir(),
+		RunID:         ws.RunID,
 	})
 	if err != nil {
 		return rep, kept, err
@@ -204,8 +210,14 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		return rep, kept, fmt.Errorf("writing the run's compose file: %w", err)
 	}
 
+	// A dump has to be in the database before the application first connects to it:
+	// an application that starts against an empty database runs its own migrations,
+	// and the dump then collides with the schema it just created. So the services
+	// that receive a dump start first, and the rest start once the load is done.
+	// See DECISIONS.md ADR-041.
+	loadFirst := loadServices(res)
 	composeUp = true
-	if _, upErr := cli.Up(runCtx, o.Pull); upErr != nil {
+	if _, upErr := cli.Up(runCtx, o.Pull, loadFirst...); upErr != nil {
 		rep.Stages = append(rep.Stages, report.Stage{
 			Name: "compose", Status: "failed",
 			DurationMS: time.Since(upStart).Milliseconds(), Error: upErr.Error(),
@@ -221,11 +233,16 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	if err != nil {
 		return rep, kept, err
 	}
+	composeNote := fmt.Sprintf("%d service%s", len(services), plural(len(services)))
+	if len(loadFirst) > 0 {
+		composeNote = fmt.Sprintf("%d service%s, %s first for the dump",
+			len(services), plural(len(services)), strings.Join(loadFirst, ", "))
+	}
 	rep.Stages = append(rep.Stages, report.Stage{
 		Name: "compose", Status: "ok",
 		DurationMS: time.Since(upStart).Milliseconds(),
 		Services:   services,
-		Note:       fmt.Sprintf("%d service%s", len(services), plural(len(services))),
+		Note:       composeNote,
 	})
 
 	exec := &check.Executor{
@@ -290,7 +307,17 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	}
 
 	// ---- READY -------------------------------------------------------------
+	// The application starts here, against a database that already holds the restore.
 	readyStart := time.Now()
+	if len(loadFirst) > 0 {
+		if _, upErr := cli.Up(runCtx, o.Pull); upErr != nil {
+			rep.Stages = append(rep.Stages, report.Stage{
+				Name: "ready", Status: "failed",
+				DurationMS: time.Since(readyStart).Milliseconds(), Error: upErr.Error(),
+			})
+			return fail("ready", upErr)
+		}
+	}
 	probes := probe.RunAll(runCtx, exec, res.Recipe.Ready, o.ReadyTimeout)
 	stage := report.Stage{
 		Name: "ready", Status: "ok",
@@ -394,6 +421,23 @@ func loadTimeout(in *recipe.ResolvedInput) time.Duration {
 		return 5 * time.Minute
 	}
 	return d
+}
+
+// loadServices lists the services that must be running before the dumps can be
+// loaded, in recipe order and without repeats.
+func loadServices(res *recipe.Resolved) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, in := range res.Inputs {
+		if in.Kind != "postgres-dump" || in.Load == nil || in.Load.Service == "" {
+			continue
+		}
+		if !seen[in.Load.Service] {
+			seen[in.Load.Service] = true
+			out = append(out, in.Load.Service)
+		}
+	}
+	return out
 }
 
 func mountsOf(res *recipe.Resolved) []check.Mount {
@@ -640,6 +684,15 @@ func (o *Options) attachHint(rep *report.Report, res *recipe.Resolved) {
 			hints.Subject{Where: where + ".error", Text: c.Observed.Error, Driver: driver},
 			hints.Subject{Where: where + ".body", Text: c.Observed.Body, Driver: driver},
 			hints.Subject{Where: where + ".stderr", Text: c.Observed.Stderr, Driver: driver},
+			// A check can fail without anything going wrong: the query ran, the app
+			// answered, and the answer was not the one the recipe wanted. That is the
+			// most common shape of an unusable restore, so the expectation and the
+			// observation are offered to the catalog as well.
+			hints.Subject{
+				Where:  fmt.Sprintf("checks[%d].failures", i),
+				Text:   failureText(c.Failures),
+				Driver: driver,
+			},
 		)
 	}
 	if rep.Error != "" {
@@ -674,6 +727,16 @@ func (o *Options) attachHint(rep *report.Report, res *recipe.Resolved) {
 		Text:      rule.Text,
 		Commands:  rule.RenderCommands(hints.CommandContext{Inputs: inputs, SnapshotID: snapID}),
 	}
+}
+
+// failureText renders a check's unmet expectations in the stable phrasing the hint
+// catalog matches against.
+func failureText(failures []check.Failure) string {
+	var b strings.Builder
+	for _, f := range failures {
+		fmt.Fprintf(&b, "expected %s, got %s\n", f.Expect, f.Got)
+	}
+	return b.String()
 }
 
 // dumpDriver reports which database driver a run is about, so a load failure can be

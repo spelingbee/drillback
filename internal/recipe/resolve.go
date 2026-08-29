@@ -45,6 +45,9 @@ type Resolved struct {
 	byName    map[string]*ResolvedInput
 	RunID     string
 	InputsDir string
+
+	testAssetsDir string
+	exportDir     string
 }
 
 // Options are the user's overrides for one resolution.
@@ -55,6 +58,12 @@ type Options struct {
 	Vars map[string]string
 	// InputsDir is the workspace directory that will hold the materialised inputs.
 	InputsDir string
+	// TestAssetsDir and ExportDir back ${RESTORED_TEST_ASSETS} and ${RESTORED_EXPORT}.
+	// They are always defined, even for a plain `check` where no harness service
+	// starts, because docker compose interpolates the whole file regardless of which
+	// profiles are active.
+	TestAssetsDir string
+	ExportDir     string
 	// RunID identifies the run, and appears in the compose project name.
 	RunID string
 }
@@ -88,11 +97,13 @@ func Resolve(r *Recipe, opts Options) (*Resolved, error) {
 	}
 
 	res := &Resolved{
-		Recipe:    cp,
-		Vars:      vars,
-		byName:    map[string]*ResolvedInput{},
-		RunID:     opts.RunID,
-		InputsDir: opts.InputsDir,
+		Recipe:        cp,
+		Vars:          vars,
+		byName:        map[string]*ResolvedInput{},
+		RunID:         opts.RunID,
+		InputsDir:     opts.InputsDir,
+		testAssetsDir: opts.TestAssetsDir,
+		exportDir:     opts.ExportDir,
 	}
 
 	// First pass: everything that stands on its own.
@@ -252,7 +263,11 @@ func (r *Resolved) renderRecipe() error {
 
 // ComposeEnv is the environment restored defines for compose.yaml interpolation.
 func (r *Resolved) ComposeEnv() map[string]string {
-	env := map[string]string{"RESTORED_RUN_ID": r.RunID}
+	env := map[string]string{
+		"RESTORED_RUN_ID":      r.RunID,
+		"RESTORED_TEST_ASSETS": ComposePath(r.testAssetsDir),
+		"RESTORED_EXPORT":      ComposePath(r.exportDir),
+	}
 	for k, v := range r.Vars {
 		env["RESTORED_VAR_"+k] = toString(v)
 	}

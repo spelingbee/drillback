@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Workspace is one run's directory tree.
@@ -46,7 +47,8 @@ func NewWithID(parent, id string) (*Workspace, error) {
 		return nil, fmt.Errorf("creating workspace %q: %w", root, err)
 	}
 	ws := &Workspace{RunID: id, Root: root}
-	for _, d := range []string{ws.InputsDir(), ws.RestoreDir(), ws.LogsDir()} {
+	for _, d := range []string{ws.InputsDir(), ws.RestoreDir(), ws.LogsDir(),
+		ws.TestAssetsDir(), ws.ExportDir()} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return nil, fmt.Errorf("creating %q: %w", d, err)
 		}
@@ -74,6 +76,14 @@ func (w *Workspace) RestoreDir() string { return filepath.Join(w.Root, "restore"
 // LogsDir holds captured service logs and the debug log.
 func (w *Workspace) LogsDir() string { return filepath.Join(w.Root, "logs") }
 
+// TestAssetsDir backs ${RESTORED_TEST_ASSETS}. During `check` it is empty, because no
+// harness service starts; it exists so that compose can interpolate a recipe that
+// declares one without reaching outside the workspace.
+func (w *Workspace) TestAssetsDir() string { return filepath.Join(w.Root, "test-assets") }
+
+// ExportDir backs ${RESTORED_EXPORT}, where the harness collects what it exported.
+func (w *Workspace) ExportDir() string { return filepath.Join(w.Root, "export") }
+
 // ComposeFile is the interpolated compose file restored writes and runs.
 func (w *Workspace) ComposeFile() string { return filepath.Join(w.Root, "compose.yaml") }
 
@@ -81,14 +91,21 @@ func (w *Workspace) ComposeFile() string { return filepath.Join(w.Root, "compose
 func (w *Workspace) ProjectName() string { return "restored-" + w.RunID }
 
 // Remove deletes the whole workspace. It is idempotent.
+//
+// The retry is for Windows, where a file another process has only just stopped using
+// can stay locked for a moment after the process that held it exited.
 func (w *Workspace) Remove() error {
 	if w.Root == "" {
 		return nil
 	}
-	if err := os.RemoveAll(w.Root); err != nil {
-		return fmt.Errorf("removing workspace %q: %w", w.Root, err)
+	var err error
+	for attempt := 0; attempt < 5; attempt++ {
+		if err = os.RemoveAll(w.Root); err == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(attempt+1) * 200 * time.Millisecond)
 	}
-	return nil
+	return fmt.Errorf("removing workspace %q: %w", w.Root, err)
 }
 
 // Contains reports whether p is inside the workspace. Every path that reaches a

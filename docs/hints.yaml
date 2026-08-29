@@ -35,6 +35,22 @@ rules:
       - "ls -l {{ .input.db.path }}"
       - "tail -c 200 {{ .input.db.path }}"
 
+  - id: db/tables-empty
+    match: 'expected scalar_int_min: [1-9][0-9]*, got 0'
+    title: The application's tables are there, but they are empty
+    text: >
+      Every table the checks read exists and holds nothing. Two causes produce exactly
+      this. Either the dump was taken from the wrong database, or with
+      `pg_dump --schema-only`, or narrowed with `--table`, so it carried a schema and
+      none of the rows. Or the dump carried nothing at all and the application rebuilt
+      an empty schema for itself on start, which is what an application with automatic
+      migrations does the moment it meets an empty database. Compare the size of the
+      dump with the size of the data directory in the report above: a forge with
+      repositories on disk and a half-kilobyte dump is not a backup.
+    commands:
+      - "grep -c 'INSERT INTO' {{ .input.db.path }}"
+      - "ls -l {{ .input.db.path }}"
+
   - id: postgres/role-missing
     when: { driver: postgres }
     match: 'role "([^"]+)" does not exist'

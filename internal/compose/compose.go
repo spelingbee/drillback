@@ -94,12 +94,15 @@ func (c *Client) composeArgs(rest ...string) []string {
 	return append([]string{"compose", "-p", c.Project, "-f", c.File}, rest...)
 }
 
-// Up starts the project detached. pull is always, missing, or never.
-func (c *Client) Up(ctx context.Context, pull string) (Result, error) {
+// Up starts the project detached. pull is always, missing, or never. With no
+// services named it starts everything, and it is safe to call again to start the
+// rest: compose leaves running containers alone.
+func (c *Client) Up(ctx context.Context, pull string, services ...string) (Result, error) {
 	args := c.composeArgs("up", "-d", "--quiet-pull")
 	if pull != "" {
 		args = append(args, "--pull", pull)
 	}
+	args = append(args, services...)
 	res, err := c.run(ctx, nil, args...)
 	if err != nil {
 		return res, err

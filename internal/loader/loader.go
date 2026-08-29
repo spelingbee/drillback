@@ -92,6 +92,11 @@ func LoadPostgres(ctx context.Context, cli *compose.Client, in *recipe.ResolvedI
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	if err := waitForPostgres(runCtx, cli, in.Load); err != nil {
+		d.Error = err.Error()
+		return d, fmt.Errorf("input %q: %w", in.Name, err)
+	}
+
 	res, err := cli.Exec(runCtx, compose.ExecOptions{
 		Service: in.Load.Service,
 		Argv:    argv,
@@ -107,6 +112,49 @@ func LoadPostgres(ctx context.Context, cli *compose.Client, in *recipe.ResolvedI
 			in.Name, d.Loader, res.ExitCode, d.Error)
 	}
 	return d, nil
+}
+
+// waitForPostgres blocks until the service is accepting TCP connections.
+//
+// The check is deliberately over TCP rather than over the unix socket. The official
+// postgres image runs initdb against a temporary server that listens on the socket
+// only, and then restarts; a loader that connects to that server has its session
+// killed mid-dump, which surfaces as an exit code and no error message at all.
+// Waiting for TCP is what distinguishes the real server from the init one.
+func waitForPostgres(ctx context.Context, cli *compose.Client, load *recipe.LoadSpec) error {
+	const interval = time.Second
+	// A service that is not running at all is not going to start later. Waiting the
+	// whole load budget for it turns a five-second answer into a five-minute one.
+	const notRunningLimit = 15
+	notRunning := 0
+	var last string
+	for {
+		res, err := cli.Exec(ctx, compose.ExecOptions{
+			Service: load.Service,
+			Argv:    []string{"pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", load.User, "-d", load.Database},
+		})
+		if err == nil && res.ExitCode == 0 {
+			return nil
+		}
+		if err != nil {
+			last = err.Error()
+		} else {
+			last = strings.TrimSpace(res.Combined())
+		}
+		if strings.Contains(last, "is not running") {
+			notRunning++
+			if notRunning > notRunningLimit {
+				return fmt.Errorf("service %q is not running: %s", load.Service, last)
+			}
+		} else {
+			notRunning = 0
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("service %q never accepted connections: %s", load.Service, last)
+		case <-time.After(interval):
+		}
+	}
 }
 
 // IntegrityCheck runs PRAGMA integrity_check against a restored SQLite file. A
