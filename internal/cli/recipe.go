@@ -22,7 +22,7 @@ func newRecipe(g *globals) *cobra.Command {
 			"test assets. It declares the logical inputs an application needs — not your paths —\n" +
 			"plus the probes that say the app is up and the checks that say the data survived.",
 	}
-	cmd.AddCommand(newRecipeValidate(g), newRecipeShow(g), newRecipeInit(), newRecipeTest())
+	cmd.AddCommand(newRecipeValidate(g), newRecipeShow(g), newRecipeInit(), newRecipeTest(g))
 	return cmd
 }
 
@@ -333,20 +333,4 @@ func newRecipeInit() *cobra.Command {
 	cmd.Flags().StringVar(&image, "image", "", "Application image to write into compose.yaml")
 	cmd.Flags().BoolVar(&force, "force", false, "Overwrite an existing directory")
 	return cmd
-}
-
-// ---- test ------------------------------------------------------------------
-
-func newRecipeTest() *cobra.Command {
-	return &cobra.Command{
-		Use:   "test <name|dir>...",
-		Short: "Run the round-trip harness against a recipe (not implemented in this build)",
-		Long: "Run the round-trip harness against a recipe.\n\n" +
-			"NOT IMPLEMENTED IN THIS BUILD. The harness described in SPEC.md section 7 is the\n" +
-			"next thing to be written; see PROGRESS.md. Until it lands, a recipe is proved by\n" +
-			"`restored check` against a real backup, which is what scripts/demo.sh does.",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return fail(ExitError, "recipe test is not implemented in this build; see PROGRESS.md")
-		},
-	}
 }

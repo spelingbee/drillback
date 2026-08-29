@@ -202,7 +202,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	if err := safety.CheckResolvedMounts(rendered, ws.Root); err != nil {
 		return rep, kept, err
 	}
-	labelled, err := labelCompose(rendered, ws.RunID)
+	labelled, err := LabelCompose(rendered, ws.RunID)
 	if err != nil {
 		return rep, kept, err
 	}

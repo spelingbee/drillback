@@ -1019,3 +1019,96 @@ service, the key, and why it is not allowed.
 tie-breaker CLAUDE.md sets. The cost is one list in two places; they are checked against
 each other by the one-case-per-construct table in
 `internal/recipe/safety/safety_test.go`, which fails if either drifts.
+
+---
+
+## ADR-051: The harness backs up through a container so the snapshot carries the recipe's paths
+
+**Status:** accepted
+
+**Context.** Stage B ends by running the command a user runs:
+
+```sh
+restored check --recipe <dir> --source restic --from <workspace>/repo --snapshot latest
+```
+
+No `--input` overrides. For that to find anything, the throwaway snapshot has to record
+the paths the recipe declares - `/srv/gitea/data`, `/srv/gitea/db.sql` - and not the
+paths the staging tree happens to occupy. `restic backup` has no path-rewriting flag;
+it resolves every argument to an absolute path on the machine it runs on, which on this
+host means a drive letter and a temporary directory.
+
+**Decision.** The harness runs `restic/restic:0.19.1` in a container, bind-mounting each
+staged input at *its own* `default_path` inside the container, and backs those paths up.
+The container is on `--network none`, runs as the caller's uid on Linux so the
+repository belongs to the caller, and passes the password by environment name only, so
+no value ever reaches an argument list or the debug log.
+
+Each input is mounted at its leaf path rather than mounting the staging root at `/`, so
+nothing shadows a directory the container itself needs.
+
+**Consequences.** The snapshot is identical on every host, so stage B is genuinely the
+user's command rather than a decorated version of it. This is the same trick ADR-049
+already uses for the demos, and it reuses the same pinned image. The cost is that
+`recipe test` needs docker for the backup as well as for the stack, which it needed
+anyway.
+
+---
+
+## ADR-052: `recipe test` exit codes - a recipe that proves nothing is invalid, not failing
+
+**Status:** accepted
+**Supersedes:** the exit-code table in SPEC.md 2.7 as first written
+
+**Context.** SPEC.md 2.7 originally mapped both "stage A had no failing check" and
+"stage B had a failing check" to exit 1, and reserved exit 2 for tool errors including
+"recipe invalid". Session 3's brief asks for exit 2 on stage A. The two do not agree.
+
+**Decision.**
+
+| code | meaning |
+|---|---|
+| 0 | every recipe passed both stages |
+| 1 | stage B failed: the round trip did not restore |
+| 2 | tool error, **or** stage A found no data-sensitive check |
+
+A recipe whose checks all pass against an empty stack has not failed a test. It is not
+a test. That is the same class of defect as a recipe that does not match the schema,
+and the spec already routes "recipe invalid" to exit 2.
+
+**Consequences.** The 1/2 split keeps the meaning it has everywhere else in this tool:
+1 is a verdict about data, 2 is "this cannot be run as written". A contributor whose
+recipe exits 2 with `recipe has no data-sensitive check` is told to add a check; one
+whose recipe exits 1 is told the seed, the export and the check disagree about where
+the data lives. SPEC.md 2.7 was corrected to match.
+
+---
+
+## ADR-053: Stage B creates only the inputs the application cannot create for itself
+
+**Status:** accepted
+
+**Context.** SPEC.md 7.3 step 1 says stage B starts from "EMPTY inputs (same as stage
+A)". Stage A's empty SQLite input is a zero-length file, which is exactly right there:
+it is what a backup that captured nothing looks like, SQLite says "file is not a
+database", and the checks fail, which is what stage A needs to see.
+
+It is hopeless as a starting point. Uptime Kuma opens `/app/data/kuma.db`, finds a
+zero-length file where a database should be, and crash-loops instead of running its
+migrations. Stage B never gets a stack to seed. Measured: the ready probe burned its
+full budget, three times.
+
+**Decision.** Stage A keeps the three shapes of SPEC.md 7.2. Stage B creates only
+
+- every `dir` input, as an empty directory, and
+- every non-`dir` input that compose bind-mounts, as its empty shape, because a bind
+  mount to a path that does not exist makes docker create a directory there;
+
+and creates nothing else. An input declared `within:` another arrives when the
+application writes it, and an input nothing mounts is produced by an export step.
+
+**Consequences.** Stage B starts the way a first install starts, which is the only way
+an application will initialise itself. The two stages no longer share one
+"empty inputs" routine, and the difference is the load-bearing part, so it is stated in
+`internal/harness/empty.go` and pinned by
+`TestEmptyInputsLeavesTheApplicationSomethingToCreate`. SPEC.md 7.3 was corrected.

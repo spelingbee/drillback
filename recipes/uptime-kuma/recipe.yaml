@@ -114,6 +114,9 @@ test:
     - name: seed a user, a monitor, and a heartbeat
       kind: exec
       service: seeder
+      # As root: Uptime Kuma runs as root and its -wal companion is root-owned, so
+      # the sqlite3 image's own unprivileged user cannot write through it.
+      user: "0"
       command: ["sh", "-c", "sqlite3 /app/data/kuma.db < /seed/seed.sql"]
       timeout: 120s
   export: []   # everything lives inside the `data` dir input, exported automatically

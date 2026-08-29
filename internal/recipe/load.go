@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -97,6 +98,22 @@ func (r *Recipe) ReadFile(name string) ([]byte, error) {
 		return nil, fmt.Errorf("reading %s for recipe %q: %w", name, r.Metadata.Name, err)
 	}
 	return b, nil
+}
+
+// FS returns a read-only view of the recipe directory, whether it lives on disk or
+// inside the binary. The harness walks it to stage a recipe's test/ assets.
+func (r *Recipe) FS() (fs.FS, error) {
+	if r.Bundled {
+		sub, err := fs.Sub(restored.Recipes, "recipes/"+r.Metadata.Name)
+		if err != nil {
+			return nil, fmt.Errorf("reading bundled recipe %q: %w", r.Metadata.Name, err)
+		}
+		return sub, nil
+	}
+	if r.Dir == "" {
+		return nil, fmt.Errorf("recipe %q has no directory", r.Metadata.Name)
+	}
+	return os.DirFS(r.Dir), nil
 }
 
 func parse(raw []byte) (*Recipe, error) {

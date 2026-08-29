@@ -376,9 +376,14 @@ Flags:
 
 Exit codes:
   0  every recipe passed both stages
-  1  a stage failed: stage A had no failing check, or stage B had a failing check
-  2  tool error: docker missing, restic missing, recipe invalid, timeout
+  1  stage B failed: the round trip did not restore
+  2  tool error (docker missing, restic missing, recipe invalid, timeout), or stage A
+     found no data-sensitive check, which makes the recipe invalid rather than failing
 ```
+
+The 1/2 split is the one the rest of the tool uses: 1 is a verdict about data, 2 is
+"this cannot be run as written". A recipe whose checks all pass against an empty stack
+has not failed a test - it is not a test. See DECISIONS.md ADR-052.
 
 ### 2.8 `restored version --help` and its output
 
@@ -868,6 +873,9 @@ test:
     - name: seed a user, a monitor, and a heartbeat
       kind: exec
       service: seeder
+      # As root: Uptime Kuma runs as root and its -wal companion is root-owned, so
+      # the sqlite3 image's own unprivileged user cannot write through it.
+      user: "0"
       command: ["sh", "-c", "sqlite3 /app/data/kuma.db < /seed/seed.sql"]
       timeout: 120s
   export: []   # everything lives inside the `data` dir input, exported automatically
@@ -2052,7 +2060,11 @@ went wrong, because the author's next action is to add a check, not to debug one
 ### 7.3 Stage B — positive, the round trip
 
 ```text
-1. fresh workspace, EMPTY inputs (same as stage A)
+1. fresh workspace. NOT the same empty inputs as stage A: only the dir inputs, as
+   empty directories, plus any non-dir input that compose bind-mounts. Stage B has
+   nothing to restore and the application is about to create its own world, so a
+   zero-length database file would stop it dead rather than start it clean.
+   See DECISIONS.md ADR-053.
 2. compose up --profile test
 3. ready probes  (full budget)
 4. run test.seed steps in order
@@ -2062,11 +2074,13 @@ went wrong, because the author's next action is to add a check, not to debug one
    - $RESTORED_EXPORT is bind-mounted at /export in every service, and maps to
      workspace/staging; a step with `produces: db` must leave its artifact where
      the `db` input's default_path says it will be
-6. initialise a throwaway restic repository:
-     export RESTIC_REPOSITORY=<workspace>/repo
-     export RESTIC_PASSWORD=restored-recipe-test        # not a secret, deleted at step 9
-     restic init --repository-version 2
-     restic backup --tag restored-recipe-test <workspace>/staging
+6. initialise a throwaway restic repository. restic runs in a pinned container with
+   each staged input bind-mounted at its own default_path, so the snapshot records
+   /srv/gitea/data rather than a path inside the workspace and step 8 needs no
+   --input override (DECISIONS.md ADR-051):
+     RESTIC_PASSWORD=restored-recipe-test               # not a secret, deleted at step 9
+     restic --repo /repo init --repository-version 2
+     restic --repo /repo backup --tag restored-recipe-test <each input's default_path>
 7. teardown the stack completely (compose down -v), so nothing survives in a volume
    and the next step cannot accidentally read live state
 8. run the real code path, not a special one:

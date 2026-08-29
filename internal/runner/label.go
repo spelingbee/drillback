@@ -8,14 +8,14 @@ import (
 	"github.com/spelingbee/restored/internal/compose"
 )
 
-// labelCompose stamps com.restored.run on every service, network and volume the run
+// LabelCompose stamps com.restored.run on every service, network and volume the run
 // creates, so orphans from a crashed process are always findable:
 //
 //	docker ps -aq --filter label=com.restored.run
 //
 // It runs on the interpolated file restored writes into the workspace, never on the
 // recipe's own compose.yaml.
-func labelCompose(raw []byte, runID string) ([]byte, error) {
+func LabelCompose(raw []byte, runID string) ([]byte, error) {
 	var doc map[string]any
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		return nil, fmt.Errorf("compose.yaml: parsing the interpolated file: %w", err)
