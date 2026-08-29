@@ -1,0 +1,42 @@
+# Build output
+/dist/
+/bin/
+/restored
+/restored.exe
+
+# Go
+*.test
+*.out
+/coverage.out
+/coverage.html
+vendor/
+
+# Local configuration and secrets — never commit these
+/restored.yaml
+/restored.local.yaml
+*.pass
+*.key
+.env
+.env.*
+!.env.example
+
+# Run artifacts. `restored` always works inside a temporary workspace, but
+# --workspace . and --report ./x.json can drop these in the tree.
+/.restored/
+/restored-*.json
+/recipe-test.json
+
+# Captured demo output is committed on purpose (docs/demo/*.txt) — the raw
+# recordings it is generated from are not.
+/docs/demo/raw/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Agent / assistant scratch
+.omc/
+.claude/settings.local.json
