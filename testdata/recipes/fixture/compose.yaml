@@ -1,0 +1,24 @@
+services:
+  web:
+    image: nginx:1.27-alpine
+    volumes:
+      - ${RESTORED_INPUT_site}:/usr/share/nginx/html:ro
+    networks: [restored]
+
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: ${RESTORED_VAR_db_name}
+      POSTGRES_USER: ${RESTORED_VAR_db_user}
+      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+    command: [postgres, -c, fsync=off, -c, full_page_writes=off, -c, synchronous_commit=off]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [restored]
+
+volumes:
+  db-data:
+
+networks:
+  restored:
+    internal: true

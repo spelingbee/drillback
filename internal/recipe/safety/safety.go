@@ -87,6 +87,12 @@ func ValidateSchema(raw []byte) error {
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		return fmt.Errorf("compose.yaml: parsing YAML: %w", err)
 	}
+	// The schema expresses the forbidden keys as one `not`, which is correct and
+	// tells a contributor nothing about which key they used. The same rules are
+	// checked here first, so the message names the service and the key.
+	if err := checkForbiddenKeys(doc); err != nil {
+		return err
+	}
 	norm, err := recipe.Normalise(doc)
 	if err != nil {
 		return fmt.Errorf("compose.yaml: %w", err)
@@ -251,4 +257,58 @@ func Warnings(r *recipe.Recipe, composeRaw []byte) []string {
 		}
 	}
 	return w
+}
+
+// forbiddenService lists the compose keys that break the run's isolation. Each one is
+// also a `not` branch in schema/compose-safety.schema.json; the two must agree, and
+// the schema is the contract that CI's independent validator checks.
+var forbiddenService = map[string]string{
+	"ports":               "restored never publishes a port; checks run from a helper container on the run's internal network",
+	"privileged":          "a privileged container is not isolated from the host",
+	"network_mode":        "the run gets its own internal network, and nothing else",
+	"pid":                 "sharing the host PID namespace is not isolation",
+	"ipc":                 "sharing the host IPC namespace is not isolation",
+	"userns_mode":         "the user namespace is the host's to decide, not the recipe's",
+	"devices":             "a restore drill needs no host device",
+	"device_cgroup_rules": "a restore drill needs no host device",
+	"cgroup_parent":       "the cgroup is the host's to decide, not the recipe's",
+	"build":               "a recipe references published images; it does not build one",
+	"extends":             "a recipe is one self-contained file",
+	"external_links":      "a run is connected to nothing outside itself",
+}
+
+func checkForbiddenKeys(doc any) error {
+	root, ok := doc.(map[string]any)
+	if !ok {
+		return errors.New("compose.yaml: the document is not a mapping")
+	}
+	if _, bad := root["include"]; bad {
+		return errors.New("compose.yaml: `include` is not allowed: a recipe is one self-contained file")
+	}
+	services, ok := root["services"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	for _, name := range sortedNames(services) {
+		body, ok := services[name].(map[string]any)
+		if !ok {
+			continue
+		}
+		for _, key := range sortedNames(body) {
+			if why, bad := forbiddenService[key]; bad {
+				return fmt.Errorf("compose.yaml: service %q uses `%s`, which restored does not allow: %s",
+					name, key, why)
+			}
+		}
+	}
+	return nil
+}
+
+func sortedNames(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

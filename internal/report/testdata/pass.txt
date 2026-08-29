@@ -1,0 +1,22 @@
+restored 0.1.0 · recipe gitea · run k7m2q9xf
+
+  source     restic  sftp:backup@nas.lan:/srv/restic
+  snapshot   4a7f1c2e  2026-09-13 02:14:07  host=hypervisor  tags=[gitea]
+  inputs     data  /srv/gitea/data      1.8 GiB  14,203 files
+             db    /srv/gitea/db.sql   42.1 MiB  plain SQL
+
+  restore    ok         18.4s   2 inputs
+  compose    ok          6.1s   2 services
+  load db    ok         11.7s   db: psql, 0 stderr lines
+  ready      ok         22.9s   postgres accepts connections, gitea answers
+
+  CHECKS
+  ✔  web-ui-renders      The web UI renders the instance home page       0.21s
+  ✔  repos-in-db         The database contains at least one repository   0.04s
+                         row → 7
+  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.12s
+                         → 7 matches for */*.git/HEAD
+
+  PASS  3/3 checks  ·  total 1m 02s  ·  teardown ok
+
+This backup boots.

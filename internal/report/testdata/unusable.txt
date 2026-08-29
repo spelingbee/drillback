@@ -1,0 +1,40 @@
+restored 0.1.0 · recipe gitea · run q4x8b1na
+
+  source     restic  sftp:backup@nas.lan:/srv/restic
+  snapshot   4a7f1c2e  2026-09-13 02:14:07  host=hypervisor  tags=[gitea]
+  inputs     data  /srv/gitea/data      1.8 GiB  14,203 files
+             db    /srv/gitea/db.sql   88.3 KiB  plain SQL
+
+  restore    ok         18.4s   2 inputs
+  compose    ok          6.1s   2 services
+  load db    ok         11.7s   db: psql, 0 stderr lines
+  ready      ok         22.9s   postgres accepts connections, gitea answers
+
+  CHECKS
+  ✔  web-ui-renders      The web UI renders the instance home page       0.21s
+  ✘  repos-in-db         The database contains at least one repository   0.04s
+                         row
+                           query   SELECT count(*) FROM repository;
+                           expect  scalar_int_min: 1
+                           got     ERROR:  relation "repository" does not exist
+                                   LINE 1: SELECT count(*) FROM repository;
+  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.12s
+                         → 7 matches for */*.git/HEAD
+
+  RESTORE UNUSABLE  2/3 checks  ·  total 58.4s  ·  teardown ok
+
+  LIKELY CAUSE
+    The dump loaded but the application's tables are missing
+
+    psql reported no error, yet the table the application needs is not
+    there. A dump taken with `pg_dump --schema-only`, from the wrong
+    database, or narrowed with `--table`, produces exactly this.
+
+      grep -ci 'CREATE TABLE' /srv/gitea/db.sql
+      pg_restore --list /srv/gitea/db.sql | head -30
+                                            (hint: postgres/relation-missing)
+
+  warning: inputs/data/log/current -> /var/log/gitea (neutralised) (symlink_escaped_workspace)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

@@ -40,3 +40,9 @@ Thumbs.db
 # Agent / assistant scratch
 .omc/
 .claude/settings.local.json
+
+# Tool downloads that a contributor may end up with in the working tree. They are
+# never part of the repository; see PROGRESS.md for how the toolchain is installed.
+/restic_*.zip
+/resticdl/
+/bin/

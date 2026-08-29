@@ -112,9 +112,9 @@ func printFinding(cmd *cobra.Command, f finding) {
 	w := cmd.OutOrStdout()
 	switch {
 	case !f.Valid:
-		fmt.Fprintf(w, "INVALID  %s\n", f.Recipe)
+		_, _ = fmt.Fprintf(w, "INVALID  %s\n", f.Recipe)
 		for _, e := range f.Errors {
-			fmt.Fprintf(w, "         %s\n", e)
+			_, _ = fmt.Fprintf(w, "         %s\n", e)
 		}
 	default:
 		fmt.Fprintf(w, "ok       %s\n", f.Recipe)

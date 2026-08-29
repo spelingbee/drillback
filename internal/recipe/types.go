@@ -59,8 +59,8 @@ type Mount struct {
 	Into string `yaml:"into" json:"into"`
 }
 
-// Load describes how an input is made live: loaded into a database service, or, for
-// SQLite, verified in place.
+// LoadSpec describes how an input is made live: loaded into a database service, or,
+// for SQLite, verified in place.
 type LoadSpec struct {
 	Service        string `yaml:"service,omitempty"  json:"service,omitempty"`
 	Database       string `yaml:"database,omitempty" json:"database,omitempty"`

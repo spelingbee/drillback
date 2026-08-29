@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
 	restored "github.com/spelingbee/restored"
@@ -238,6 +240,10 @@ func Normalise(v any) (any, error) {
 	}
 }
 
+// englishPrinter renders the validator's messages. The library needs a printer and
+// panics on a nil one, and this project has exactly one language (ADR-012).
+var englishPrinter = message.NewPrinter(language.English)
+
 // FlattenSchemaError turns the validator's tree into the shortest set of concrete leaf
 // messages. A contributor needs "inputs.db.load is required", not a tree.
 func FlattenSchemaError(err error) error {
@@ -254,7 +260,7 @@ func FlattenSchemaError(err error) error {
 			if len(e.InstanceLocation) > 0 {
 				where = strings.Join(e.InstanceLocation, ".")
 			}
-			msg := fmt.Sprintf("%s: %s", where, e.ErrorKind.LocalizedString(nil))
+			msg := fmt.Sprintf("%s: %s", where, e.ErrorKind.LocalizedString(englishPrinter))
 			if !seen[msg] {
 				seen[msg] = true
 				leaves = append(leaves, msg)
@@ -289,9 +295,10 @@ func RejectYAMLTags(raw []byte) error {
 				inSingle = false
 			}
 		case inDouble:
-			if c == '\\' {
+			switch c {
+			case '\\':
 				i++
-			} else if c == '"' {
+			case '"':
 				inDouble = false
 			}
 		case c == '\'':

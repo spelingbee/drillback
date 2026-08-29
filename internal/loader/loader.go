@@ -37,7 +37,7 @@ func DetectFormat(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("opening the dump: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	head := make([]byte, 5)
 	n, err := f.Read(head)
 	if n == 0 {
@@ -84,7 +84,7 @@ func LoadPostgres(ctx context.Context, cli *compose.Client, in *recipe.ResolvedI
 	if err != nil {
 		return d, fmt.Errorf("opening the dump: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if timeout <= 0 {
 		timeout = 5 * time.Minute

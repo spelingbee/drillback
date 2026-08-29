@@ -9,6 +9,14 @@ linters:
     - revive
     - unconvert
   settings:
+    errcheck:
+      # Writing to a terminal, and checking whether the terminal accepted it, is not
+      # something any program usefully does. Everything that writes to a file or to a
+      # network goes through a function that returns an error, and those are checked.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
     revive:
       rules:
         - name: exported

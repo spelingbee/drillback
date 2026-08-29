@@ -137,14 +137,24 @@ func Resolve(r *Recipe, opts Options) (*Resolved, error) {
 		if err != nil {
 			return nil, err
 		}
-		rel, err := relativeTo(parent.BackupPath, ri.BackupPath)
+		// Where the nested input sits inside its parent is a property of the recipe,
+		// not of the user's paths. When only the parent is overridden the offset is
+		// taken from the recipe's own defaults and re-anchored, so that
+		// `--input data=/mnt/backup` moves the database with the directory holding it.
+		var rel string
+		if ri.Origin == OriginFlag {
+			rel, err = relativeTo(parent.BackupPath, ri.BackupPath)
+		} else {
+			rel, err = relativeTo(cp.Inputs[in.Within].DefaultPath, in.DefaultPath)
+			if err == nil {
+				ri.BackupPath = path.Join(parent.BackupPath, rel)
+				ri.Origin = OriginWithin
+			}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("input %q: %w", name, err)
 		}
 		ri.LocalPath = filepath.Join(parent.LocalPath, filepath.FromSlash(rel))
-		if ri.Origin == OriginRecipeDefault {
-			ri.Origin = OriginWithin
-		}
 		res.add(ri)
 	}
 

@@ -26,13 +26,13 @@ func Query(ctx context.Context, file, query string) ([][]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening the database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	cols, err := rows.Columns()
 	if err != nil {

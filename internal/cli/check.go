@@ -221,7 +221,7 @@ func maybeNudge(cmd *cobra.Command, g *globals, f *checkFlags, rec *recipe.Recip
 	if err != nil {
 		return
 	}
-	fmt.Fprint(w, nudge.Build(nudge.Input{
+	_, _ = fmt.Fprint(w, nudge.Build(nudge.Input{
 		Name:  rec.Metadata.Name,
 		YAML:  folded,
 		Path:  rec.File,

@@ -201,13 +201,13 @@ func copyFile(src, dst string, mode fs.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode.Perm()|0o600)
 	if err != nil {
 		return err
 	}
 	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
+		_ = out.Close()
 		return err
 	}
 	return out.Close()

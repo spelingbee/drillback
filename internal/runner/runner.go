@@ -141,7 +141,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		defer cancel()
 		if composeUp {
 			if downErr := cli.Down(downCtx); downErr != nil && debug != nil {
-				fmt.Fprintf(debug, "teardown: %v\n", downErr)
+				_, _ = fmt.Fprintf(debug, "teardown: %v\n", downErr)
 			}
 		}
 		if rmErr := ws.Remove(); rmErr != nil {

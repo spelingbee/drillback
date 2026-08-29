@@ -75,7 +75,10 @@ func (r *Report) WriteTTY(w io.Writer, o Options) error {
 			status = "FAILED"
 			colour = colRed
 		}
-		line := fmt.Sprintf("  %-10s %-7s %8s", st.Name, o.paint(status, colour), duration(st.DurationMS))
+		// The colour is applied after the padding, never before: escape bytes count
+		// towards a width and would push every column along by five characters.
+		line := fmt.Sprintf("  %-10s %s %8s", st.Name,
+			o.paint(fmt.Sprintf("%-7s", status), colour), duration(st.DurationMS))
 		if st.Note != "" {
 			line += "   " + st.Note
 		}
@@ -104,10 +107,6 @@ func (r *Report) WriteTTY(w io.Writer, o Options) error {
 	}
 	summary := fmt.Sprintf("  %s  %d/%d checks", o.paint(verdict, colour+colBold),
 		r.Summary.ChecksPassed, r.Summary.ChecksTotal)
-	if r.Verdict == VerdictPass {
-		summary = fmt.Sprintf("  %s  %d/%d checks", o.paint(verdict, colour+colBold),
-			r.Summary.ChecksPassed, r.Summary.ChecksTotal)
-	}
 	teardown := "teardown ok"
 	if !r.Run.WorkspaceRemoved {
 		teardown = "workspace kept"
@@ -276,7 +275,7 @@ func duration(ms int64) string {
 	switch {
 	case d < time.Second:
 		return fmt.Sprintf("%.2fs", d.Seconds())
-	case d < 100*time.Second:
+	case d < time.Minute:
 		return fmt.Sprintf("%.1fs", d.Seconds())
 	case d < time.Hour:
 		return fmt.Sprintf("%dm %02ds", int(d.Minutes()), int(d.Seconds())%60)

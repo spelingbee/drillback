@@ -49,11 +49,11 @@ func (o Options) run(ctx context.Context, args ...string) (string, string, error
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if o.Debug != nil {
-		fmt.Fprintf(o.Debug, "+ restic %s\n", strings.Join(full, " "))
+		_, _ = fmt.Fprintf(o.Debug, "+ restic %s\n", strings.Join(full, " "))
 	}
 	err := cmd.Run()
 	if o.Debug != nil && stderr.Len() > 0 {
-		fmt.Fprintln(o.Debug, strings.TrimRight(stderr.String(), "\r\n"))
+		_, _ = fmt.Fprintln(o.Debug, strings.TrimRight(stderr.String(), "\r\n"))
 	}
 	return stdout.String(), strings.TrimRight(stderr.String(), "\r\n"), err
 }

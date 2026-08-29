@@ -1,0 +1,88 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: fixture
+  title: The integration fixture stack
+  description: >
+    A two-service stack that exercises every part of the run lifecycle without the
+    weight of a real application: a directory input served over HTTP, and a PostgreSQL
+    dump loaded into a database and read back by a SQL check.
+  maintainers: ["@restored-tests"]
+  tags: [fixture]
+
+vars:
+  db_name: fixture
+  db_user: fixture
+  # Not a secret. This database exists for about twenty seconds on an internal network
+  # with no published ports, and is destroyed with `compose down -v`.
+  db_password: restored-throwaway
+
+inputs:
+  site:
+    kind: dir
+    title: The served directory
+    description: The files the web service serves, standing in for an application's data directory.
+    default_path: /srv/fixture/site
+    required: true
+    mount:
+      env: RESTORED_INPUT_site
+      into: web:/usr/share/nginx/html
+
+  db:
+    kind: postgres-dump
+    title: The database dump
+    description: Plain SQL from pg_dump, standing in for an application's nightly dump.
+    default_path: /srv/fixture/db.sql
+    required: true
+    load:
+      service: db
+      database: "{{ .vars.db_name }}"
+      user: "{{ .vars.db_user }}"
+      timeout: 2m
+
+ready:
+  - name: postgres accepts connections
+    kind: exec
+    service: db
+    command: ["pg_isready", "-h", "127.0.0.1", "-U", "{{ .vars.db_user }}", "-d", "{{ .vars.db_name }}"]
+    timeout: 90s
+    interval: 2s
+
+  - name: the web service answers
+    kind: http
+    url: http://web:80/
+    expect_status: 200
+    timeout: 90s
+    interval: 2s
+
+checks:
+  - id: page-renders
+    title: The served page came back from the backup
+    kind: http
+    url: http://web:80/
+    expect:
+      status: 200
+      body_matches: "restored fixture"
+
+  - id: rows-in-db
+    title: The database contains the rows the dump carried
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM thing;"
+    expect:
+      scalar_int_min: 2
+
+  - id: files-on-disk
+    title: The served directory has files in it
+    kind: file
+    service: web
+    path: /usr/share/nginx/html
+    expect:
+      exists: true
+      is_dir: true
+      glob: "*.html"
+      glob_min_count: 1

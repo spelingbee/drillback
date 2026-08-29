@@ -87,7 +87,7 @@ func (c *Client) debugf(format string, args ...any) {
 	if c.Debug == nil {
 		return
 	}
-	fmt.Fprintf(c.Debug, format+"\n", args...)
+	_, _ = fmt.Fprintf(c.Debug, format+"\n", args...)
 }
 
 func (c *Client) composeArgs(rest ...string) []string {

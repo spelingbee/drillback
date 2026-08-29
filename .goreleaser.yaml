@@ -1,0 +1,47 @@
+# Skeleton only. Nothing is published from here yet: tagging a release, pushing an
+# image, and creating a tap are all stop points that need a human (CLAUDE.md).
+#
+# `goreleaser build --snapshot --clean` is what CI will run, so that all six targets
+# are proved to compile on every commit rather than only at tag time.
+version: 2
+
+project_name: restored
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: restored
+    main: ./cmd/restored
+    binary: restored
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/spelingbee/restored/internal/cli.Version={{ .Version }}
+      - -X github.com/spelingbee/restored/internal/cli.Commit={{ .FullCommit }}
+      - -X github.com/spelingbee/restored/internal/cli.Date={{ .Date }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files: [LICENSE, README.md, SPEC.md, recipes/**, schema/**, docs/hints.yaml]
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  use: git
+  sort: asc
+
+release:
+  draft: true
+  prerelease: auto

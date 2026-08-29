@@ -1,0 +1,76 @@
+# The lint and unit jobs, and nothing else yet. The integration, recipes, smoke and
+# release workflows are specified in SPEC.md section 11 and are not wired up: see
+# PROGRESS.md for what is next.
+#
+# Third-party actions are pinned by commit SHA, never by tag, because a tag is a
+# mutable pointer into somebody else's repository.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.13.2
+
+      - name: english only
+        run: ./scripts/lint-english.sh
+
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The unit suite must stay green on a machine with no docker and no restic, so
+      # that somebody who has just cloned the repository gets a working `go test ./...`
+      # before they install anything.
+      - name: go test
+        run: go test ./... -race -coverprofile=coverage.out
+
+      - name: the binary works without docker or restic
+        run: |
+          go build -o restored ./cmd/restored
+          ./restored version
+          ./restored recipe validate ./recipes/gitea ./recipes/uptime-kuma --strict
+        shell: bash
