@@ -54,9 +54,10 @@ docs:
 
 recipes-index:
 	$(GO) run ./tools/gen recipes-index > recipes/README.md
+	$(GO) run ./tools/gen readme-table
 
 check-generated: docs recipes-index
-	git diff --exit-code -- docs/recipe-spec.md recipes/README.md
+	git diff --exit-code -- docs/recipe-spec.md recipes/README.md README.md
 
 # The round trip, against every bundled recipe. This is what recipes.yml runs, one
 # recipe per matrix job; here they run in sequence.

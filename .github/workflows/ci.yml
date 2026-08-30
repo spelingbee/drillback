@@ -66,7 +66,8 @@ jobs:
         run: |
           go run ./tools/gen recipe-spec   > docs/recipe-spec.md
           go run ./tools/gen recipes-index > recipes/README.md
-          if ! git diff --exit-code -- docs/recipe-spec.md recipes/README.md; then
+          go run ./tools/gen readme-table
+          if ! git diff --exit-code -- docs/recipe-spec.md recipes/README.md README.md; then
             echo
             echo "The generated files are out of date. Run:"
             echo "    make docs recipes-index"

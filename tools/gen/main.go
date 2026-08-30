@@ -31,6 +31,8 @@ func main() {
 		err = writeRecipeSpec(os.Stdout)
 	case "recipes-index":
 		err = writeRecipesIndex(os.Stdout)
+	case "readme-table":
+		err = spliceReadmeTable("README.md")
 	default:
 		fmt.Fprintf(os.Stderr, "gen: unknown target %q\n", os.Args[1])
 		os.Exit(2)
@@ -388,6 +390,49 @@ const indexFooter = "Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the s
 	"walk-through. If you already have a compose file for the application, start with\n\n" +
 	"    restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml\n\n" +
 	"which turns it into a draft that already validates.\n"
+
+// Markers around the recipe table in README.md. The same shape scripts/capture-demo.sh
+// uses for the demo output, and for the same reason: a table of what ships is a claim,
+// and a claim in a README goes stale the moment nobody is watching it.
+const (
+	readmeBegin = "<!-- BEGIN recipes-table -->"
+	readmeEnd   = "<!-- END recipes-table -->"
+)
+
+// spliceReadmeTable rewrites the recipe table in README.md in place. This is the one
+// target that edits a file rather than writing to stdout, because the table lives in
+// the middle of a document a human wrote.
+func spliceReadmeTable(path string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	text := string(raw)
+	start := strings.Index(text, readmeBegin)
+	end := strings.Index(text, readmeEnd)
+	if start < 0 || end < 0 || end < start {
+		return fmt.Errorf("%s: the %s / %s markers are missing", path, readmeBegin, readmeEnd)
+	}
+
+	b := &strings.Builder{}
+	b.WriteString(readmeBegin + "\n\n")
+	b.WriteString("| recipe | application | state it restores | checks |\n|---|---|---|---|\n")
+	for _, name := range recipe.BundledNames() {
+		r, err := recipe.LoadBundled(name)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(b, "| [`%s`](recipes/%s/) | %s | %s | %d |\n",
+			name, name, r.Metadata.Title, inputSummary(r), len(r.Checks))
+	}
+	b.WriteString("\n")
+
+	out := text[:start] + b.String() + text[end:]
+	if out == text {
+		return nil
+	}
+	return os.WriteFile(path, []byte(out), 0o644)
+}
 
 // inputSummary describes what a recipe restores, in the words a person searching for
 // their own application would use.

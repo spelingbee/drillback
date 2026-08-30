@@ -1,14 +1,20 @@
 # restored
 
+[![ci](https://github.com/spelingbee/restored/actions/workflows/ci.yml/badge.svg)](https://github.com/spelingbee/restored/actions/workflows/ci.yml)
+[![recipes](https://github.com/spelingbee/restored/actions/workflows/recipes.yml/badge.svg)](https://github.com/spelingbee/restored/actions/workflows/recipes.yml)
+[![recipe-health](https://github.com/spelingbee/restored/actions/workflows/recipe-health.yml/badge.svg)](https://github.com/spelingbee/restored/actions/workflows/recipe-health.yml)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 **Your backup is a lie until it boots.**
 
 `restored` restores a backup into a throwaway, isolated environment, starts the
 application with `docker compose`, and tells you whether the data actually came back.
 One command, about a minute, and an exit code a cron job can act on.
 
-> Pre-release. `restored check` works end to end against restic and against an
-> already-restored tree, with two bundled recipes. See [PROGRESS.md](PROGRESS.md) for
-> what is not built yet.
+> Pre-release, and not tagged. `restored check` works end to end against restic and
+> against an already-restored tree; `restored recipe test` runs the round trip that
+> proves a recipe both ways; five recipes ship. See [PROGRESS.md](PROGRESS.md) for what
+> is not built yet.
 
 ---
 
@@ -18,30 +24,30 @@ A Gitea backup that is fine:
 
 <!-- BEGIN docs/demo/pass.txt -->
 ```text
-restored 0.1.0-dev · recipe gitea · run rjsaa3v3
+restored 0.1.0-dev · recipe gitea · run qawivb2u
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   512f0707  2026-08-29 20:26:47  host=demo-host  tags=[gitea]
+  snapshot   7716debd  2026-08-30 00:22:08  host=demo-host  tags=[gitea]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql  231.1 KiB  plain SQL
 
   restore    ok          1.9s   2 inputs
-  compose    ok          2.0s   2 services, db first for the dump
-  load db    ok          4.3s   db: psql, 0 stderr lines
-  ready      ok          6.9s   postgres accepts connections, gitea answers on the internal network
+  compose    ok          2.2s   2 services, db first for the dump
+  load db    ok          4.5s   db: psql, 0 stderr lines
+  ready      ok         11.1s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.86s
-  ✔  repos-in-db         The database contains at least one repository   0.73s
+  ✔  web-ui-renders      The web UI renders the instance home page       0.93s
+  ✔  repos-in-db         The database contains at least one repository   0.79s
                          row → 1
   ✔  users-in-db         The database contains at least one real user    0.69s
                          account → 1
   ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
                          → 1 match for */*.git/HEAD
-  ✔  api-lists-repos     The API lists repositories, so the database     0.80s
+  ✔  api-lists-repos     The API lists repositories, so the database     0.87s
                          and the disk agree → 1 item
 
-  PASS  5/5 checks  ·  total 19.0s  ·  teardown ok
+  PASS  5/5 checks  ·  total 23.7s  ·  teardown ok
 
 This backup boots.
 ```
@@ -52,38 +58,38 @@ runs every night, it exits 0, and it produces a file:
 
 <!-- BEGIN docs/demo/fail.txt -->
 ```text
-restored 0.1.0-dev · recipe gitea · run en5bklxe
+restored 0.1.0-dev · recipe gitea · run du4u7rzu
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   c06074e4  2026-08-29 20:27:45  host=demo-host  tags=[gitea-broken]
+  snapshot   819352b5  2026-08-30 00:23:12  host=demo-host  tags=[gitea-broken]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql      489 B  plain SQL
 
   restore    ok          1.8s   2 inputs
-  compose    ok          2.0s   2 services, db first for the dump
-  load db    ok          3.0s   db: psql, 0 stderr lines
+  compose    ok          2.1s   2 services, db first for the dump
+  load db    ok          3.1s   db: psql, 0 stderr lines
   ready      ok          6.7s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.91s
-  ✘  repos-in-db         The database contains at least one repository   0.75s
+  ✔  web-ui-renders      The web UI renders the instance home page       0.81s
+  ✘  repos-in-db         The database contains at least one repository   0.69s
                          row
                            query   SELECT count(*) FROM repository;
                            expect  scalar_int_min: 1
                            got     0
-  ✘  users-in-db         The database contains at least one real user    0.70s
+  ✘  users-in-db         The database contains at least one real user    0.75s
                          account
                            query   SELECT count(*) FROM "user" WHERE lower_name <> 'ghost';
                            expect  scalar_int_min: 1
                            got     0
   ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
                          → 1 match for */*.git/HEAD
-  ✘  api-lists-repos     The API lists repositories, so the database     0.84s
+  ✘  api-lists-repos     The API lists repositories, so the database     0.83s
                          and the disk agree
                            expect  json_path_len_min: 1
                            got     0
 
-  RESTORE UNUSABLE  2/5 checks  ·  total 18.6s  ·  teardown ok
+  RESTORE UNUSABLE  2/5 checks  ·  total 18.9s  ·  teardown ok
 
   LIKELY CAUSE
     The application's tables are there, but they are empty
@@ -206,27 +212,91 @@ published ports, no bind mount outside the run's own workspace. HTTP checks run 
 helper container attached to the run's internal network. `restored recipe validate`
 rejects a recipe that breaks any of it.
 
-Bundled so far: `gitea` (PostgreSQL) and `uptime-kuma` (SQLite).
+---
+
+## Bundled recipes
+
+<!-- BEGIN recipes-table -->
+
+| recipe | application | state it restores | checks |
+|---|---|---|---|
+| [`gitea`](recipes/gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 |
+| [`nextcloud`](recipes/nextcloud/) | Nextcloud (PostgreSQL) | directories + PostgreSQL | 6 |
+| [`paperless-ngx`](recipes/paperless-ngx/) | Paperless-ngx (PostgreSQL + Redis) | directories + PostgreSQL | 5 |
+| [`uptime-kuma`](recipes/uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 |
+| [`vaultwarden`](recipes/vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 |
+
+<!-- END recipes-table -->
+
+Each directory has a README saying which of *your* directories each input is, for the
+two or three ways that application is usually deployed. The full index, and the
+[field reference generated from the JSON Schema](docs/recipe-spec.md), are in
+[`recipes/`](recipes/README.md).
+
+Every one of them has passed the round trip described below. Nothing is on that list
+because somebody thought it looked right.
 
 ---
 
 ## Add a recipe in 10 minutes
 
+The number of distinct external contributors with merged pull requests is the only
+metric this project has agreed to care about, and a recipe is the unit of
+contribution. Two YAML files, no Go.
+
+If you already have a `docker-compose.yml` for the application, the first draft is one
+command:
+
 ```sh
-restored recipe init paperless --db postgres-dump --with-dir media
-restored recipe validate ./recipes/paperless --strict
+restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+restored recipe test ./recipes/myapp        # this is exactly what CI runs
 ```
 
-The number of distinct external contributors with merged PRs is the only metric this
-project has agreed to care about, and a recipe is the unit of contribution. The full
-guide — what makes a check data-sensitive, how the round-trip harness proves your
-recipe both ways, and what CI will run on your PR — is going into `CONTRIBUTING.md`
-next. Until it lands, [SPEC.md](SPEC.md) section 3 is the field reference and
-[`recipes/gitea/`](recipes/gitea/) is the worked example.
+`recipe init --compose` turns your volumes into inputs, recognises a PostgreSQL or
+SQLite service, takes the container side of your published port for the ready probe,
+and leaves a TODO everywhere the answer is yours.
+
+`recipe test` is the whole review process, mechanised:
+
+- **Stage A** starts your stack with **empty** inputs and requires that at least one
+  check **fails**. A recipe whose checks all pass against an empty database is rejected
+  with `recipe has no data-sensitive check`.
+- **Stage B** starts a fresh stack, seeds it, exports what a backup would have taken,
+  puts that into a throwaway restic repository, tears everything down, and then runs an
+  ordinary `restored check` against it. Every check must pass.
+
+Stage B ends by running the command a user runs. There is no test-only restore path, so
+the harness cannot pass while the real one is broken — which is why a maintainer can
+merge your recipe without understanding your application.
+
+**[CONTRIBUTING.md](CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the full walk-through**,
+including the review promise: a first response within 24 hours, and a merge within 48
+when CI is green.
 
 The other useful contribution needs no Go and no Docker: a rule in
 [`docs/hints.yaml`](docs/hints.yaml). If you hit a confusing restore failure, the fix is
 often twenty lines in that file.
+
+---
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+None yet — this repository has never been public. The list above follows the
+[all-contributors](https://allcontributors.org) specification and is configured in
+[`.all-contributorsrc`](.all-contributorsrc); the bot that maintains it is not
+installed, because installing an app is one of the stop points in
+[CLAUDE.md](CLAUDE.md).
+
+`scripts/contributors.sh` prints the number this project is actually trying to move:
+distinct people, other than the owner and other than a bot, with a pull request merged
+in the trailing 365 days.
 
 ---
 

@@ -3,6 +3,7 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -198,5 +199,77 @@ func TestCopyTree(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(dst, "sub", "f"))
 	if err != nil || string(b) != "data" {
 		t.Errorf("copied file = %q %v", b, err)
+	}
+}
+
+// A restored tree carries the ownership and the modes of the machine the backup came
+// from. Neither means anything inside a fresh container, and a 0700 tree is one the
+// application cannot read. See ADR-055.
+func TestRelaxOpensARestoredTree(t *testing.T) {
+	ws, err := NewWithID(t.TempDir(), "relax")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := filepath.Join(ws.InputsDir(), "data")
+	nested := filepath.Join(tree, "git", "repositories")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(nested, "HEAD")
+	if err := os.WriteFile(file, []byte("ref: refs/heads/main\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ws.Relax(tree); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows carries no POSIX mode through a chmod, and the daemon does not
+		// enforce one on a bind mount; there is nothing to assert but the absence of
+		// an error.
+		return
+	}
+	for path, want := range map[string]os.FileMode{
+		tree:   relaxDirMode,
+		nested: relaxDirMode,
+		file:   relaxFileMode,
+	} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Errorf("%s: mode %04o, want %04o", path, got, want)
+		}
+	}
+}
+
+// The workspace itself stays shut, which is what makes the modes above safe: the
+// files are permissive inside a directory nobody else can traverse. See ADR-054.
+func TestWorkspaceRootIsPrivate(t *testing.T) {
+	ws, err := NewWithID(t.TempDir(), "private")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(ws.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o700 {
+		t.Errorf("workspace root mode %04o, want 0700", got)
+	}
+}
+
+func TestRelaxRefusesToLeaveTheWorkspace(t *testing.T) {
+	ws, err := NewWithID(t.TempDir(), "escape")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := ws.Relax(outside); err == nil {
+		t.Fatalf("Relax(%q) must be refused: it is outside the workspace", outside)
 	}
 }

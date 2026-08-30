@@ -1,22 +1,22 @@
-restored 0.1.0-dev · recipe uptime-kuma · run 7oathhgz
+restored 0.1.0-dev · recipe uptime-kuma · run zlleosna
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   0e3401fa  2026-08-29 20:28:30  host=demo-host  tags=[uptime-kuma]
+  snapshot   4bff8d25  2026-08-30 00:23:57  host=demo-host  tags=[uptime-kuma]
   inputs     data  /srv/uptime-kuma/data          228.0 KiB  1 file
              db    /srv/uptime-kuma/data/kuma.db  228.0 KiB  1 file
 
-  restore    ok          1.9s   2 inputs
-  compose    ok          2.0s   1 service
+  restore    ok          1.7s   2 inputs
+  compose    ok          2.1s   1 service
   load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
-  ready      ok          4.8s   kuma serves HTTP
+  ready      ok          4.9s   kuma serves HTTP
 
   CHECKS
-  ✔  dashboard-renders   The dashboard entrypoint renders                0.87s
+  ✔  dashboard-renders   The dashboard entrypoint renders                0.84s
   ✔  db-integrity        The SQLite database passes PRAGMA               0.05s
                          integrity_check → ok
   ✔  monitors-present    At least one monitor survived the restore →     0.02s
                          1
-  ✔  users-present       At least one user account survived the          0.02s
+  ✔  users-present       At least one user account survived the          0.01s
                          restore → 1
   ✔  heartbeats-present  Heartbeat history survived the restore, so      0.02s
                          this is not a fresh database → 1
