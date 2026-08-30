@@ -98,7 +98,7 @@ The unit of contribution is a recipe: roughly sixty lines of YAML that somebody 
 runs Paperless-ngx already knows how to write. Every design choice in this document
 exists to make that contribution *cheap to create* (`recipe init` scaffolds it),
 *automatic to validate* (`recipe test` proves it locally and in CI, with no maintainer
-in the loop), and *one click to submit* (the contribution nudge, section 8).
+in the loop), and *a short path to submit* (the contribution nudge, section 8).
 
 ### 1.5 Non-goals for v0.1
 
@@ -2156,7 +2156,7 @@ When a `check` run finishes and **all** of these hold:
 ```text
   ────────────────────────────────────────────────────────────────────────
   This recipe is not in the bundled registry, and it just proved a restore.
-  Other people running Paperless-ngx would use it. Adding it is one click:
+  Other people running Paperless-ngx would use it. Adding it is a fork and a
 
     https://github.com/spelingbee/restored/new/main?filename=recipes/paperless/recipe.yaml&value=apiVersion%3A%20restored%2Fv1%0Akind%3A%20Recipe%0A…
 

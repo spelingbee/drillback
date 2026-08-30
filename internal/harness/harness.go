@@ -52,6 +52,14 @@ const stageAReady = 90 * time.Second
 // wrong, because the author's next action is to add a check, not to debug one.
 const NoDataSensitiveCheck = "recipe has no data-sensitive check: add a check that depends on restored data"
 
+// NoCountingCheck is the rejection a recipe earns when the empty stack refused to
+// start - so no check was exercised against emptiness - and the recipe has no check
+// that could tell a restored database from a freshly migrated one anyway. See ADR-064.
+const NoCountingCheck = "the empty stack never started, so no check was tested against " +
+	"an empty application, and this recipe has no check that counts anything. Add one " +
+	"check whose expect is scalar_int_min, rows_min, json_path_len_min, " +
+	"json_path_int_min or glob_min_count, against data only a real installation has"
+
 // Stage statuses.
 const (
 	StatusPass    = "pass"
@@ -347,8 +355,25 @@ func (o Options) stageA(ctx context.Context, budget time.Duration) (st Stage, ke
 		// refuse to start with no data at all, which is itself evidence that the
 		// checks are data-sensitive. SPEC.md section 7.2 calls this outcome
 		// PASS-BY-STARTUP-REFUSAL, and it is reported as what it is.
-		phase.Status = StatusPass
 		phase.Note = "the stack never became ready, so no check ran"
+		// The stage passes, but nothing was proved by running: zero checks were
+		// exercised negatively. ADR-032 was honest that this is weaker evidence and
+		// "should look weaker" - and then nothing took over from the evidence that
+		// was missing. A recipe whose checks are all `status: 200` and
+		// `exists: true` could pass stage A by refusal, pass stage B on real data,
+		// go green in CI, and pass against a schema-only dump: the exact false PASS
+		// this tool exists to destroy, with a green badge on it.
+		//
+		// So when the run proves nothing, the recipe has to prove something about
+		// itself. The expect vocabulary is closed precisely so a test like this can
+		// be mechanical. See DECISIONS.md ADR-064.
+		if ids := countingChecks(o.Recipe); len(ids) == 0 {
+			phase.Status = StatusFail
+			st.Status = StatusFail
+			st.Reason = NoCountingCheck
+			break
+		}
+		phase.Status = StatusPass
 		st.Status = StatusPass
 		st.Reason = "PASS-BY-STARTUP-REFUSAL: " + startupRefusalReason(rep)
 	case rep.Summary.ChecksFailed > 0:
@@ -403,4 +428,34 @@ func recipeRef(r *recipe.Recipe) string {
 		return r.Metadata.Name
 	}
 	return r.Dir
+}
+
+// countingChecks returns the ids of the checks that could tell a restored database
+// from an empty one that the application has just migrated for itself.
+//
+// The test is on the expect key rather than on the check kind, because that is where
+// the distinction actually lives: `status: 200` and `exists: true` pass against an
+// empty application, and `scalar_int_min: 1` does not. The vocabulary is closed
+// (README.md, "a smaller expect vocabulary that a reviewer can hold in their head"),
+// which is what makes this a list rather than a judgement.
+func countingChecks(r *recipe.Recipe) []string {
+	var ids []string
+	for _, c := range r.Checks {
+		e := c.Expect
+		switch {
+		case e.ScalarIntMin != nil,
+			e.RowsMin != nil,
+			e.JSONPathLenMin != nil,
+			e.JSONPathIntMin != nil,
+			e.GlobMinCount != nil,
+			e.ScalarEquals != nil,
+			e.JSONPathEquals != nil,
+			e.SizeMin != nil,
+			e.NotEmpty != nil,
+			e.BodyMatches != "",
+			e.StdoutMatches != "":
+			ids = append(ids, c.ID)
+		}
+	}
+	return ids
 }

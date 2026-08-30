@@ -82,10 +82,9 @@ func TestBuildFallsBackWhenTheLinkIsTooLong(t *testing.T) {
 		t.Fatal("a link over the length limit was printed anyway")
 	}
 	for _, want := range []string{
-		"too large for a",
 		"cp -r /home/you/recipes/immich recipes/immich",
 		"restored recipe test ./recipes/immich",
-		"/home/you/recipes/immich/recipe.yaml",
+		"/home/you/recipes/immich",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the fallback does not contain %q:\n%s", want, out)
@@ -190,4 +189,36 @@ func extractLink(t *testing.T, out string) string {
 	}
 	t.Fatalf("no link in the invitation:\n%s", out)
 	return ""
+}
+
+// MNT-04. The prefilled link creates a branch holding recipe.yaml and nothing else,
+// and the first thing CI does to it is `recipe validate`, which cannot pass without
+// compose.yaml. So even when the link fits, the four-step path is the offer and the
+// link is presented as the shortcut it is - never as "one click". See ADR-065.
+func TestBuildNeverPromisesOneClick(t *testing.T) {
+	out := Build(Input{
+		Name:  "paperless-ngx",
+		YAML:  []byte(smallRecipe),
+		Path:  "/home/you/recipes/paperless-ngx/recipe.yaml",
+		Title: "Paperless-ngx",
+	})
+
+	// The link is still offered: it is a real shortcut for the first file.
+	if !strings.Contains(out, "github.com/spelingbee/restored/new/main") {
+		t.Fatal("a recipe well under the length limit was not offered the prefilled link")
+	}
+	if strings.Contains(out, "one click") {
+		t.Error(`the nudge still says "one click" for a path that needs two files`)
+	}
+	// And the path that actually produces a mergeable pull request is there too.
+	for _, want := range []string{
+		"1. fork",
+		"cp -r /home/you/recipes/paperless-ngx recipes/paperless-ngx",
+		"restored recipe test ./recipes/paperless-ngx",
+		"compose.yaml",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the nudge does not contain %q:\n%s", want, out)
+		}
+	}
 }

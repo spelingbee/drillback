@@ -1577,3 +1577,83 @@ be inventing a borg snapshot model without borg in front of me.
 Proved by running the thing rather than by reading it: `scripts/demo.sh` PASS exit 0
 and `scripts/demo-broken.sh` RESTORE UNUSABLE exit 1, both against real stacks, after
 the refactor.
+
+## ADR-064: When stage A proves nothing, the recipe has to prove something itself
+
+**Status:** accepted
+**Extends:** ADR-032, SPEC.md section 7.2
+**Found by:** the session 4 maintainer review (`docs/review/maintainer.md` MNT-05)
+
+**Context.** Stage A runs the recipe's checks against an empty stack and expects at
+least one of them to fail; a recipe whose checks all pass against emptiness proves
+nothing about a restore and is rejected. Some applications refuse to start with no data
+at all, which is itself evidence, so SPEC.md 7.2 calls that outcome
+PASS-BY-STARTUP-REFUSAL and passes the stage. `uptime-kuma`, one of the five shipped
+recipes, takes exactly that path.
+
+ADR-032 was honest that this is weaker evidence and "should look weaker". Nothing then
+took over from the evidence that was missing. Consider a recipe whose four checks are
+all `status: 200` and `exists: true`, for an application that crash-loops on an empty
+database:
+
+- stage A: nothing starts, zero checks run, PASS by refusal;
+- stage B: real data, everything starts, four checks pass, PASS;
+- CI: green;
+- against a real backup whose dump was taken `--schema-only`: four checks pass, PASS.
+
+That is the false PASS the whole tool exists to destroy, shipped with a green badge on
+it, through the one door that skips the mechanism which would have caught it.
+
+**Decision.** When stage A passes by startup refusal, the recipe must have at least one
+check that *counts something*: an `expect` of `scalar_int_min`, `rows_min`,
+`json_path_len_min`, `json_path_int_min`, `glob_min_count`, `scalar_equals`,
+`json_path_equals`, `size_min`, `not_empty`, `body_matches` or `stdout_matches`.
+Otherwise the stage fails with `NoCountingCheck`, which names the vocabulary.
+
+The test is on the `expect` key rather than on the check `kind`, because that is where
+the distinction lives: `status: 200` passes against an application that has just
+migrated an empty schema for itself, and `scalar_int_min: 1` does not. The expect
+vocabulary is closed exactly so that a test like this can be mechanical rather than a
+judgement - which is the trade README.md already describes.
+
+**Consequences.** The merge-without-understanding promise stays true through the
+refusal door as well as the ordinary one, which is the promise the whole contribution
+flow rests on.
+
+All five bundled recipes pass unchanged; they have between four and six counting checks
+each. The rule costs nothing to satisfy honestly and is impossible to satisfy by
+accident.
+
+It is not as strong as stage A proper. A counting check that counts something the
+application creates for itself would still pass. That is a smaller hole than "no
+constraint at all", and closing it needs the `wait`-step work on the roadmap.
+
+## ADR-065: The nudge offers the pull request that can actually be merged
+
+**Status:** accepted
+**Extends:** SPEC.md sections 8.1 and 8.2
+**Found by:** the session 4 maintainer review (`docs/review/maintainer.md` MNT-04)
+
+**Context.** After a passing run of a recipe that is not in the registry, restored
+printed "Adding it is one click:" and a GitHub `new/main?filename=...&value=...` link.
+
+That link creates a branch containing `recipes/<name>/recipe.yaml` and nothing else.
+`recipes.yml` then selects the directory and runs `recipe validate --strict` on it,
+which cannot pass: a recipe is a directory, and `compose.yaml` is not optional.
+
+SPEC.md 8.1 condition 5 exists so that the nudge never sends anyone at a pull request
+CI will reject - "nudging someone toward a PR that CI will immediately reject wastes
+their goodwill, which is the scarcest resource this project has". The condition checked
+the recipe; nothing checked that the resulting pull request was complete. This is the
+highest-volume acquisition surface in the project, and it landed on a guaranteed red X.
+
+**Decision.** The fork-and-branch path - four lines, already written for the
+link-too-long case - is now the offer, for every recipe. The prefilled link is still
+printed when it fits, described as what it is: a way to start the first file in the
+browser, with `compose.yaml` added to the branch GitHub creates.
+
+**Consequences.** The nudge is four lines longer and it is true. Someone who follows it
+gets a green pull request, which is the only kind worth inviting.
+
+"One click to submit" leaves SPEC.md section 1. It was never one click; it was one
+click to a rejection.
