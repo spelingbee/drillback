@@ -38,7 +38,7 @@ What works, and is proved by a command below:
 | `restored recipe show [--format] [--compose] [--inputs-only]` | works |
 | `restored recipe init` | works; the scaffolded recipe validates as it comes out |
 | `restored recipe init --compose <file>` | works; reads a real compose file and proposes a recipe that validates |
-| **`restored recipe test [--stage a\|b\|both] [--keep] [--timeout] [--report] [--json]`** | **works; all nineteen recipes pass both stages** |
+| **`restored recipe test [--stage a\|b\|both] [--keep] [--timeout] [--report] [--json]`** | **works; all twenty recipes pass both stages** |
 | `restored version [--json]` | works, and exits 0 with docker and restic absent |
 | Isolation | enforced: no privileged, no host namespaces, no published ports, no bind outside the workspace, internal networks only |
 | Report | TTY renderer with an ASCII fallback and `NO_COLOR`, plus the JSON document of SPEC.md 5.2; the harness has its own report and its own schema version |
@@ -48,10 +48,11 @@ What works, and is proved by a command below:
 | CI | `ci.yml` (lint, generated-file diff, unit on three platforms, integration), `recipes.yml` (changed recipes, one verdict each), `recipe-health.yml` (weekly, opens and closes issues), `release.yml` (goreleaser skeleton, draft only) |
 | Contributor path | `CONTRIBUTING.md`, `recipes/TEMPLATE`, four issue templates, a PR checklist, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CODEOWNERS`, dependabot |
 
-Bundled recipes, **nineteen** of them since session 5: **beszel**, **changedetection**,
-**filebrowser**, **freshrss**, **gitea**, **gogs**, **gotify**, **listmonk**, **mealie**,
-**memos**, **n8n**, **navidrome**, **nextcloud**, **open-webui**, **paperless-ngx**,
-**siyuan**, **trilium**, **uptime-kuma**, **vaultwarden**. `recipes/TEMPLATE` ships in
+Bundled recipes, **twenty** of them since session 5: **beszel**, **changedetection**,
+**convertx**, **filebrowser**, **freshrss**, **gitea**, **gogs**, **gotify**,
+**listmonk**, **mealie**, **memos**, **n8n**, **navidrome**, **nextcloud**,
+**open-webui**, **paperless-ngx**, **siyuan**, **trilium**, **uptime-kuma**,
+**vaultwarden**. `recipes/TEMPLATE` ships in
 the binary too but is deliberately not in the registry: `BundledNames` skips any
 directory whose name is not a legal recipe name.
 
@@ -1156,20 +1157,20 @@ application tested also gets a recipe that passes `restored recipe test`.
 
 **Done:**
 
-1. **Fourteen applications, end to end.** Each has a folder under `docs/drill/` with the
+1. **Fifteen applications, end to end.** Each has a folder under `docs/drill/` with the
    official documentation quoted as written (`docs.md`), the commands that were run and
    their real output (`steps.md`, `run.sh`), the reports the tool produced
    (`result*.txt`, `result*.json` - never hand-written), the verdict and the root cause
    with evidence (`result.md`), and a draft issue that has **not** been filed
    (`upstream-issue.md`).
 
-   Verdicts on the primary documented reading: **9 PASS, 2 PARTIAL, 2 FAIL, 1 SKIPPED**.
-   Four secondary readings also failed. `docs/drill/summary.md` has the totals, the three
+   Verdicts on the primary documented reading: **10 PASS, 2 PARTIAL, 2 FAIL, 1
+   SKIPPED**. Five secondary readings also failed. `docs/drill/summary.md` has the totals, the three
    most instructive cases, the five patterns that repeat, three headline options and the
    caveats; `docs/drill/README.md` is the table.
 
-2. **Fourteen new recipes**, one per application, all passing both stages of
-   `restored recipe test`. The registry is nineteen recipes, which is well past the
+2. **Fifteen new recipes**, one per application, all passing both stages of
+   `restored recipe test`. The registry is twenty recipes, which is well past the
    six-recipe gate of ADR-033.
 
 3. **`docs/drill/SKIPPED.md`** - every application passed over, in three honest
@@ -1206,11 +1207,12 @@ scratch directory:
   commands write, because it tries to insert the workflow file sitting next to the
   credential as a credential.
 
-**Not done:** the fifteenth application. Stirling-PDF was pulled (3.38 GB), deployed and
-abandoned: its v2 interface is a JavaScript client, `POST /login` answers 405 and HTTP
-Basic answers 401 on every `/api/v1/user/...` endpoint, so nothing could be seeded
-through the application - and without seeding, a restore check cannot tell a restored
-instance from a fresh one. No verdict was invented for it. `internal/config`, which was
+**Not done:** Stirling-PDF, which was fourth on the list and the intended fifteenth. It
+was pulled (3.38 GB), deployed and abandoned: its v2 interface is a JavaScript client,
+`POST /login` answers 405 and HTTP Basic answers 401 on every `/api/v1/user/...`
+endpoint, so nothing could be seeded through the application - and without seeding, a
+restore check cannot tell a restored instance from a fresh one. No verdict was invented
+for it; ConvertX took the fifteenth slot instead. `internal/config`, which was
 the *previous* plan for session 5, is untouched and is still the next thing.
 
 **Evidence.**
@@ -1237,8 +1239,17 @@ $ ./bin/restored.exe recipe test ./recipes/beszel ./recipes/changedetection     
   14 recipes: 14 passed, 0 failed, 0 errored, in 13m28s
 ```
 
-The five that existed before, unchanged and re-run to keep the "all nineteen" claim
-above honest:
+ConvertX arrived last and was run on its own:
+
+```text
+$ ./bin/restored.exe recipe test recipes/convertx
+  stage A  ... PASS   4 of 6 checks failed against an empty stack
+  stage B  ... PASS   the round trip restored and all 6 checks passed
+  PASS   convertx in 1m19s
+```
+
+The five that existed before, unchanged and re-run to keep the "all twenty" claim above
+honest:
 
 ```text
 $ ./bin/restored.exe recipe test ./recipes/gitea ./recipes/nextcloud     ./recipes/paperless-ngx ./recipes/uptime-kuma ./recipes/vaultwarden
@@ -1360,17 +1371,17 @@ and `nudge/config.go` should go; the behaviour must not change under anyone.
 ### The sixth recipe - done, and then some
 
 **Answered by session 5.** The six-recipe gate of ADR-033 is met and passed: there are
-nineteen, and all nineteen round-trip. Miniflux is still not among them, and session 4's
+twenty, and all twenty round-trip. Miniflux is still not among them, and session 4's
 fresh-clone reviewer's recipe for it is still in `docs/review/fresh-clone.md` if
 somebody wants a twentieth.
 
-The fourteen that arrived with the drill were each written against the application's own
+The fifteen that arrived with the drill were each written against the application's own
 documentation and each proves itself, so `recipes/` is now a registry rather than a
 sample. Two things in it are worth copying rather than reinventing: a check that names
 the object it is looking for instead of counting rows (a fresh application usually makes
 its own administrator, so `count(*) > 0` passes against a restore of nothing), and a
 check that asks for the file beside the database - the uploads directory, the avatar, the
-encryption key - because that is where five of the fourteen keep something a person would
+encryption key - because that is where six of the fifteen keep something a person would
 call their data.
 
 ### The launch, which is entirely a human's
