@@ -270,9 +270,9 @@ Usage:
 
 Examples:
   restored recipe validate ./recipes/gitea
-  restored recipe validate ./recipes/*
+  restored recipe validate ./recipes/*/
   restored recipe validate ./recipes/gitea --json
-  restored recipe validate ./recipes/* --strict     # what CI runs
+  restored recipe validate ./recipes/*/ --strict     # what CI runs
 
 Flags:
       --strict   Also fail on warnings: missing description, missing maintainer,
@@ -2400,7 +2400,7 @@ The test that catches everything the others assume. On a clean runner, from noth
 git clone https://github.com/spelingbee/restored && cd restored
 go build ./cmd/restored          # builds with no network beyond the module cache
 ./restored version               # exits 0 with docker/restic absent
-./restored recipe validate ./recipes/* --strict
+./restored recipe validate ./recipes/*/ --strict
 ./restored recipe test ./recipes/uptime-kuma   # the cheapest recipe, end to end
 go test ./...                    # green without Docker
 ```

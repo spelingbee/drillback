@@ -1419,7 +1419,7 @@ on them, and a new workflow, `refresh-registry.yml`, regenerates and commits the
 recipe contributor adds one directory and is done.
 
 The tables can be stale for the length of one merge, on `main` only. That is
-acceptable: they are a convenience index, and `restored recipe validate ./recipes/*`
+acceptable: they are a convenience index, and `restored recipe validate ./recipes/*/`
 and the registry itself are the sources of truth.
 
 The loop guard on `refresh-registry.yml` is load-bearing and doubled: the trigger
@@ -1657,3 +1657,51 @@ gets a green pull request, which is the only kind worth inviting.
 
 "One click to submit" leaves SPEC.md section 1. It was never one click; it was one
 click to a rejection.
+
+## ADR-066: The invitation prints no URL
+
+**Status:** accepted
+**Supersedes:** the prefilled-link half of SPEC.md section 8.2 and of ADR-065
+**Found by:** rendering `docs/demo/demo.gif`, which is the first time anything in this
+project ran `restored check` on a real terminal
+
+**Context.** ADR-065 had already established that the prefilled
+`github.com/.../new/main?filename=...&value=...` link produces a branch containing
+`recipe.yaml` and nothing else, which `recipe validate` cannot pass - so it demoted the
+link and promoted the fork-and-branch path.
+
+Then the demo GIF was rendered, and the recording hung. The screenshot said why: after
+the `PASS`, the invitation had printed roughly three thousand characters of
+percent-encoded YAML - `%0A`, `%3A`, `%2F` - wrapped across twenty lines of the
+terminal, pushing the report off the screen entirely. The `Wait` in the tape was
+looking for `PASS` and `PASS` was no longer on it.
+
+Nothing had caught this in three sessions for a specific reason: the nudge only fires
+on a TTY, and every test and every reviewer captured output through a pipe, where it
+does not fire at all. It took a recorded terminal to see what a user sees.
+
+A URL that cannot be read, cannot be selected in one gesture, and produces a rejected
+pull request when followed is not a shortcut.
+
+**Decision.** Remove it. `nudge.Build` prints the four-line fork path and nothing else.
+`MaxURL` and the encoding go with it.
+
+Separately, `maybeNudge` now also declines when a recipe of that name is in the bundled
+registry, whatever path it was loaded from. `rec.Bundled` is false for
+`--recipe ./recipes/gitea`, which is what `scripts/demo.sh` does and what anyone who
+copied a bundled recipe to change one path does - so the project's own demo was
+inviting its own recipe.
+
+**Consequences.** The invitation is nine lines and fits under the report it follows.
+`TestBuildIsShortEnoughToRead` fails if it grows past sixteen, because it is printed
+underneath something somebody is reading.
+
+The cost is real: pasting one file into a browser was genuinely less work than a fork,
+for the people who would have used it. It was less work towards a pull request that
+could not be merged.
+
+The wider lesson is worth writing down, because it will happen again: **this project
+had no test that ran the tool on a terminal.** Everything - unit tests, golden files,
+five independent reviewers - went through a pipe. The one output path a user always
+sees was the one path nothing exercised. `docs/demo/demo.tape` is now that test, and it
+is worth keeping green for that reason as much as for the GIF.

@@ -17,7 +17,7 @@
 #   - `docker info` succeeds
 #   - `restic version` succeeds
 
-Output docs/demo/demo.gif
+Output "docs/demo/demo.gif"
 
 Require bash
 Require docker
@@ -47,7 +47,7 @@ Enter
 # demo.sh stands up Gitea and PostgreSQL, seeds them, dumps and backs up with
 # restic, destroys the stack, and asks restored. Ten minutes is generous; the
 # @-timeout is a ceiling, not a delay - vhs continues as soon as the regex matches.
-Wait+Screen@10m /PASS|UNUSABLE|FAILED|error/
+Wait+Screen@10m /This backup boots|RESTORE UNUSABLE|restored exited/
 
 Sleep 4s
 
@@ -66,7 +66,7 @@ Sleep 1500ms
 
 Type "./scripts/demo-broken.sh"
 Enter
-Wait+Screen@10m /UNUSABLE|PASS|FAILED|error/
+Wait+Screen@10m /restored exited|This backup boots/
 
 Sleep 5s
 

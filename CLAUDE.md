@@ -33,7 +33,7 @@ gofmt -l .                  # must print nothing
 ./scripts/lint-english.sh   # fails on non-ASCII outside the allowlist
 
 # recipes
-./bin/restored recipe validate ./recipes/* --strict
+./bin/restored recipe validate ./recipes/*/ --strict
 ./bin/restored recipe show gitea --inputs-only
 ./bin/restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
 ./bin/restored recipe test ./recipes/gitea      # the round trip, both stages

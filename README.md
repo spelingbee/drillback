@@ -369,7 +369,8 @@ in the trailing 365 days.
 ## Roadmap
 
 - **v0.1, "it boots".** `restored check` against restic and `dir`, the round-trip
-  harness, six bundled recipes, CI, and the install paths.
+  harness, five bundled recipes, CI, and the install paths. A sixth - the one you
+  write - is the point.
 - **v0.2, "more of everything".** MySQL dumps, borg and kopia sources, notifiers, cron
   mode with history, `restored doctor`.
 - **v0.3, "evidence you can show someone".** A self-contained HTML report, and a

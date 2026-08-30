@@ -217,6 +217,15 @@ func maybeNudge(cmd *cobra.Command, g *globals, f *checkFlags, rec *recipe.Recip
 	if g.noNudge || f.noNudge || g.json || rec.Bundled {
 		return
 	}
+	// `rec.Bundled` is false for a recipe loaded from a path, so `--recipe
+	// ./recipes/gitea` - which is what scripts/demo.sh does, and what anyone who
+	// copied a bundled recipe to edit one line does - was invited to contribute a
+	// recipe that already ships. The registry is the question, not how it was loaded.
+	for _, name := range recipe.BundledNames() {
+		if name == rec.Metadata.Name {
+			return
+		}
+	}
 	// `nudge: false` in restored.yaml is the config equivalent of --no-nudge.
 	if nudge.Silenced("") {
 		return

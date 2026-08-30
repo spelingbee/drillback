@@ -2,12 +2,12 @@
 // in the bundled registry has just proved a restore.
 //
 // restored never opens a browser, never writes to the clipboard, and never sends
-// anything anywhere. It prints a URL and stops.
+// anything anywhere. It prints four lines and stops - not a URL: see ADR-066 for why
+// the prefilled GitHub link was removed.
 package nudge
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -15,10 +15,6 @@ import (
 
 // Repo is the project this build invites contributions to.
 const Repo = "https://github.com/spelingbee/restored"
-
-// MaxURL is the practical ceiling for a prefilled link, checked after encoding.
-// Above it the invitation becomes a four-line instruction instead. See SPEC.md 8.3.
-const MaxURL = 6000
 
 // Input is everything the invitation needs.
 type Input struct {
@@ -41,34 +37,31 @@ func Build(in Input) string {
 	}
 	rule := strings.Repeat("─", width)
 
-	link := fmt.Sprintf("%s/new/main?filename=%s&value=%s",
-		Repo,
-		url.QueryEscape("recipes/"+in.Name+"/recipe.yaml"),
-		url.QueryEscape(string(in.YAML)))
-
 	var b strings.Builder
 	fmt.Fprintf(&b, "\n  %s\n", rule)
 	fmt.Fprintf(&b, "  This recipe is not in the bundled registry, and it just proved a restore.\n")
 	fmt.Fprintf(&b, "  Other people running %s would use it. ", in.Title)
 
-	// A recipe is a directory, not a file: recipe.yaml and compose.yaml at least. The
-	// prefilled link creates a branch holding recipe.yaml alone, and the first thing
-	// CI does to that branch is `recipe validate`, which cannot pass without
-	// compose.yaml. Calling that "one click" sent people at a guaranteed red X on
-	// their first contact with the project - the opposite of what SPEC.md 8.1
-	// condition 5 exists for. So the fork-and-branch path is the offer, and the link
-	// is the shortcut it actually is. See DECISIONS.md ADR-065.
+	// No prefilled GitHub link. Two reasons, and the second one is the one that
+	// settles it.
+	//
+	// It produced a branch containing recipe.yaml and nothing else, and `recipe
+	// validate` cannot pass without compose.yaml - so the highest-volume acquisition
+	// surface in the project sent people at a guaranteed red X (ADR-065).
+	//
+	// And it was unreadable. A recipe percent-encodes to a few thousand characters,
+	// and a few thousand characters of %0A and %3A wrapped across twenty lines of
+	// somebody's terminal is not a shortcut; it is the tool shouting. That was
+	// invisible for three sessions because nothing had ever run this on a real TTY -
+	// every test and every reviewer captured it through a pipe, where the nudge does
+	// not fire at all. A screenshot from a recorded terminal is what found it.
+	// See DECISIONS.md ADR-066.
 	dir := strings.TrimSuffix(in.Path, "/recipe.yaml")
 	fmt.Fprintf(&b, "Adding it is a fork and a\n  four-line pull request:\n\n")
 	fmt.Fprintf(&b, "    1. fork  %s\n", Repo)
 	fmt.Fprintf(&b, "    2. cp -r %s recipes/%s\n", dir, in.Name)
 	fmt.Fprintf(&b, "    3. restored recipe test ./recipes/%s     # this is what CI runs\n", in.Name)
 	fmt.Fprintf(&b, "    4. open a PR\n\n")
-	if len(link) <= MaxURL {
-		fmt.Fprintf(&b, "  Or start it in the browser. This opens recipe.yaml prefilled, and you add\n")
-		fmt.Fprintf(&b, "  compose.yaml to the branch GitHub makes for you:\n\n")
-		fmt.Fprintf(&b, "    %s\n\n", link)
-	}
 	fmt.Fprintf(&b, "  restored does not touch your clipboard. Your recipe is at %s.\n\n", dir)
 	fmt.Fprintf(&b, "  (silence this with --no-nudge, or `nudge: false` in restored.yaml)\n")
 	fmt.Fprintf(&b, "  %s\n", rule)

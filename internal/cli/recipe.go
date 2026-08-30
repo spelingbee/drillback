@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -65,10 +66,36 @@ func newRecipeValidate(g *globals) *cobra.Command {
 				}
 			} else {
 				for _, f := range findings {
-					printFinding(cmd, f)
+					printFinding(cmd, f, strict)
 				}
 			}
 			if bad {
+				// Say why the exit code is what it is. Under --strict, "invalid" and
+				// "valid but warned" both exit 2, and the difference is invisible
+				// otherwise - so a `ok` line above a exit 2 read as a bug in the tool
+				// rather than as the answer. See docs/review/ux.md UX-07.
+				if !g.json {
+					invalid, warned := 0, 0
+					for _, f := range findings {
+						switch {
+						case !f.Valid:
+							invalid++
+						case len(f.Warnings) > 0:
+							warned++
+						}
+					}
+					out := cmd.OutOrStdout()
+					switch {
+					case invalid > 0 && warned > 0:
+						fmt.Fprintf(out, "\n%d invalid, %d with warnings. Exit 2.\n", invalid, warned)
+					case invalid > 0:
+						fmt.Fprintf(out, "\n%d invalid. Exit 2.\n", invalid)
+					default:
+						fmt.Fprintf(out, "\n%d recipe(s) with warnings, and --strict makes a "+
+							"warning a failure. Exit 2.\nWithout --strict these are advisory "+
+							"and this command exits 0.\n", warned)
+					}
+				}
 				return &exitError{code: ExitError, err: errSilent{}}
 			}
 			return nil
@@ -110,7 +137,12 @@ func validateOne(ref string, strict bool) finding {
 	return f
 }
 
-func printFinding(cmd *cobra.Command, f finding) {
+// printFinding renders one recipe's verdict. Under --strict a warning is a failure, so
+// the status word has to say so, and every warning is indented under the recipe it
+// belongs to: `recipe validate ./recipes/*/` prints six of these, and an unattributed
+// `warning` line in the middle of that list belongs to nobody.
+// See docs/review/ux.md UX-07.
+func printFinding(cmd *cobra.Command, f finding, strict bool) {
 	w := cmd.OutOrStdout()
 	switch {
 	case !f.Valid:
@@ -118,11 +150,13 @@ func printFinding(cmd *cobra.Command, f finding) {
 		for _, e := range f.Errors {
 			_, _ = fmt.Fprintf(w, "         %s\n", e)
 		}
+	case strict && len(f.Warnings) > 0:
+		_, _ = fmt.Fprintf(w, "WARN     %s\n", f.Recipe)
 	default:
 		fmt.Fprintf(w, "ok       %s\n", f.Recipe)
 	}
 	for _, warn := range f.Warnings {
-		fmt.Fprintf(w, "warning  %s\n", warn)
+		fmt.Fprintf(w, "         warning: %s\n", warn)
 	}
 }
 
@@ -172,6 +206,12 @@ func newRecipeShow(g *globals) *cobra.Command {
 			if err != nil {
 				return fail(ExitError, "%v", err)
 			}
+			// Read once here rather than inside showDocument: the images have to be
+			// disclosed on every path, and --compose below needs the same bytes.
+			composeRaw, err := rec.ReadFile("compose.yaml")
+			if err != nil {
+				return fail(ExitError, "%v", err)
+			}
 			w := cmd.OutOrStdout()
 
 			if inputsOnly {
@@ -181,11 +221,11 @@ func newRecipeShow(g *globals) *cobra.Command {
 			case "json":
 				enc := json.NewEncoder(w)
 				enc.SetIndent("", "  ")
-				if err := enc.Encode(showDocument(res)); err != nil {
+				if err := enc.Encode(showDocument(res, composeRaw)); err != nil {
 					return fail(ExitError, "%v", err)
 				}
 			case "yaml", "":
-				out, err := yaml.Marshal(showDocument(res))
+				out, err := yaml.Marshal(showDocument(res, composeRaw))
 				if err != nil {
 					return fail(ExitError, "%v", err)
 				}
@@ -196,10 +236,6 @@ func newRecipeShow(g *globals) *cobra.Command {
 				return fail(ExitError, "--format %q: expected yaml or json", format)
 			}
 			if showCompose {
-				composeRaw, err := rec.ReadFile("compose.yaml")
-				if err != nil {
-					return fail(ExitError, "%v", err)
-				}
 				rendered, err := safety.Render(composeRaw, res.ComposeEnv())
 				if err != nil {
 					return fail(ExitError, "%v", err)
@@ -232,15 +268,23 @@ type shownInput struct {
 
 type shownRecipe struct {
 	Metadata recipe.Metadata `json:"metadata" yaml:"metadata"`
-	Vars     map[string]any  `json:"vars,omitempty" yaml:"vars,omitempty"`
-	Inputs   []shownInput    `json:"inputs" yaml:"inputs"`
-	Ready    []*recipe.Probe `json:"ready,omitempty" yaml:"ready,omitempty"`
-	Checks   []*recipe.Check `json:"checks" yaml:"checks"`
+	// Images is every container image this recipe will pull, listed before anything
+	// else a reader might act on. Running a recipe runs somebody else's images, which
+	// SPEC.md section 9.2 records as an accepted risk on the grounds that `recipe
+	// show` discloses them - and it did not disclose them at all until the session 4
+	// security review pointed out that the control the argument rests on was missing
+	// (docs/review/security.md SEC-07).
+	Images []string        `json:"images" yaml:"images"`
+	Vars   map[string]any  `json:"vars,omitempty" yaml:"vars,omitempty"`
+	Inputs []shownInput    `json:"inputs" yaml:"inputs"`
+	Ready  []*recipe.Probe `json:"ready,omitempty" yaml:"ready,omitempty"`
+	Checks []*recipe.Check `json:"checks" yaml:"checks"`
 }
 
-func showDocument(res *recipe.Resolved) shownRecipe {
+func showDocument(res *recipe.Resolved, composeRaw []byte) shownRecipe {
 	return shownRecipe{
 		Metadata: res.Recipe.Metadata,
+		Images:   recipeImages(composeRaw),
 		Vars:     res.Vars,
 		Inputs:   shownInputs(res),
 		Ready:    res.Recipe.Ready,
@@ -360,4 +404,30 @@ func newRecipeInit(g *globals) *cobra.Command {
 			"a database service becomes a dump or sqlite input, an exposed port becomes the ready probe")
 	AddExitCodes(cmd, RecipeExitCodes)
 	return cmd
+}
+
+// recipeImages lists every image the recipe's compose file names, sorted and
+// deduplicated. It reads the compose file rather than the safety schema's typed view
+// so that a service the schema would reject is still disclosed: the point is to show
+// what would be pulled, not what would be allowed.
+func recipeImages(composeRaw []byte) []string {
+	var doc struct {
+		Services map[string]struct {
+			Image string `yaml:"image"`
+		} `yaml:"services"`
+	}
+	if err := yaml.Unmarshal(composeRaw, &doc); err != nil {
+		return []string{"(compose.yaml could not be parsed, so the images are unknown)"}
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, svc := range doc.Services {
+		if svc.Image == "" || seen[svc.Image] {
+			continue
+		}
+		seen[svc.Image] = true
+		out = append(out, svc.Image)
+	}
+	sort.Strings(out)
+	return out
 }
