@@ -2626,12 +2626,15 @@ release on Linux and macOS runners and asserts the checksum-mismatch path fails.
 ### 12.6 Release checklist
 
 A session or a human must stop and get sign-off before tagging (see
-[CLAUDE.md](CLAUDE.md)). The checklist:
+[CLAUDE.md](CLAUDE.md)). The canonical, ordered checklist - including the repository
+settings that have to be turned on before any of this is safe - is
+[docs/release-checklist.md](docs/release-checklist.md). In summary:
 
 1. `CHANGELOG.md` updated, highlights written by a human;
 2. all recipes green on the latest `recipe-health` run;
-3. `docs/demo/*.txt` regenerated from a real run on this commit;
-4. `install.sh` tested against the *previous* release;
+3. `docs/demo/*.txt` and `docs/demo/demo.gif` regenerated from a real run on this commit;
+4. `install.sh` tested against the *previous* release - for v0.1.0 there is no previous
+   release, so it is tested against the draft's own assets before the draft is published;
 5. version bumped nowhere in source — the version comes from the tag via ldflags only.
 
 ---
