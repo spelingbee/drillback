@@ -1,0 +1,22 @@
+# SiYuan, deployed the way its README's Docker section says to: the b3log/siyuan image
+# with the workspace directory mounted and --workspace / --accessAuthCode passed.
+#
+# Deviation, recorded in steps.md: no published port. The drill drives SiYuan from a
+# curl container on this project's network.
+services:
+  siyuan:
+    image: b3log/siyuan:v3.8.2
+    # v3.8.2 moved the server behind a `serve` subcommand. The image's own README still
+    # shows the older form without it, which fails with "unknown flag: --accessAuthCode".
+    command: ["serve", "--workspace=/siyuan/workspace/", "--accessAuthCode=Drill-Password-1"]
+    environment:
+      TZ: Etc/UTC
+      # The image's entrypoint creates the siyuan user and drops to it, which it can
+      # only do as root; PUID/PGID are how it is told which uid to use.
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - siyuan-workspace:/siyuan/workspace
+
+volumes:
+  siyuan-workspace:

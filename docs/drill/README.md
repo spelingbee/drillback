@@ -37,6 +37,7 @@ reader:
 | [beszel](beszel/) | 24,830 | [hub installation](https://beszel.dev/guide/hub-installation) | 0.18.8 | **PASS** / **PARTIAL** | No backup page. The data directory restores everything; data.db alone restores an empty hub - 4 KiB in the file, 700 KiB in its -wal - and because the documented USER_EMAIL variables recreate the account, the person signs in with their own password and finds nothing there. |
 | [mealie](mealie/) | 13,095 | [Backups and Restores](https://docs.mealie.io/documentation/getting-started/usage/backups-and-restoring/) | v3.24.0 | **PASS** | The page recommends stopping the container and copying /app/data in bold, and that is exactly what works. The integrated backup zip was not tested; the reason is in result.md. |
 | [freshrss](freshrss/) | 15,873 | [Backup](https://freshrss.github.io/FreshRSS/en/admins/05_Backup.html) | 1.29.1 | **PASS** | The most precise backup page in the drill - each item marked required, recommended or optional, and one directory named as skippable. Both claims in its first sentence hold: ./data is what you need, and cache/ (55% of it here) can be left out. |
+| [siyuan](siyuan/) | 46,036 | [README, Docker section](https://github.com/siyuan-note/siyuan#docker-deployment) | v3.8.2 | **PASS** | No backup section. The workspace restores, and 37 of its 38 MB are the bundled themes under conf/appearance - the notes were 11 KB. The README's own start command also no longer runs on v3.8.2. |
 
 Verdicts:
 

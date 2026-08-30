@@ -1,0 +1,104 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: siyuan
+  title: SiYuan (workspace directory)
+  description: >
+    Verifies that a SiYuan backup restores: the kernel serves and still asks for the
+    access code, the notebooks and documents are on disk, and the workspace
+    configuration - which holds that access code and the API token - came back with them.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/siyuan-note/siyuan
+  tags: [notes, files]
+
+vars:
+  siyuan_port: 6806
+
+inputs:
+  workspace:
+    kind: dir
+    title: The SiYuan workspace directory
+    description: >
+      /siyuan/workspace, the directory --workspace names and the only thing the Docker
+      section of the README mounts. It holds conf/ (the access auth code, the API token
+      and every setting), data/ (the notebooks, one directory each, and the assets), and
+      temp/.
+    default_path: /siyuan/workspace
+    required: true
+    mount:
+      env: RESTORED_INPUT_workspace
+      into: siyuan:/siyuan/workspace
+
+ready:
+  # 401, not 200. An instance with an access auth code answers / with 401 until somebody
+  # types it, and that is the state a correctly restored instance is in.
+  - name: SiYuan's kernel is serving
+    kind: http
+    url: http://siyuan:{{ .vars.siyuan_port }}/
+    expect_status: 401
+    timeout: 300s
+    interval: 3s
+
+checks:
+  - id: serves-and-asks-for-the-code
+    title: The kernel serves, and still asks for the access code
+    kind: http
+    url: http://siyuan:{{ .vars.siyuan_port }}/
+    # Worth knowing what this does and does not prove. The access auth code is a
+    # launch flag, not something read out of the workspace, so this passes on a fresh
+    # instance too. It is here to catch the other direction: a kernel that came up
+    # unauthenticated because the restored workspace put it into some other mode.
+    expect:
+      status: 401
+
+  - id: notebook-restored
+    title: The notebook that was backed up is on disk
+    kind: exec
+    service: siyuan
+    command: ["sh", "-c", "grep -rl drill-canary-notebook /siyuan/workspace/data"]
+    timeout: 120s
+    expect:
+      exit_code: 0
+      stdout_matches: "conf.json"
+
+  - id: document-restored
+    title: The document's text is on disk
+    kind: exec
+    service: siyuan
+    # The .sy files are the documents. Grepping for the sentence that was typed into one
+    # is the cheapest thing that proves the notes came back rather than the notebook
+    # directory that holds them.
+    command: ["sh", "-c", "grep -rl 'this line proves the restore' /siyuan/workspace/data"]
+    timeout: 120s
+    expect:
+      exit_code: 0
+      stdout_matches: '[.]sy'
+
+test:
+  seed:
+    - name: create a notebook and a document through SiYuan's API
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://siyuan:6806
+          # The API token is generated on first boot and lives in the workspace, which
+          # is why this service mounts it read-only. A person copies it out of
+          # Settings -> About.
+          TOKEN=`grep -o '"token": *"[^"]*"' /ws/conf/conf.json | head -1 | sed 's/.*: *"//; s/"//'`
+          test -n "$TOKEN"
+          NB=`curl -sS -f -X POST "$B/api/notebook/createNotebook" \
+            -H "Authorization: Token $TOKEN" -H 'content-type: application/json' \
+            -d '{"name":"drill-canary-notebook"}' \
+            | sed -e 's/.*"id": *"//' -e 's/".*//'`
+          test -n "$NB"
+          curl -sS -f -o /dev/null -X POST "$B/api/filetree/createDocWithMd" \
+            -H "Authorization: Token $TOKEN" -H 'content-type: application/json' \
+            -d "{\"notebook\":\"$NB\",\"path\":\"/drill-canary-doc\",\"markdown\":\"drill canary note: this line proves the restore\"}"
+          echo "seeded notebook $NB with one document"
+  export: []

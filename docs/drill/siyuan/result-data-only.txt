@@ -1,0 +1,20 @@
+restored 0.1.0-dev · recipe siyuan · run jujqs5gr
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/siyuan/restic-data-only
+  snapshot   789b0086  2026-08-30 13:38:42  host=drill  tags=[drill]
+  inputs     workspace  /siyuan/workspace      840 B  4 files
+
+  restore    ok          1.7s   1 input
+  compose    ok          1.2s   1 service
+  ready      ok          4.2s   SiYuan's kernel is serving
+
+  CHECKS
+  ✔  serves-and-asks-for-the-code  The kernel serves, and still asks for the   0.67s
+                             access code
+  ✔  notebook-restored       The notebook that was backed up is on       0.45s
+                             disk
+  ✔  document-restored       The document's text is on disk              0.46s
+
+  PASS  3/3 checks  ·  total 9.2s  ·  teardown ok
+
+This backup boots.

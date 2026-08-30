@@ -27,11 +27,12 @@ Each directory has a README saying which of your directories each input is.
 | [`nextcloud`](nextcloud/) | Nextcloud (PostgreSQL) | directories + PostgreSQL | 6 | [source](https://github.com/nextcloud/server) |
 | [`open-webui`](open-webui/) | Open WebUI (SQLite) | directories + SQLite | 5 | [source](https://github.com/open-webui/open-webui) |
 | [`paperless-ngx`](paperless-ngx/) | Paperless-ngx (PostgreSQL + Redis) | directories + PostgreSQL | 5 | [source](https://github.com/paperless-ngx/paperless-ngx) |
+| [`siyuan`](siyuan/) | SiYuan (workspace directory) | directories | 3 | [source](https://github.com/siyuan-note/siyuan) |
 | [`trilium`](trilium/) | Trilium Notes (SQLite) | directories + SQLite | 4 | [source](https://github.com/TriliumNext/Trilium) |
 | [`uptime-kuma`](uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 | [source](https://github.com/louislam/uptime-kuma) |
 | [`vaultwarden`](vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 | [source](https://github.com/dani-garcia/vaultwarden) |
 
-18 recipes.
+19 recipes.
 
 Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute

@@ -310,6 +310,7 @@ rejects a recipe that breaks any of it.
 | [`nextcloud`](recipes/nextcloud/) | Nextcloud (PostgreSQL) | directories + PostgreSQL | 6 |
 | [`open-webui`](recipes/open-webui/) | Open WebUI (SQLite) | directories + SQLite | 5 |
 | [`paperless-ngx`](recipes/paperless-ngx/) | Paperless-ngx (PostgreSQL + Redis) | directories + PostgreSQL | 5 |
+| [`siyuan`](recipes/siyuan/) | SiYuan (workspace directory) | directories | 3 |
 | [`trilium`](recipes/trilium/) | Trilium Notes (SQLite) | directories + SQLite | 4 |
 | [`uptime-kuma`](recipes/uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 |
 | [`vaultwarden`](recipes/vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 |

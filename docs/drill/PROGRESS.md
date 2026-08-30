@@ -28,6 +28,7 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | 11 | beszel | PASS (the data directory) / PARTIAL (data.db alone) | `recipes/beszel`, passes `recipe test` | Four checks of five pass on an empty restore. |
 | 12 | mealie | PASS (the documented "best way") | `recipes/mealie`, passes `recipe test` | Integrated backup zip untested, reason recorded. |
 | 13 | FreshRSS | PASS (both readings) | `recipes/freshrss`, passes `recipe test` | The best backup page in the drill; both of its claims hold. |
+| 14 | siyuan | PASS (both readings) | `recipes/siyuan`, passes `recipe test` | 37 of 38 MB of the workspace are bundled themes. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T13:37:04Z",
+  "finished_at": "2026-08-30T13:37:59Z",
+  "duration_ms": 55637,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "siyuan",
+      "title": "SiYuan (workspace directory)",
+      "dir": "recipes\\siyuan",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "2 of 3 checks failed against an empty stack: notebook-restored, document-restored",
+          "duration_ms": 9093,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 9091,
+              "note": "2 of 3 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\siyuan --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 3 checks passed",
+          "duration_ms": 46038,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 1375,
+              "note": "2 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 4270,
+              "note": "SiYuan's kernel is serving"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 1000,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 1613,
+              "note": "138 files, 38757368 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 6146,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 20731,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 10790,
+              "note": "3 of 3 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\siyuan --stage b --keep"
+        }
+      ],
+      "duration_ms": 55636
+    }
+  ]
+}

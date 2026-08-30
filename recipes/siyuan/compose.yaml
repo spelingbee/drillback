@@ -1,0 +1,38 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  siyuan:
+    image: b3log/siyuan:v3.8.2
+    # v3.8.2 moved the server behind a `serve` subcommand; the image's own README still
+    # shows the older form, which fails with "unknown flag: --accessAuthCode".
+    command:
+      - serve
+      - --workspace=/siyuan/workspace/
+      - --accessAuthCode=Drill-Password-1
+    environment:
+      TZ: Etc/UTC
+      # The entrypoint creates the siyuan user and chowns the workspace to it, which is
+      # also what makes a restic-restored tree usable without a prepare service.
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - ${RESTORED_INPUT_workspace}:/siyuan/workspace
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile. It mounts the
+  # workspace read-only because SiYuan's API token is generated per instance and kept in
+  # conf/conf.json; there is no way to set it from outside.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    volumes:
+      - ${RESTORED_INPUT_workspace}:/ws:ro
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

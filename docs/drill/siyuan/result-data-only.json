@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "jujqs5gr",
+    "compose_project": "restored-jujqs5gr",
+    "started_at": "2026-08-30T13:38:43Z",
+    "finished_at": "2026-08-30T13:38:52Z",
+    "duration_ms": 9162,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-jujqs5gr"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "siyuan",
+    "title": "SiYuan (workspace directory)",
+    "source": "path",
+    "digest": "sha256:8b3e369120902264fa2ed4512d55da70a8b1bc83a02876f3ca90a415a1d0aeb8"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/siyuan/restic-data-only",
+    "snapshot": {
+      "id": "789b008620d8edeea7b22af46dbf7adf27a97a6fc51e446d502194807fd9caee",
+      "short_id": "789b0086",
+      "time": "2026-08-30T13:38:42.489622751Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/siyuan/workspace"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "workspace",
+      "kind": "dir",
+      "backup_path": "/siyuan/workspace",
+      "bytes": 840,
+      "files": 4,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1679,
+      "note": "1 input"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1190,
+      "services": [
+        "siyuan"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 4206,
+      "probes": [
+        {
+          "name": "SiYuan's kernel is serving",
+          "status": "ok",
+          "attempts": 2,
+          "duration_ms": 4206,
+          "error": "curl: (7) Failed to connect to siyuan port 6806 after 0 ms: Could not connect to server"
+        }
+      ],
+      "note": "SiYuan's kernel is serving"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves-and-asks-for-the-code",
+      "title": "The kernel serves, and still asks for the access code",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 674,
+      "expect": {
+        "status": 401
+      },
+      "observed": {
+        "status": 401,
+        "body_bytes": 41
+      },
+      "url": "http://siyuan:6806/"
+    },
+    {
+      "id": "notebook-restored",
+      "title": "The notebook that was backed up is on disk",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 453,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "conf.json"
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    },
+    {
+      "id": "document-restored",
+      "title": "The document's text is on disk",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 457,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "[.]sy"
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 3,
+    "checks_passed": 3,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}
