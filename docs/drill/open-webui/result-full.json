@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "7zakg22x",
+    "compose_project": "restored-7zakg22x",
+    "started_at": "2026-08-30T12:10:47Z",
+    "finished_at": "2026-08-30T12:10:50Z",
+    "duration_ms": 3439,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x"
+  },
+  "verdict": "ERROR",
+  "exit_code": 2,
+  "recipe": {
+    "name": "open-webui",
+    "title": "Open WebUI (SQLite)",
+    "source": "path",
+    "digest": "sha256:18b6842107c0bf51ce8d61ded10b093e07f235a01b912eca0b7208c60b32c32e"
+  },
+  "source": {
+    "kind": ""
+  },
+  "inputs": null,
+  "stages": [
+    {
+      "name": "restore",
+      "status": "failed",
+      "duration_ms": 2762,
+      "error": "restic restore: exit status 1: ignoring error for \\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\tokenizer_config.json: symlink ..\\..\\blobs\\c79f2b6a0cea6f4b564fed1938984bace9d30ff0 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\tokenizer_config.json: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\train_script.py: symlink ..\\..\\blobs\\82b47b6277499b8f17d139d0c651a6f961c06124 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\train_script.py: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\vocab.txt: symlink ..\\..\\blobs\\fb140275c155a9c7c5a3b3e0e77a9e839594a938 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\vocab.txt: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\config.json: symlink ..\\..\\blobs\\867cf1a0fece1394e01d55e287ba2f09a577c046 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\config.json: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\model.bin: symlink ..\\..\\blobs\\d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\model.bin: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\tokenizer.json: symlink ..\\..\\blobs\\7818adb6de9fa3064d3ff81226fdd675be1f6344 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\tokenizer.json: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\vocabulary.txt: symlink ..\\..\\blobs\\c9074644d9d1205686f16d411564729461324b75 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\vocabulary.txt: A required privilege is not held by the client.; Fatal: There were 46 errors"
+    }
+  ],
+  "checks": null,
+  "summary": {
+    "checks_total": 0,
+    "checks_passed": 0,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  },
+  "error": "restic restore: exit status 1: ignoring error for \\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\tokenizer_config.json: symlink ..\\..\\blobs\\c79f2b6a0cea6f4b564fed1938984bace9d30ff0 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\tokenizer_config.json: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\train_script.py: symlink ..\\..\\blobs\\82b47b6277499b8f17d139d0c651a6f961c06124 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\train_script.py: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\vocab.txt: symlink ..\\..\\blobs\\fb140275c155a9c7c5a3b3e0e77a9e839594a938 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\embedding\\models\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41\\vocab.txt: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\config.json: symlink ..\\..\\blobs\\867cf1a0fece1394e01d55e287ba2f09a577c046 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\config.json: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\model.bin: symlink ..\\..\\blobs\\d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\model.bin: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\tokenizer.json: symlink ..\\..\\blobs\\7818adb6de9fa3064d3ff81226fdd675be1f6344 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\tokenizer.json: A required privilege is not held by the client.; ignoring error for \\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\vocabulary.txt: symlink ..\\..\\blobs\\c9074644d9d1205686f16d411564729461324b75 \\\\?\\C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-7zakg22x\\restore\\opt\\open-webui\\cache\\whisper\\models\\models--Systran--faster-whisper-base\\snapshots\\ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66\\vocabulary.txt: A required privilege is not held by the client.; Fatal: There were 46 errors"
+}

@@ -1,0 +1,23 @@
+restored 0.1.0-dev · recipe open-webui · run 73ralap3
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/open-webui/restic-no-cache
+  snapshot   ea4c6a18  2026-08-30 12:10:55  host=drill  tags=[drill]
+  inputs     data  /opt/open-webui           1004.9 KiB  4 files
+             db    /opt/open-webui/webui.db  632.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.2s   1 service
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         15.1s   Open WebUI answers /health
+
+  CHECKS
+  ✔  health         The server reports itself healthy                    0.57s
+  ✔  db-integrity   The SQLite database passes PRAGMA integrity_check    0.01s
+                    → ok
+  ✔  users-present  At least one account survived the restore → 1        0.01s
+  ✔  chats-present  Chat history survived the restore → 1                0.01s
+  ✔  signin-works   The restored account can still sign in               0.79s
+
+  PASS  5/5 checks  ·  total 19.9s  ·  teardown ok
+
+This backup boots.

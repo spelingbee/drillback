@@ -43,13 +43,32 @@ mkdir -p "$BACKUP/data"
 docker run --rm -v "${PROJECT}_open-webui:/src:ro" -v "$(docker_path "$BACKUP/data"):/dst" \
   alpine:3.20 sh -c 'cp -a /src/. /dst/'
 ls -la "$BACKUP/data"
+echo "-- what the documented backup weighs, and where the weight is:"
 du -sh "$BACKUP/data" 2>/dev/null || true
+du -sh "$BACKUP"/data/* 2>/dev/null | sort -h || true
+echo "-- symlinks in it: $(find "$BACKUP/data" -type l 2>/dev/null | wc -l)"
 
 echo "== teardown of the seeded instance =="
 drill_down
 
+# ---------------------------------------------------------------- reading A: verbatim
+# All five things the backup page lists, cache/ included.
+REPO="$WORK/restic-full"; mkdir -p "$REPO"
 drill_restic "$BACKUP/data:/opt/open-webui"
+echo "== restore, reading A: the documented directory, all of it =="
+drill_check "$REPO_ROOT/recipes/open-webui" "$WORK/restic-full" \
+  "$APP_DIR/result-full.json" "$APP_DIR/result-full.txt"
 
-echo "== restore =="
-drill_check "$REPO_ROOT/recipes/open-webui" "$REPO" \
+# ------------------------------------------------------------- reading B: without cache
+# A deviation from the documented list, and the drill says so: cache/ is a Hugging Face
+# hub tree of downloaded model weights, and it is the reason reading A cannot even be
+# restored on this host. Everything a person put into Open WebUI is in the other four.
+echo "== reading B: the same directory with cache/ left out =="
+rm -rf "$BACKUP/data-no-cache"
+mkdir -p "$BACKUP/data-no-cache"
+(cd "$BACKUP/data" && tar cf - --exclude=./cache .) | (cd "$BACKUP/data-no-cache" && tar xf -)
+du -sh "$BACKUP/data-no-cache" 2>/dev/null || true
+REPO="$WORK/restic-no-cache"; mkdir -p "$REPO"
+drill_restic "$BACKUP/data-no-cache:/opt/open-webui"
+drill_check "$REPO_ROOT/recipes/open-webui" "$WORK/restic-no-cache" \
   "$APP_DIR/result.json" "$APP_DIR/result.txt"

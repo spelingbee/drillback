@@ -18,14 +18,13 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 |---|---|---|---|---|
 | 1 | n8n | PARTIAL (documented export) / PASS (data directory) | `recipes/n8n`, passes `recipe test` | Two documented readings, tested both. |
 | 2 | memos | PASS (data directory) / FAIL ("the database" alone) | `recipes/memos`, passes `recipe test` | The -wal file holds everything; the .db is 4 KiB. |
+| 4 | open-webui | SKIPPED (verbatim, host cannot restore its symlinks) / PASS (without cache/) | `recipes/open-webui`, passes `recipe test` | 1.1 GB of backup for 1 MB of data. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next
 
 Working down `docs/recipes-wanted.txt` from the top:
 
-- open-webui (150,348) - recipe and leg are written; the 2.4 GB image took about 35
-  minutes to pull and landed at 12:05 UTC, so the leg is next
 - immich (112,933)
 - Stirling-PDF (90,910)
 - appwrite (57,160)

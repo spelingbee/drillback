@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "73ralap3",
+    "compose_project": "restored-73ralap3",
+    "started_at": "2026-08-30T12:10:57Z",
+    "finished_at": "2026-08-30T12:11:16Z",
+    "duration_ms": 19945,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-73ralap3"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "open-webui",
+    "title": "Open WebUI (SQLite)",
+    "source": "path",
+    "digest": "sha256:18b6842107c0bf51ce8d61ded10b093e07f235a01b912eca0b7208c60b32c32e"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/open-webui/restic-no-cache",
+    "snapshot": {
+      "id": "ea4c6a18e015a7cb54d88e311526c648b46430231e48ea77b8f0171d22291ed2",
+      "short_id": "ea4c6a18",
+      "time": "2026-08-30T12:10:55.860792852Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/opt/open-webui"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/opt/open-webui",
+      "bytes": 1029064,
+      "files": 4,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/opt/open-webui/webui.db",
+      "bytes": 647168,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1678,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1241,
+      "services": [
+        "open-webui"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 5,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 15138,
+      "probes": [
+        {
+          "name": "Open WebUI answers /health",
+          "status": "ok",
+          "attempts": 5,
+          "duration_ms": 15138,
+          "error": "curl: (7) Failed to connect to open-webui port 8080 after 0 ms: Could not connect to server"
+        }
+      ],
+      "note": "Open WebUI answers /health"
+    }
+  ],
+  "checks": [
+    {
+      "id": "health",
+      "title": "The server reports itself healthy",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 566,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"status\"\\s*:\\s*true"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 15,
+        "matched": true
+      },
+      "url": "http://open-webui:8080/health"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 11,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "At least one account survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 12,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM user;"
+    },
+    {
+      "id": "chats-present",
+      "title": "Chat history survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 9,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM chat;"
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 785,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"token\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 1808,
+        "matched": true
+      },
+      "url": "http://open-webui:8080/api/v1/auths/signin"
+    }
+  ],
+  "summary": {
+    "checks_total": 5,
+    "checks_passed": 5,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}
