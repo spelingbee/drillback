@@ -191,7 +191,7 @@ func newRecipeShow(g *globals) *cobra.Command {
 				if err != nil {
 					return fail(ExitError, "%v", err)
 				}
-				rendered, err := safety.Interpolate(composeRaw, res.ComposeEnv())
+				rendered, err := safety.Render(composeRaw, res.ComposeEnv())
 				if err != nil {
 					return fail(ExitError, "%v", err)
 				}

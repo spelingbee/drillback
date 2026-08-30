@@ -2,31 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/spelingbee/restored/schema/compose-safety.schema.json",
   "title": "restored compose safety rules",
+  "description": "An allow-list, not a deny-list. A compose key that restored has not thought about is rejected, because the compose specification grows and a deny-list loses to it silently. See DECISIONS.md ADR-057.",
   "type": "object",
   "required": ["services", "networks"],
+  "additionalProperties": false,
   "properties": {
+    "name": {
+      "type": "string",
+      "description": "Ignored: restored names the compose project itself, per run."
+    },
     "services": {
       "type": "object",
       "minProperties": 1,
       "additionalProperties": {
         "type": "object",
         "required": ["image", "networks"],
-        "not": {
-          "anyOf": [
-            { "required": ["ports"] },
-            { "required": ["privileged"] },
-            { "required": ["network_mode"] },
-            { "required": ["pid"] },
-            { "required": ["ipc"] },
-            { "required": ["userns_mode"] },
-            { "required": ["devices"] },
-            { "required": ["device_cgroup_rules"] },
-            { "required": ["cgroup_parent"] },
-            { "required": ["build"] },
-            { "required": ["extends"] },
-            { "required": ["external_links"] }
-          ]
-        },
+        "additionalProperties": false,
         "properties": {
           "image": {
             "type": "string",
@@ -34,6 +25,30 @@
             "not": { "pattern": ":latest$" },
             "description": "Pinned tag required. `latest` makes a recipe untestable over time."
           },
+          "command": true,
+          "entrypoint": true,
+          "environment": true,
+          "user": { "type": ["string", "number"] },
+          "working_dir": { "type": "string" },
+          "hostname": { "type": "string" },
+          "depends_on": true,
+          "healthcheck": true,
+          "profiles": { "type": "array", "items": { "type": "string" } },
+          "labels": true,
+          "restart": { "enum": ["no", "always", "on-failure", "unless-stopped"] },
+          "stop_grace_period": { "type": "string" },
+          "stop_signal": { "type": "string" },
+          "init": { "type": "boolean" },
+          "read_only": { "type": "boolean" },
+          "expose": true,
+          "platform": { "type": "string" },
+          "shm_size": { "type": ["string", "number"] },
+          "mem_limit": { "type": ["string", "number"] },
+          "cpus": { "type": ["string", "number"] },
+          "pids_limit": { "type": ["string", "number"] },
+          "tmpfs": true,
+          "networks": true,
+          "cap_drop": { "type": "array", "items": { "type": "string" } },
           "cap_add": {
             "type": "array",
             "items": { "enum": ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"] },
@@ -51,9 +66,14 @@
                 {
                   "type": "object",
                   "required": ["type", "target"],
+                  "additionalProperties": false,
                   "properties": {
                     "type": { "enum": ["volume", "tmpfs"] },
-                    "target": { "type": "string", "pattern": "^/" }
+                    "source": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+                    "target": { "type": "string", "pattern": "^/" },
+                    "read_only": { "type": "boolean" },
+                    "volume": { "type": "object" },
+                    "tmpfs": { "type": "object" }
                   },
                   "description": "Long syntax may not use type: bind. Bind mounts are only expressible through the ${RESTORED_*} short form, which restored controls."
                 }
@@ -73,12 +93,28 @@
       "additionalProperties": {
         "type": "object",
         "required": ["internal"],
+        "additionalProperties": false,
         "properties": {
           "internal": { "const": true },
-          "external": { "const": false }
+          "external": { "const": false },
+          "labels": true,
+          "name": { "type": "string" },
+          "driver": { "const": "bridge" },
+          "attachable": { "type": "boolean" }
+        }
+      }
+    },
+    "volumes": {
+      "type": "object",
+      "description": "Named volumes only. `driver_opts` with type=none,o=bind turns a name that looks like a named volume into a bind mount of any host path, which is the isolation rule restated as its own bypass.",
+      "additionalProperties": {
+        "type": ["object", "null"],
+        "additionalProperties": false,
+        "properties": {
+          "labels": true,
+          "name": { "type": "string" }
         }
       }
     }
-  },
-  "not": { "required": ["include"] }
+  }
 }

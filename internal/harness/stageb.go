@@ -114,7 +114,7 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 	if err := safety.Validate(composeRaw, res); err != nil {
 		return failStage(st, err)
 	}
-	rendered, err := safety.Interpolate(composeRaw, res.ComposeEnv())
+	rendered, err := safety.Render(composeRaw, res.ComposeEnv())
 	if err != nil {
 		return failStage(st, err)
 	}

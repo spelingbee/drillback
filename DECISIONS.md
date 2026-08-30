@@ -1170,3 +1170,115 @@ its own compose file, which is `recipes/nextcloud`'s `prepare`. That is the same
 teaching the real procedure rather than working around the tool.
 
 Safe for the same reason as ADR-054: the workspace root is 0700 and lives for one run.
+
+## ADR-056: Interpolation may change a value, and nothing else
+
+**Status:** accepted
+**Extends:** ADR-039, SPEC.md section 9.3
+**Found by:** the session 4 security review, `docs/review/security.md` SEC-01
+
+**Context.** ADR-039 validates `compose.yaml` as written, with the `${RESTORED_*}`
+placeholders intact, because the schema's volume rule can only recognise a bind mount
+restored controls while the placeholder is still there. The consequence nobody wrote
+down is that the only structural check on the document happens *before* the values go
+in. Nothing re-read the file afterwards: `CheckResolvedMounts` parses
+`services.*.volumes` and nothing else, and `LabelCompose` round-trips the YAML.
+
+`vars` values are contributor-supplied strings, and a string containing a line break
+pasted into an unquoted scalar position does not fill in a value - it adds lines to
+the document. Proven against this repository: a recipe with
+
+```yaml
+vars:
+  port: "8080\n    privileged: true\n    network_mode: host\n    pid: host"
+```
+
+passed `restored recipe validate --strict` with exit 0, and `recipe show --compose`
+printed a service running privileged, on the host network, in the host PID namespace.
+Every bundled recipe already models the vulnerable shape, because
+`POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}` is unquoted in `recipes/gitea`. The
+blast radius is root on the machine running the drill, and root on the GitHub-hosted
+runner for every fork pull request `recipes.yml` tests.
+
+**Decision.** Interpolation is a value substitution and is now checked as one. A new
+`safety.Render` replaces every direct call to `safety.Interpolate`, and it asserts
+that the rendered document has the same *shape* as the document it came from: the
+same mapping keys at every path, the same sequence lengths, and a scalar wherever
+there was a scalar. Scalar values are free to differ; that is the point. Anything
+else differing means a substituted value was parsed as YAML structure.
+
+Two cheaper checks sit in front of it, for the message rather than for the coverage:
+`Interpolate` rejects a substituted value containing a line break and names the
+variable, and `Render` re-runs `checkForbiddenKeys` so a smuggled key is named.
+
+`safety.Validate` now renders the file and throws the result away, so that
+`recipe validate` - which is what CI gates a contributed recipe on and what a
+maintainer reads before merging - refuses the injection rather than discovering it
+minutes into a run.
+
+**Consequences.** The check is on the class, not the instance. A deny-list of
+injectable keys would have to grow with the compose specification; "interpolation adds
+no keys" does not. A recipe variable can no longer carry a multi-line value - a
+certificate, a private key, a config fragment - and must use an input instead, which
+is the correct place for anything that large and is what the error says.
+
+The cost is one extra YAML parse per render, on a path that is about to start
+containers.
+
+---
+
+## ADR-057: The compose safety schema is an allow-list
+
+**Status:** accepted
+**Supersedes the deny-list half of:** ADR-009, ADR-014
+**Found by:** the session 4 security review (`docs/review/security.md` SEC-02, SEC-04)
+and the maintainer review (`docs/review/maintainer.md` MNT-01)
+
+**Context.** `schema/compose-safety.schema.json` enumerated twelve keys to reject and
+accepted everything else, and it constrained only `services.*` and `networks.*`. Three
+holes followed from that shape, all confirmed accepted by
+`recipe validate --strict` with exit 0 against this repository:
+
+- The top-level `volumes:` block was not validated at all. A "named volume" with
+  `driver_opts: {type: none, device: /, o: bind}` is a bind mount of any host path,
+  and `CheckResolvedMounts` skipped it because `hostroot` is not a host path.
+  `device: /var/run` hands a container the Docker socket, which SPEC.md section 9.3
+  says restored never does. `external: true` with a `name:` attaches a volume
+  belonging to one of the user's other containers.
+- The service body accepted every key not on the deny-list.
+  `volumes_from: ["container:<name>"]` attaches the volumes of a container already
+  running on the host. `extra_hosts` with `host-gateway`, `uts: host`, `sysctls`,
+  `group_add`, `security_opt: label:disable` and `env_file: ../../../etc/passwd` were
+  all accepted.
+- Top-level `configs:` and `secrets:` both take a `file:` that the daemon reads from
+  the host.
+
+The pattern is the same each time: the compose specification grows, and a deny-list
+loses to it silently. Every new key is an unreviewed grant that nobody decided to
+make.
+
+**Decision.** Invert it. `additionalProperties: false` at the document root, on the
+service body, on the network body and on the volume body, with an enumerated
+allow-list of what a recipe legitimately needs. The root allows `services`,
+`networks`, `volumes` and `name`. A top-level volume may carry `labels` and `name`
+and nothing else - not `driver`, not `driver_opts`, not `external`. The long-syntax
+service volume is closed the same way.
+
+`forbiddenService` and the new `forbiddenTopLevel` stay, and are now purely about
+message quality: the schema rejects `privileged` with a JSON Schema error, and the Go
+rule rejects it first with a sentence explaining why. Both `env_file` and `sysctls`
+are deliberately outside the allow-list rather than inside it with a constraint.
+
+**Consequences.** A recipe that needs a compose key restored has not thought about now
+fails with "unknown key", and the contributor opens an issue instead of silently
+getting the grant. That is the trade this project wants: a maintainer merges a recipe
+without reading it, so the schema has to be the thing that is trusted, and a schema
+that accepts what it has not considered cannot be.
+
+All five bundled recipes validate unchanged under the allow-list - they use seven
+service keys between them - which is evidence that the list is not too tight, not
+proof. Widening it is a one-line pull request with a reason attached, which is the
+review this class of change should get.
+
+`internal/recipe/safety/bypass_test.go` holds one test per bypass above, so a
+regression names the finding it re-opens.

@@ -195,7 +195,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 
 	// ---- COMPOSE UP --------------------------------------------------------
 	upStart := time.Now()
-	rendered, err := safety.Interpolate(composeRaw, res.ComposeEnv())
+	rendered, err := safety.Render(composeRaw, res.ComposeEnv())
 	if err != nil {
 		return rep, kept, err
 	}

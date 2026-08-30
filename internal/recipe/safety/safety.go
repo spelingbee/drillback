@@ -223,7 +223,19 @@ func Validate(raw []byte, r *recipe.Resolved) error {
 	if err := CheckPlaceholders(raw, r); err != nil {
 		return err
 	}
-	return CheckServiceReferences(c, r.Recipe)
+	if err := CheckServiceReferences(c, r.Recipe); err != nil {
+		return err
+	}
+	// Render the file the way a run would, and throw the result away. The schema
+	// sees the compose file with its ${RESTORED_*} placeholders intact (ADR-039), so
+	// a variable whose value adds YAML to the document passes every check above and
+	// only fails minutes later, inside a run. Doing the substitution here means
+	// `recipe validate` - which is what CI gates a contributed recipe on, and what a
+	// maintainer reads before merging - refuses it. See DECISIONS.md ADR-056.
+	if _, err := Render(raw, r.ComposeEnv()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func quoteAll(names []string) string {
@@ -262,6 +274,17 @@ func Warnings(r *recipe.Recipe, composeRaw []byte) []string {
 // forbiddenService lists the compose keys that break the run's isolation. Each one is
 // also a `not` branch in schema/compose-safety.schema.json; the two must agree, and
 // the schema is the contract that CI's independent validator checks.
+// forbiddenTopLevel is the same idea as forbiddenService, for the document root.
+// `configs` and `secrets` both take a `file:` that the daemon reads from the host,
+// which is a host-file read dressed as a compose feature; the schema's
+// `additionalProperties: false` at the root rejects them too, and this exists so the
+// message names the key.
+var forbiddenTopLevel = map[string]string{
+	"include": "a recipe is one self-contained file",
+	"configs": "a `configs` entry reads a file from the host; a recipe's data comes from the backup",
+	"secrets": "a `secrets` entry reads a file from the host; a recipe's data comes from the backup",
+}
+
 var forbiddenService = map[string]string{
 	"ports":               "restored never publishes a port; checks run from a helper container on the run's internal network",
 	"privileged":          "a privileged container is not isolated from the host",
@@ -282,8 +305,10 @@ func checkForbiddenKeys(doc any) error {
 	if !ok {
 		return errors.New("compose.yaml: the document is not a mapping")
 	}
-	if _, bad := root["include"]; bad {
-		return errors.New("compose.yaml: `include` is not allowed: a recipe is one self-contained file")
+	for _, key := range sortedNames(root) {
+		if why, bad := forbiddenTopLevel[key]; bad {
+			return fmt.Errorf("compose.yaml: `%s` is not allowed at the top level: %s", key, why)
+		}
 	}
 	services, ok := root["services"].(map[string]any)
 	if !ok {

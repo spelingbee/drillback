@@ -42,6 +42,14 @@ func Interpolate(raw []byte, env map[string]string) ([]byte, error) {
 			missing = append(missing, name)
 			value = ""
 		}
+		// A line break in a substituted value is how a scalar becomes a new key in
+		// the document that docker compose is about to run. CheckInterpolationShape
+		// catches the consequence; this catches the cause, and names the variable.
+		if !singleLine(value) {
+			return nil, fmt.Errorf("compose.yaml: the value of ${%s} contains a line break, "+
+				"which would add lines to the compose file rather than fill in a value. "+
+				"Recipe variables are single-line values; use an input for anything larger", name)
+		}
 		b.WriteString(escapeDollars(value))
 		i = next - 1
 	}
