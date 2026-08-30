@@ -36,9 +36,21 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at GitHub's private reporting form at
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to
+the community leaders responsible for enforcement by opening a private report through
+GitHub: use **Security > Report a vulnerability** on
 <https://github.com/spelingbee/restored/security/advisories/new>, which reaches the
-repository owner and nobody else. All complaints will be reviewed and investigated promptly and fairly.
+repository owner and nobody else. The form is labelled for security reports; it is the
+private channel this repository has, and a conduct report sent through it is welcome
+and will be treated as a conduct report.
+
+**If your report concerns the maintainer**, that channel reaches the person you are
+reporting, which is no channel at all. Report to GitHub instead, through
+<https://support.github.com/contact/report-abuse>. GitHub's Acceptable Use Policies
+apply to this repository regardless of what this document says, and their enforcement
+does not depend on the maintainer's cooperation.
+
+All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 

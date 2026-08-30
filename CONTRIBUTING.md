@@ -190,6 +190,21 @@ non-trivial, the fork-and-branch route above is less work, not more.
 | `recipe-health.yml` | weekly | runs every recipe and opens an issue when one breaks |
 | `refresh-registry.yml` | after your PR merges | regenerates the recipe tables in `recipes/README.md` and `README.md`, so you never have to |
 
+**Your first pull request will show no checks at all for a while.** GitHub holds Actions
+runs from first-time contributors until a maintainer approves them, and that setting is
+deliberately on: `recipes.yml` pulls and runs container images that a pull request
+names. Nothing is wrong, and you do not need to do anything. Once approved, later pull
+requests from you run immediately.
+
+**Nothing here needs a secret.** The round trip builds its own restic repository inside
+the run workspace with a literal password and destroys it afterwards, so a fork behaves
+exactly like a branch. If a workflow ever seems to fail for want of a token, that is a
+bug in the workflow, not something you are missing.
+
+The single check that decides a recipe pull request is **`recipes / verdict`**. It is
+green when every recipe your change could have broken round-tripped, and green when
+your change touched no recipe at all.
+
 **A pull request that touches only `recipes/<name>/**` needs only `recipes.yml` to be
 green.** You are not expected to make the Go test suite pass to add a recipe, and you
 are not expected to run any generator: the two files that list every recipe are
@@ -299,3 +314,21 @@ Do not open a public issue. See [SECURITY.md](SECURITY.md).
 ## Code of conduct
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## Where to ask a question
+
+**[Discussions](https://github.com/spelingbee/restored/discussions).** That is the place
+for "does this fit my setup?", "is my backup the right shape for a recipe?", and
+anything you are still working out. Same promise as an issue: a first response within
+24 hours.
+
+"I got stuck writing a recipe" is a *welcome* question, not an admission. If the
+scaffold, the docs or an error message left you guessing, that is a bug in this project
+and the answer usually ends up as a change to one of them - which is worth more to the
+next person than the answer was to you.
+
+Open an issue instead when you have something specific: a recipe that stopped working,
+a bug you can reproduce, or an application you would like a recipe for. The templates
+collect what a maintainer needs; a question does not have to.

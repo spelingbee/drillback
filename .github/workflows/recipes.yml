@@ -212,3 +212,48 @@ jobs:
             recipe-test.json
           retention-days: 14
           if-no-files-found: warn
+
+  # The single job branch protection requires.
+  #
+  # `test` is a matrix, so its job names are `test (gitea)`, `test (nextcloud)` and so
+  # on - names that depend on which recipes a pull request happened to touch, and
+  # which therefore cannot be listed as required checks. And when nothing was selected
+  # the matrix is skipped entirely, which a required check would read as "never ran".
+  # So whether a recipe pull request is mergeable was an eyeball judgement on the
+  # checks tab, which is exactly the judgement this project is trying to mechanise.
+  #
+  # This job has a stable name, always runs, and is green when there was nothing to do.
+  # See docs/review/maintainer.md MNT-06.
+  verdict:
+    if: always()
+    needs: [select, test, test-sequential]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: every selected recipe round-tripped
+        env:
+          SELECT: ${{ needs.select.result }}
+          MATRIX: ${{ needs.test.result }}
+          SEQUENTIAL: ${{ needs.test-sequential.result }}
+          COUNT: ${{ needs.select.outputs.count }}
+        run: |
+          echo "select=$SELECT  test=$MATRIX  test-sequential=$SEQUENTIAL  recipes=$COUNT"
+          if [ "$SELECT" != "success" ]; then
+            echo "The recipe selection step did not succeed, so nothing was tested."
+            exit 1
+          fi
+          if [ "${COUNT:-0}" = "0" ]; then
+            echo "No recipe was touched by this change. Nothing to test, so: green."
+            exit 0
+          fi
+          # A skipped job is the other mode not running, which is expected: exactly
+          # one of test and test-sequential runs for any given change.
+          for result in "$MATRIX" "$SEQUENTIAL"; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "A recipe did not round-trip. Open the failing job above: the report"
+                 echo "under it names the check, what it expected and what it got."
+                 exit 1 ;;
+            esac
+          done
+          echo "Every selected recipe round-tripped."

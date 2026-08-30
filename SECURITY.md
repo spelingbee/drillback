@@ -4,9 +4,16 @@
 
 **Do not open a public issue.**
 
-Use GitHub's private reporting: **Security → Report a vulnerability** on
+Use GitHub's private reporting: **Security > Report a vulnerability** on
 <https://github.com/spelingbee/restored/security/advisories/new>. That opens a private
 advisory only the maintainers can see.
+
+**If that page is not there,** private vulnerability reporting has not been enabled on
+this repository yet. That is a setting, not a decision, and it is on the launch
+checklist - but a security policy that depends on one checkbox is not a policy. In that
+case, open a public issue containing *only* "I would like to report a security issue
+privately, please enable private reporting" and no detail at all, and wait to be
+contacted. Never put the detail in a public issue.
 
 What to expect:
 
