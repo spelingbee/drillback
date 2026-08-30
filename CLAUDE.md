@@ -35,7 +35,14 @@ gofmt -l .                  # must print nothing
 # recipes
 ./bin/restored recipe validate ./recipes/* --strict
 ./bin/restored recipe show gitea --inputs-only
-./bin/restored recipe test ./recipes/gitea      # NOT IMPLEMENTED; see PROGRESS.md
+./bin/restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+./bin/restored recipe test ./recipes/gitea      # the round trip, both stages
+make recipe-test                                # all five, in sequence
+
+# generated files - never edit these by hand
+make docs                   # docs/recipe-spec.md, from schema/recipe.schema.json
+make recipes-index          # recipes/README.md and the table in README.md
+make check-generated        # what CI diffs
 
 # demo output - never write this by hand
 make capture-demo           # scripts/capture-demo.sh > docs/demo/*.txt, and splices
@@ -61,7 +68,13 @@ go build -o bin/restored ./cmd/restored     # make build
 go test ./...                               # make test, minus -race, see below
 go test -tags integration ./... -timeout 30m  # make test-integration
 ./scripts/capture-demo.sh                   # make capture-demo
+go run ./tools/gen recipe-spec > docs/recipe-spec.md    # make docs
+go run ./tools/gen recipes-index > recipes/README.md    # make recipes-index,
+go run ./tools/gen readme-table                         #   which runs both
 ```
+
+Docker commands need `MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'` exported first, or
+Git Bash rewrites `/src` into `C:/Program Files/Git/src` before the daemon sees it.
 
 There is no C compiler here, so `-race` cannot run on the host. Run it in the same
 image CI uses:

@@ -3,7 +3,9 @@
   "projectOwner": "spelingbee",
   "repoType": "github",
   "repoHost": "https://github.com",
-  "files": ["README.md"],
+  "files": [
+    "README.md"
+  ],
   "imageSize": 80,
   "commit": true,
   "commitConvention": "angular",
@@ -11,17 +13,5 @@
   "contributorsPerLine": 6,
   "linkToUsage": true,
   "badgeTemplate": "[![All Contributors](https://img.shields.io/badge/all_contributors-<%= contributors.length %>-orange.svg)](#contributors)",
-  "types": {
-    "recipe": {
-      "symbol": "🍲",
-      "description": "Contributed a recipe: the unit of contribution here, and the thing this project is counting.",
-      "link": "https://github.com/<%= projectOwner %>/<%= projectName %>/commits?author=<%= username %>"
-    },
-    "hint": {
-      "symbol": "💡",
-      "description": "Added a rule to docs/hints.yaml, turning a confusing restore failure into an explanation.",
-      "link": "https://github.com/<%= projectOwner %>/<%= projectName %>/commits?author=<%= username %>"
-    }
-  },
   "contributors": []
 }

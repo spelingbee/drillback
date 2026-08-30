@@ -290,9 +290,9 @@ often twenty lines in that file.
 
 None yet — this repository has never been public. The list above follows the
 [all-contributors](https://allcontributors.org) specification and is configured in
-[`.all-contributorsrc`](.all-contributorsrc); the bot that maintains it is not
-installed, because installing an app is one of the stop points in
-[CLAUDE.md](CLAUDE.md).
+[`.all-contributorsrc`](.all-contributorsrc), using that specification's built-in
+contribution types; the bot that maintains it is not installed, because installing an
+app is one of the stop points in [CLAUDE.md](CLAUDE.md).
 
 `scripts/contributors.sh` prints the number this project is actually trying to move:
 distinct people, other than the owner and other than a bot, with a pull request merged
