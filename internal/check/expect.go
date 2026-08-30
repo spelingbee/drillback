@@ -7,37 +7,18 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spelingbee/restored/internal/observe"
 	"github.com/spelingbee/restored/internal/recipe"
 )
 
-// Observation is what a check saw. Only the fields a kind produces are populated, and
-// only populated fields reach the JSON report.
-type Observation struct {
-	Status    *int   `json:"status,omitempty"`
-	BodyBytes *int   `json:"body_bytes,omitempty"`
-	Matched   *bool  `json:"matched,omitempty"`
-	Value     string `json:"value,omitempty"`
-	Rows      *int   `json:"rows,omitempty"`
-	ExitCode  *int   `json:"exit_code,omitempty"`
-	Count     *int   `json:"count,omitempty"`
-	Entries   *int   `json:"entries,omitempty"`
-	Bytes     *int64 `json:"bytes,omitempty"`
-	Exists    *bool  `json:"exists,omitempty"`
-	IsDir     *bool  `json:"is_dir,omitempty"`
-	Error     string `json:"error,omitempty"`
-
-	// Not serialised: the raw material the expect keys and the hint matcher read.
-	Body    string `json:"-"`
-	Stdout  string `json:"-"`
-	Stderr  string `json:"-"`
-	Summary string `json:"-"`
-}
+// Observation and Failure live in internal/observe, which imports nothing. They are
+// part of the report's public JSON, and a wire type defined inside an execution
+// package is one rename away from a silent breaking change. These aliases mean the
+// rest of the tree still says check.Observation. See DECISIONS.md ADR-062.
+type Observation = observe.Observation
 
 // Failure is one unmet expectation, in the "expect / got" shape the report prints.
-type Failure struct {
-	Expect string `json:"expect"`
-	Got    string `json:"got"`
-}
+type Failure = observe.Failure
 
 // Evaluate applies the expect vocabulary to an observation. Every key is checked, so a
 // report shows every way a check missed rather than only the first.

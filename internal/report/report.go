@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/spelingbee/restored/internal/check"
+	"github.com/spelingbee/restored/internal/observe"
 	"github.com/spelingbee/restored/internal/recipe"
 	"github.com/spelingbee/restored/internal/source"
 )
@@ -105,16 +105,16 @@ type ProbeResult struct {
 
 // Check is one check as the report shows it.
 type Check struct {
-	ID         string            `json:"id"`
-	Title      string            `json:"title"`
-	Kind       string            `json:"kind"`
-	Status     string            `json:"status"`
-	DurationMS int64             `json:"duration_ms"`
-	Expect     recipe.Expect     `json:"expect"`
-	Observed   check.Observation `json:"observed"`
-	Query      string            `json:"query,omitempty"`
-	URL        string            `json:"url,omitempty"`
-	Failures   []check.Failure   `json:"failures,omitempty"`
+	ID         string              `json:"id"`
+	Title      string              `json:"title"`
+	Kind       string              `json:"kind"`
+	Status     string              `json:"status"`
+	DurationMS int64               `json:"duration_ms"`
+	Expect     recipe.Expect       `json:"expect"`
+	Observed   observe.Observation `json:"observed"`
+	Query      string              `json:"query,omitempty"`
+	URL        string              `json:"url,omitempty"`
+	Failures   []observe.Failure   `json:"failures,omitempty"`
 }
 
 // Summary is the count automation depends on.

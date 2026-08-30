@@ -1476,3 +1476,49 @@ anyone who wants to parse it.
 The harness JSON is larger, because it now nests up to two check reports per recipe.
 That is the point of it. The 200-line-per-service log embedding that makes it large is
 its own finding (SEC-08) with its own entry in the backlog.
+
+## ADR-062: The report's wire types live in a package that imports nothing
+
+**Status:** accepted
+**Implements:** SPEC.md section 13.1, which has said this since session 1
+**Found by:** the session 4 architecture review (`docs/review/architecture.md` ARCH-03)
+
+**Context.** SPEC.md 13.1 says `internal/report` "is a pure function of its input
+struct. It does no I/O beyond writing to a supplied `io.Writer`, and it never reaches
+back into `check` or `compose`." The package comment repeated it verbatim. The import
+graph disagreed:
+
+```text
+$ go list -deps ./internal/report | grep spelingbee
+github.com/spelingbee/restored/internal/compose
+github.com/spelingbee/restored/internal/recipe
+github.com/spelingbee/restored/internal/sqlite
+github.com/spelingbee/restored/internal/check
+...
+```
+
+The I/O half of the rule held. The import half did not: `report.Check.Observed` was
+typed `check.Observation`, so `report` pulled in `check`, and with it `compose` (which
+shells out to docker) and `sqlite` (which links a SQL driver).
+
+Compile time was never the point. The point is that `checks[].observed` is part of the
+report's public JSON, which `report.SchemaVersion` promises is only added to within a
+major version - and it was defined by a struct in an execution package, where renaming
+a field for an internal reason breaks every downstream consumer with a green build and
+green tests.
+
+**Decision.** `Observation` and `Failure` move to `internal/observe`, a leaf package
+that imports nothing but the standard library. `internal/check` keeps the names as
+type aliases, so the rest of the tree still says `check.Observation` and no other file
+changes. `internal/report` imports `observe`.
+
+`internal/report/boundary_test.go` reads the import graph with `go list -deps` and
+fails if `report` ever depends on a package that runs things. The violation was found
+by reading the import graph, so the import graph is what the test reads.
+
+**Consequences.** Re-typing a report field is now a change to a package whose entire
+job is the wire format, next to the comment that promises the field is stable. The
+golden-file tests in `report` really are testing a pure function.
+
+`internal/report`'s remaining module dependencies are `observe`, `recipe`, `source`
+and the embedded-assets root - all data.
