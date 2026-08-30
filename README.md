@@ -302,6 +302,7 @@ rejects a recipe that breaks any of it.
 | [`gogs`](recipes/gogs/) | Gogs (SQLite) | directories + SQLite | 7 |
 | [`gotify`](recipes/gotify/) | Gotify (SQLite) | directories + SQLite | 6 |
 | [`listmonk`](recipes/listmonk/) | listmonk (PostgreSQL) | PostgreSQL + directories | 6 |
+| [`mealie`](recipes/mealie/) | Mealie (SQLite) | directories + SQLite | 5 |
 | [`memos`](recipes/memos/) | Memos (SQLite) | directories + SQLite | 5 |
 | [`n8n`](recipes/n8n/) | n8n (SQLite) | directories + SQLite | 6 |
 | [`navidrome`](recipes/navidrome/) | Navidrome (SQLite) | directories + SQLite | 6 |

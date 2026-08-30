@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T13:21:51Z",
+  "finished_at": "2026-08-30T13:23:00Z",
+  "duration_ms": 68709,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "mealie",
+      "title": "Mealie (SQLite)",
+      "dir": "recipes\\mealie",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "1 of 5 checks failed against an empty stack: recipes-present",
+          "duration_ms": 16769,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 16766,
+              "note": "1 of 5 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\mealie --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 5 checks passed",
+          "duration_ms": 51415,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 2062,
+              "note": "3 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 11489,
+              "note": "Mealie answers /api/app/about"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 1183,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 458,
+              "note": "5 files, 1439406 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 4975,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 20760,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 10433,
+              "note": "5 of 5 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\mealie --stage b --keep"
+        }
+      ],
+      "duration_ms": 68708
+    }
+  ]
+}

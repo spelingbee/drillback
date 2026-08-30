@@ -19,6 +19,7 @@ Each directory has a README saying which of your directories each input is.
 | [`gogs`](gogs/) | Gogs (SQLite) | directories + SQLite | 7 | [source](https://github.com/gogs/gogs) |
 | [`gotify`](gotify/) | Gotify (SQLite) | directories + SQLite | 6 | [source](https://github.com/gotify/server) |
 | [`listmonk`](listmonk/) | listmonk (PostgreSQL) | PostgreSQL + directories | 6 | [source](https://github.com/knadh/listmonk) |
+| [`mealie`](mealie/) | Mealie (SQLite) | directories + SQLite | 5 | [source](https://github.com/mealie-recipes/mealie) |
 | [`memos`](memos/) | Memos (SQLite) | directories + SQLite | 5 | [source](https://github.com/usememos/memos) |
 | [`n8n`](n8n/) | n8n (SQLite) | directories + SQLite | 6 | [source](https://github.com/n8n-io/n8n) |
 | [`navidrome`](navidrome/) | Navidrome (SQLite) | directories + SQLite | 6 | [source](https://github.com/navidrome/navidrome) |
@@ -29,7 +30,7 @@ Each directory has a README saying which of your directories each input is.
 | [`uptime-kuma`](uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 | [source](https://github.com/louislam/uptime-kuma) |
 | [`vaultwarden`](vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 | [source](https://github.com/dani-garcia/vaultwarden) |
 
-16 recipes.
+17 recipes.
 
 Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute

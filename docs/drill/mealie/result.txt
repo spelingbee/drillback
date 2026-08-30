@@ -1,0 +1,25 @@
+restored 0.1.0-dev · recipe mealie · run tckhhzlz
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/mealie/restic-data
+  snapshot   a58198ee  2026-08-30 13:23:40  host=drill  tags=[drill]
+  inputs     data  /app/data              1.4 MiB  5 files
+             db    /app/data/mealie.db    1.3 MiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          2.0s   2 services
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok          4.2s   Mealie answers /api/app/about
+
+  CHECKS
+  ✔  api-answers           The API answers with its version              0.62s
+  ✔  db-integrity          The SQLite database passes PRAGMA             0.01s
+                           integrity_check → ok
+  ✔  users-present         The accounts survived the restore → 1         0.00s
+  ✔  recipes-present       The recipe that was backed up survived the    0.00s
+                           restore → 1
+  ✔  token-secret-present  The file that signs Mealie's sessions came    0.00s
+                           back → 64 bytes
+
+  PASS  5/5 checks  ·  total 8.9s  ·  teardown ok
+
+This backup boots.

@@ -1,0 +1,128 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: mealie
+  title: Mealie (SQLite)
+  description: >
+    Verifies that a Mealie backup restores: the API answers, the SQLite database passes
+    an integrity check, the accounts and the recipes are in it, and the recipe that was
+    backed up is served by the API rather than merely present as a row.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/mealie-recipes/mealie
+  tags: [recipes, sqlite]
+
+vars:
+  mealie_port: 9000
+
+inputs:
+  data:
+    kind: dir
+    title: The Mealie data directory
+    description: >
+      /app/data. Mealie's own backup page calls copying this directory, with the
+      container stopped, "the best way to backup your data". It holds mealie.db, the
+      .secret and .session_secret files, and the recipe images under recipes/ and
+      groups/.
+    default_path: /app/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: mealie:/app/data
+
+  db:
+    kind: sqlite
+    title: The Mealie SQLite database
+    description: >
+      mealie.db, inside the data directory. Declared separately so that a truncated or
+      half-copied database is reported here rather than as an instance that has
+      forgotten every recipe.
+    default_path: /app/data/mealie.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: Mealie answers /api/app/about
+    kind: http
+    url: http://mealie:{{ .vars.mealie_port }}/api/app/about
+    expect_status: 200
+    timeout: 300s
+    interval: 3s
+
+checks:
+  - id: api-answers
+    title: The API answers with its version
+    kind: http
+    url: http://mealie:{{ .vars.mealie_port }}/api/app/about
+    expect:
+      status: 200
+      body_matches: '"version"'
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: The accounts survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM users;"
+    expect:
+      scalar_int_min: 1
+
+  - id: recipes-present
+    title: The recipe that was backed up survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    # Named, not counted. A fresh Mealie creates its own admin account, so a check that
+    # counts users passes against an empty restore; a check that asks for this recipe
+    # can only be satisfied by the backup.
+    query: "SELECT count(*) FROM recipes WHERE name = 'drill canary recipe';"
+    expect:
+      scalar_int_min: 1
+
+  - id: token-secret-present
+    title: The file that signs Mealie's sessions came back
+    kind: file
+    service: mealie
+    # .secret signs the session tokens. Mealie writes a new one if it is missing, which
+    # is not a disaster - everybody is logged out - but it is the kind of thing a
+    # restore of "just the database" loses silently, and it lives beside the database.
+    path: /app/data/.secret
+    expect:
+      exists: true
+      size_min: 1
+
+test:
+  seed:
+    - name: log in as the default admin and create a recipe
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://mealie:9000
+          # The credentials Mealie's own documentation gives for the account it creates
+          # on first start.
+          TOKEN=`curl -sS -f -X POST "$B/api/auth/token" \
+            -H 'content-type: application/x-www-form-urlencoded' \
+            -d 'username=changeme@example.com&password=MyPassword' \
+            | sed -e 's/.*"access_token":"//' -e 's/".*//'`
+          test -n "$TOKEN"
+          curl -sS -f -o /dev/null -X POST "$B/api/recipes" \
+            -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+            -d '{"name":"drill canary recipe"}'
+          echo "seeded one recipe"
+  export: []

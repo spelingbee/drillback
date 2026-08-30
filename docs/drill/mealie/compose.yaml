@@ -1,0 +1,17 @@
+# Mealie, deployed the way https://docs.mealie.io/documentation/getting-started/installation/
+# says to: the ghcr.io/mealie-recipes/mealie image with /app/data on a volume.
+#
+# Deviation, recorded in steps.md: no published port. The account is the one Mealie
+# creates for itself on first start, with the credentials its own documentation gives:
+# changeme@example.com / MyPassword.
+services:
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:v3.24.0
+    environment:
+      ALLOW_SIGNUP: "false"
+      BASE_URL: http://mealie:9000
+    volumes:
+      - mealie-data:/app/data
+
+volumes:
+  mealie-data:
