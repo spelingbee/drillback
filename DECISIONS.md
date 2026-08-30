@@ -1347,3 +1347,40 @@ first failure - a recipe default path that is not the user's layout - reaches th
 as a report with the stages, the workspace, a message naming `--input`, and a hint
 carrying a runnable `restic ls latest` command. It used to be one line of prose with
 nothing to do next.
+
+## ADR-059: A repository string is scrubbed before it is shown to anyone
+
+**Status:** accepted
+**Implements:** SPEC.md section 9.3, which has promised this since session 1
+**Found by:** the session 4 security review (`docs/review/security.md` SEC-03)
+
+**Context.** `repositoryLabel` returned `--from` unchanged, or `RESTIC_REPOSITORY`,
+and the result became `report.source.repository`: printed by the TTY report, written
+by `--json` and `--report`, and echoed into the debug log as part of the restic argv.
+
+restic's REST backend takes credentials inside the repository string -
+`rest:https://user:password@host:8000/` is documented upstream and is a common
+configuration - and so do S3, Azure, B2, Swift and rclone. SPEC.md section 9.3 said
+the URL "is scrubbed of any `user:password@` userinfo". Nothing scrubbed anything:
+`grep -rn -i 'scrub|userinfo|redact' --include='*.go' .` returned nothing.
+
+The issue templates ask a reporter to attach the JSON report. SECURITY.md names this
+exact case as in scope.
+
+**Decision.** One function, `restic.SafeRepository`, used by `repositoryLabel` and by
+the debug line that prints the restic argv. It parses the part after the backend
+prefix as a URL and, when there is a password, keeps the user name and drops the
+password. The user name stays because it is often the only way to tell two
+repositories apart in a report, and it is not the secret.
+
+Backends whose second half is not a URL are left alone by name, which is what keeps a
+local path - and a Windows drive letter, whose colon looks exactly like a backend
+prefix - untouched.
+
+**Consequences.** The report can still be attached to a bug report, which is what it
+is for. `sftp:user@host:/path` is unchanged, because it carries no password.
+
+This does not make the report safe to publish in general: SEC-08 (200 lines of every
+service's container log) and SEC-06 (`expect.glob` as a filesystem oracle) are
+separate findings with their own entries in the issue tracker. It closes the one that
+was a promise in the specification.

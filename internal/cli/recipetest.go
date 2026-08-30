@@ -114,7 +114,7 @@ func newRecipeTest(g *globals) *cobra.Command {
 	fl.StringVar(&pull, "pull", "missing", "Image pull policy: always|missing|never")
 	fl.StringVar(&workspace, "workspace", "",
 		"Parent directory for the run workspaces (default: the OS temp directory)")
-	cmd.SetHelpTemplate(cmd.HelpTemplate() + `
+	cmd.SetHelpTemplate(defaultHelpTemplate() + `
 Exit codes:
   0  every recipe passed both stages
   1  stage B failed: the round trip did not restore

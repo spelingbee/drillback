@@ -22,7 +22,8 @@ func newRecipe(g *globals) *cobra.Command {
 			"test assets. It declares the logical inputs an application needs — not your paths —\n" +
 			"plus the probes that say the app is up and the checks that say the data survived.",
 	}
-	cmd.AddCommand(newRecipeValidate(g), newRecipeShow(g), newRecipeInit(), newRecipeTest(g))
+	cmd.AddCommand(newRecipeValidate(g), newRecipeShow(g), newRecipeInit(g), newRecipeTest(g))
+	AddExitCodes(cmd, RecipeExitCodes)
 	return cmd
 }
 
@@ -75,6 +76,7 @@ func newRecipeValidate(g *globals) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&strict, "strict", false,
 		"Also fail on warnings: missing maintainer, an image reference without a tag, a recipe with fewer than two checks")
+	AddExitCodes(cmd, RecipeExitCodes)
 	return cmd
 }
 
@@ -142,6 +144,13 @@ func newRecipeShow(g *globals) *cobra.Command {
 			"Use this to see exactly what `restored check` would do, without running anything.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// --json is a global flag, advertised under Global Flags in this
+			// command's own help, and it used to emit YAML. Two flag names mean JSON
+			// in this tool; on this command they now mean the same thing. See
+			// docs/review/ux.md UX-05.
+			if g.json {
+				format = "json"
+			}
 			inputMap, err := keyValues(inputs, "input")
 			if err != nil {
 				return fail(ExitError, "%v", err)
@@ -197,16 +206,17 @@ func newRecipeShow(g *globals) *cobra.Command {
 				}
 				fmt.Fprintf(w, "\n# --- rendered compose.yaml ---\n%s", rendered)
 			}
-			_ = g
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&format, "format", "yaml", "yaml|json")
+	cmd.Flags().StringVar(&format, "format", "yaml",
+		"yaml|json. --json is equivalent to --format json")
 	cmd.Flags().StringArrayVar(&inputs, "input", nil, "Override an input path (repeatable), as name=path")
 	cmd.Flags().StringArrayVar(&sets, "set", nil, "Override a variable (repeatable), as key=value")
 	cmd.Flags().BoolVar(&showCompose, "compose", false, "Also print the rendered compose.yaml")
 	cmd.Flags().BoolVar(&inputsOnly, "inputs-only", false,
 		"Print only the resolved input table — the fastest way to answer \"which paths does this recipe want from my backup?\"")
+	AddExitCodes(cmd, RecipeExitCodes)
 	return cmd
 }
 
@@ -280,7 +290,7 @@ func writeInputTable(w interface{ Write([]byte) (int, error) }, res *recipe.Reso
 
 // ---- init ------------------------------------------------------------------
 
-func newRecipeInit() *cobra.Command {
+func newRecipeInit(g *globals) *cobra.Command {
 	var (
 		dir      string
 		db       string
@@ -299,6 +309,15 @@ func newRecipeInit() *cobra.Command {
 			"you do, because it is the only thing that makes the recipe worth anything.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Rejected rather than ignored. `recipe init` writes files and prints
+			// what it wrote; there is no machine-readable version of that, and
+			// accepting the flag silently teaches a script that it worked.
+			if g.json {
+				return fail(ExitError,
+					"--json: recipe init has no machine-readable output. It writes files "+
+						"and prints what it wrote; `restored recipe show <dir> --json` will "+
+						"read the result back")
+			}
 			name := args[0]
 			if from != "" {
 				return initFromCompose(cmd, name, dir, from, force)
@@ -339,5 +358,6 @@ func newRecipeInit() *cobra.Command {
 	cmd.Flags().StringVar(&from, "compose", "",
 		"Read an existing compose file and propose a recipe from it: volumes become dir inputs, "+
 			"a database service becomes a dump or sqlite input, an exposed port becomes the ready probe")
+	AddExitCodes(cmd, RecipeExitCodes)
 	return cmd
 }

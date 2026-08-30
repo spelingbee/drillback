@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // Versions is what the runtime reports about itself. An empty field means the
@@ -49,7 +50,22 @@ func Preflight(ctx context.Context, needRestic bool) error {
 	return nil
 }
 
+// probeTimeout bounds a single version query. `docker version` against an
+// unreachable daemon does not fail fast: with a docker context pointing at a host
+// that is down, or a remote TCP daemon behind a dropped route, the CLI waits on the
+// connection. Preflight runs before the run context exists (it has to - it is what
+// decides whether there can be a run), so without a deadline of its own a cron job
+// with a stale docker context hangs past its --timeout and forever. `restored
+// version` is worse, because its whole purpose is to be runnable when the
+// environment is broken. See docs/review/architecture.md ARCH-05.
+//
+// Ten seconds is enormous for a version query and short enough that a hung daemon is
+// reported rather than waited on.
+const probeTimeout = 10 * time.Second
+
 func output(ctx context.Context, name string, args ...string) string {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -60,6 +76,8 @@ func output(ctx context.Context, name string, args ...string) string {
 }
 
 func errOutput(ctx context.Context, name string, args ...string) string {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	var out bytes.Buffer
 	cmd.Stderr = &out

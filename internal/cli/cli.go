@@ -114,15 +114,7 @@ func newRoot() *cobra.Command {
 	root.PersistentFlags().BoolVar(&g.noNudge, "no-nudge", false, `Never print the "contribute this recipe" invitation`)
 
 	root.AddCommand(newCheck(g), newRecipe(g), newVersion(g))
-	root.SetHelpTemplate(root.HelpTemplate() + `
-Exit codes:
-  0   all checks passed
-  1   restore unusable — one or more checks failed, or the app never became ready
-  2   tool or runtime error — docker missing, restic failed, recipe invalid, timeout
-      before any check could run
-
-Docs: https://github.com/spelingbee/restored
-`)
+	AddExitCodes(root, CheckExitCodes)
 	return root
 }
 
@@ -138,3 +130,49 @@ func keyValues(pairs []string, flag string) (map[string]string, error) {
 	}
 	return out, nil
 }
+
+// CheckExitCodes is the contract for `restored check` and for the root command, which
+// is a synonym for it in a user's head. It is the only place the three-way split is
+// true: `recipe validate`, `recipe show`, `recipe init` and `version` return 0 or 2
+// and never 1, so promising them "1 means checks failed" invites a shell script to
+// write a branch that can never be taken. See docs/review/ux.md UX-04.
+const CheckExitCodes = `
+Exit codes:
+  0    all checks passed
+  1    restore unusable - the drill finished and one or more checks failed, or the
+       application never became ready
+  2    tool or runtime error - docker missing, restic failed, recipe invalid, or the
+       run exceeded --timeout before it could reach a verdict
+  130  interrupted - the workspace and the compose project may still exist
+
+Docs: https://github.com/spelingbee/restored
+`
+
+// RecipeExitCodes is the contract for the recipe subcommands that only ever answer
+// "this is fine" or "this could not be done as written".
+const RecipeExitCodes = `
+Exit codes:
+  0    ok
+  2    the recipe is invalid, or the command could not be run as written
+
+Docs: https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md
+`
+
+// AddExitCodes appends an exit-code footer to one command's help, rather than to the
+// root template that every subcommand inherits.
+//
+// It builds from the default template, not from cmd.HelpTemplate(): a child with no
+// template of its own returns its parent's, so appending to that would print the
+// root's footer and then its own underneath it.
+func AddExitCodes(cmd *cobra.Command, footer string) {
+	cmd.SetHelpTemplate(defaultHelpTemplate() + footer)
+}
+
+// NoExitCodes gives a command the plain help, with no exit-code footer at all. It is
+// for `version`, which is documented never to fail, and for which "0 all checks
+// passed" was simply false.
+func NoExitCodes(cmd *cobra.Command) {
+	cmd.SetHelpTemplate(defaultHelpTemplate())
+}
+
+func defaultHelpTemplate() string { return (&cobra.Command{}).HelpTemplate() }

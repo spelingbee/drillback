@@ -83,6 +83,7 @@ func newCheck(g *globals) *cobra.Command {
 	fl.StringVar(&f.reportFile, "report", "", "Also write the JSON report to this file")
 	fl.StringVar(&f.hintsFile, "hints", "", "Load additional hint rules, matched before the built-in ones")
 	fl.BoolVar(&f.noNudge, "no-nudge", false, `Never print the "contribute this recipe" invitation`)
+	AddExitCodes(cmd, CheckExitCodes)
 	return cmd
 }
 

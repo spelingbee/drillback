@@ -50,6 +50,7 @@ func newVersion(g *globals) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Machine-readable output")
+	NoExitCodes(cmd)
 	return cmd
 }
 

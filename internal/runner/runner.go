@@ -108,13 +108,16 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		finish(rep, started)
 	}()
 
-	// ---- RESOLVE -----------------------------------------------------------
-	if err := compose.Preflight(ctx, o.SourceKind == "restic"); err != nil {
-		return rep, nil, err
-	}
-
+	// The run budget is the outer bound from the first syscall, not from after the
+	// preflight. Preflight shells out to docker, and a docker that is not answering
+	// is exactly the case a --timeout is set for. See ARCH-05.
 	runCtx, cancelAll := context.WithTimeout(ctx, o.Timeout)
 	defer cancelAll()
+
+	// ---- RESOLVE -----------------------------------------------------------
+	if err := compose.Preflight(runCtx, o.SourceKind == "restic"); err != nil {
+		return rep, nil, err
+	}
 
 	// ---- PREPARE -----------------------------------------------------------
 	ws, err := workspace.New(o.WorkspaceParent)
@@ -725,11 +728,16 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 // repositoryLabel is what the report shows for the repository. A repository string can
 // carry a user name but never a password, and restored never reads the environment
 // variables that do.
+// repositoryLabel is what the report shows for the repository, with any password
+// taken out of it first. A restic repository string can carry one - `rest:` and every
+// object-store backend accept `user:password@host` - and this string is printed on
+// the terminal, serialised into --json, written by --report, and attached to bug
+// reports by the issue templates. See DECISIONS.md ADR-059.
 func repositoryLabel(from string) string {
 	if from != "" {
-		return from
+		return resticsource.SafeRepository(from)
 	}
-	return os.Getenv("RESTIC_REPOSITORY")
+	return resticsource.SafeRepository(os.Getenv("RESTIC_REPOSITORY"))
 }
 
 // attachHint matches the catalog against what the run produced. At most one hint is

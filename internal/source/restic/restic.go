@@ -49,7 +49,16 @@ func (o Options) run(ctx context.Context, args ...string) (string, string, error
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if o.Debug != nil {
-		_, _ = fmt.Fprintf(o.Debug, "+ restic %s\n", strings.Join(full, " "))
+		// The argv carries --repo, which can carry a password. This log ends up in
+		// the workspace, in --keep leftovers, and in CI artifacts. See ADR-059.
+		safe := make([]string, len(full))
+		copy(safe, full)
+		for i := range safe {
+			if i > 0 && safe[i-1] == "--repo" {
+				safe[i] = SafeRepository(safe[i])
+			}
+		}
+		_, _ = fmt.Fprintf(o.Debug, "+ restic %s\n", strings.Join(safe, " "))
 	}
 	err := cmd.Run()
 	if o.Debug != nil && stderr.Len() > 0 {

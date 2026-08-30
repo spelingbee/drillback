@@ -11,13 +11,18 @@ import (
 )
 
 // SchemaVersion is the harness report's stability contract, separate from the check
-// report's. It changes only when a field is removed or its meaning changes.
-const SchemaVersion = "1"
+// report's but deliberately the same field name and the same type. It changes only
+// when a field is removed or its meaning changes.
+//
+// It was a string while report.SchemaVersion was an int, so `jq -e '.schema_version
+// == 1'` passed against one document from this binary and failed against the other,
+// for a reason nothing in either output explained. See docs/review/ux.md UX-06.
+const SchemaVersion = 1
 
 // Report is what `restored recipe test --json` writes: one document for the whole
 // invocation, however many recipes it covered.
 type Report struct {
-	SchemaVersion string   `json:"schema_version"`
+	SchemaVersion int      `json:"schema_version"`
 	Tool          Tool     `json:"tool"`
 	StartedAt     string   `json:"started_at"`
 	FinishedAt    string   `json:"finished_at"`
