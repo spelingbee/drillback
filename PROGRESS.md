@@ -1276,16 +1276,76 @@ The drill's own verdicts are not summarised here: each application's folder hold
 report the tool wrote, and `docs/drill/summary.md` holds the totals. Nothing in this
 entry restates a verdict that is not in a `result*.txt` next to it.
 
+### Session 6 - 2026-08-30 - The first weekly maintainer session, pre-launch
+
+**Goal:** the weekly maintainer brief (`06-maintainer-week.md`): KPI, PR and issue
+triage, registry hygiene, drill top-up, report. The brief says to run it once a week
+*after launch* and opens with "The project is live." It is not: there is no git remote,
+`spelingbee/restored` does not resolve on GitHub, and stop points 1, 3, 4 and 6 are all
+still closed. The session ran the brief honestly against that state rather than
+pretending either way.
+
+**Done:**
+
+1. **`docs/maintainer/2026-08-30.md`** - the first weekly report, evidence inline: KPI
+   is 0 external contributors of 0 possible; zero PRs and zero issues because nowhere
+   exists for one; registry hygiene verified; the drill queue trigger examined and not
+   met; a 118-word drill post drafted and **not** posted; and the one decision that
+   needs a human - launch, or schedule this brief to start after stop point 4, because
+   every weekly report will be this report until then.
+2. **Hygiene, all verified on commit 53804b7.** Generators re-run with no diff; all
+   twenty recipe directories validate `--strict`; the unit suite green uncached;
+   `gofmt`/`go vet` (both tag sets)/`lint-english` clean; and, as the weekly
+   recipe-health substitute (CI has never run), the two fastest recipes round-tripped
+   fresh today.
+3. **MNT-19** added to `docs/review/backlog.md`, found by running the KPI script
+   against the not-yet-existing repository: `contributors.sh` prints the GraphQL error
+   and then reports zero contributors with exit 0, so after launch an API failure
+   reads as "0 contributors" on a dashboard.
+4. **A concurrent drill leg, found live and left alone.** While this session wrote its
+   report, another session was writing a ConvertX drill leg into the same working tree:
+   `docs/drill/convertx/` and `recipes/convertx/`, both untracked, the first file at
+   20:40 and result files still landing at 20:52. Nothing of it is committed or claimed
+   by this session, and the running session was messaged directly so the two would not
+   collide in this file. Its verdict is its own session's to record, not this one's.
+
+**Not done, deliberately:** no drill legs - the brief's trigger ("fewer than 3 untested
+apps left in the queue") is not met, with seven-plus feasible applications recorded in
+`docs/drill/SKIPPED.md`; no fixes beyond the report - the brief forbids feature work
+and the backlog is contributor inventory; nothing filed, posted, merged or published.
+
+**Evidence.** The report carries the full tails; the load-bearing ones:
+
+```text
+$ git remote -v
+(nothing)
+$ ./scripts/contributors.sh
+no git remotes found
+$ go test ./... -count=1
+ok      github.com/spelingbee/restored/internal/check   1.863s
+... 12 packages, all ok ...
+$ ./bin/restored recipe validate ./recipes/*/ --strict; echo $?
+... 20 lines, all ok ...
+0
+$ ./bin/restored recipe test ./recipes/vaultwarden ./recipes/freshrss
+  2 recipes: 2 passed, 0 failed, 0 errored, in 38.9s
+$ docker ps -aq --filter "label=com.restored.run" | wc -l
+0
+$ git diff --stat -- docs/recipe-spec.md recipes/README.md README.md
+(nothing: the generated files are current)
+```
+
 ---
 
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
 
-### Session 6 - `internal/config`, and the rest of the CLI surface
+### Session 7 - `internal/config`, and the rest of the CLI surface
 
-(This was session 5's plan. Session 5 did the restore drill instead, on a brief that
-arrived after this was written, and left this untouched.)
+(This was session 5's plan, and then session 6's. Session 5 did the restore drill and
+session 6 the first weekly maintainer run, each on a brief that arrived after this was
+written, and both left this untouched. It is still the next coding session.)
 
 `internal/config`: `restored.yaml`, sources, targets, the precedence chain, `--config`,
 `--target`, `--all`, and the `--all` report shape. Then diff `--help` against SPEC.md

@@ -79,6 +79,7 @@ Grouped by what a contributor would need to know to pick one up.
 | MNT-14 | The all-contributors flow cannot run, and CONTRIBUTING does not mention it |
 | MNT-15 | A `recipe-health` issue does not name the file to edit, and assumes a binary nobody can install |
 | MNT-18 | The sequential fallback in `recipes.yml` drops the debug log and merges all verdicts |
+| MNT-19 | `contributors.sh` reports zero contributors with exit 0 when the repository query fails - an API error reads as "0" on a dashboard. Found by the 2026-08-30 maintainer session, not the session 4 reviews |
 | ARCH-06 | restic's command lines and stderr never reach the run's debug log |
 | ARCH-14 | `internal/workspace` does not own three paths inside the workspace |
 | ARCH-16 | The recipe format is described in four places |
