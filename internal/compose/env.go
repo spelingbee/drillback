@@ -31,7 +31,11 @@ func Probe(ctx context.Context) Versions {
 
 // Preflight is the RESOLVE-stage dependency check. needRestic is false when the run
 // reads an already-restored tree.
-func Preflight(ctx context.Context, needRestic bool) error {
+// Preflight reports whether docker can be used at all. It says nothing about the
+// backup source: a `needRestic bool` in the package that drives docker was one
+// specific source's name leaking into the wrong package, and the answer belongs to
+// source.Source.Preflight. See DECISIONS.md ADR-063.
+func Preflight(ctx context.Context) error {
 	if _, err := exec.LookPath("docker"); err != nil {
 		return fmt.Errorf("docker is not on PATH: restored needs docker and docker compose v2")
 	}
@@ -41,11 +45,6 @@ func Preflight(ctx context.Context, needRestic bool) error {
 	}
 	if out := output(ctx, "docker", "compose", "version", "--short"); out == "" {
 		return fmt.Errorf("docker compose v2 is not available: `docker compose version` failed")
-	}
-	if needRestic {
-		if _, err := exec.LookPath("restic"); err != nil {
-			return fmt.Errorf("restic is not on PATH: --source restic needs the restic binary")
-		}
 	}
 	return nil
 }

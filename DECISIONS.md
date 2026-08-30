@@ -1522,3 +1522,58 @@ golden-file tests in `report` really are testing a pure function.
 
 `internal/report`'s remaining module dependencies are `observe`, `recipe`, `source`
 and the embedded-assets root - all data.
+
+## ADR-063: `source.Source` is an interface, before there is a third source
+
+**Status:** accepted
+**Makes true a consequence of:** ADR-004
+**Found by:** the session 4 architecture review (`docs/review/architecture.md` ARCH-02)
+
+**Context.** ADR-004 recorded, as a consequence, that "borg and kopia land in v0.2
+behind the same `source` interface, which is why that interface exists in v0.1 with
+only two implementations". `internal/source` held three structs and no method.
+
+restic was reached through free functions from a `switch` in `runner.materialise`, and
+restic-shaped decisions leaked past that switch into the lifecycle: the rename-rather-
+than-copy rule was `if o.SourceKind == "restic"`, the removal of `ws.RestoreDir()`
+applied to a directory only restic populates, and the dependency check was
+`compose.Preflight(ctx, needRestic bool)` - one specific source's name, as a boolean,
+in the package that drives docker.
+
+Adding borg would have meant editing `internal/runner`, `internal/compose`,
+`internal/cli`, `internal/source` and `internal/harness`. Two sources with a `switch`
+is fine. Four sources with a `switch` in the state machine is where the lifecycle
+package stops being about the lifecycle. The review's own advice was "do this before
+borg, not with it", and that is what this is.
+
+**Decision.**
+
+```go
+type Source interface {
+    Kind() string
+    Preflight(ctx context.Context) error
+    Fetch(ctx context.Context, reqs []Request, into string) (Fetched, error)
+}
+```
+
+`Fetched` carries the descriptor for the report, a `Locate` that maps a backup path to
+a path on disk, and a `Disposable` flag. `Disposable` is how the move-vs-copy decision
+stops being the lifecycle's: the restic restore directory belongs to the run and may
+be moved out of, the `dir` tree belongs to the user and may not.
+
+`compose.Preflight` loses its boolean and answers only about docker. Each source
+answers for itself, which also lets the missing-restic message name the alternative.
+`repositoryLabel` moves into the restic package as `Options.RepositoryLabel`, next to
+the scrubbing it needs (ADR-059).
+
+`runner.newSource` is the one function that knows the source names, and adding a third
+is one `case` in it.
+
+**Consequences.** `Descriptor.Snapshot` is still restic-shaped - `ShortID`, `Tags`,
+`Paths`. That is a data shape rather than a control-flow shape, it is cheap to widen
+when there is a second thing to widen it for, and widening it speculatively now would
+be inventing a borg snapshot model without borg in front of me.
+
+Proved by running the thing rather than by reading it: `scripts/demo.sh` PASS exit 0
+and `scripts/demo-broken.sh` RESTORE UNUSABLE exit 1, both against real stacks, after
+the refactor.

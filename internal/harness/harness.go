@@ -21,6 +21,7 @@ import (
 	"github.com/spelingbee/restored/internal/recipe"
 	"github.com/spelingbee/restored/internal/report"
 	"github.com/spelingbee/restored/internal/runner"
+	resticsource "github.com/spelingbee/restored/internal/source/restic"
 )
 
 // Fixed properties of the throwaway restic repository. None of them is configurable,
@@ -202,7 +203,14 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	default:
 		return finish(fmt.Errorf("--stage %q: expected a, b or both", o.Stage))
 	}
-	if err := compose.Preflight(ctx, o.Stage != "a"); err != nil {
+	// Stage B builds a restic repository of its own, so the harness needs restic for
+	// any stage but A. It asks the restic source rather than asking docker.
+	if o.Stage != "a" {
+		if err := (&resticsource.Source{}).Preflight(ctx); err != nil {
+			return finish(err)
+		}
+	}
+	if err := compose.Preflight(ctx); err != nil {
 		return finish(err)
 	}
 	if o.Recipe.Test == nil && o.Stage != "a" {

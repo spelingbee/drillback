@@ -115,7 +115,16 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	defer cancelAll()
 
 	// ---- RESOLVE -----------------------------------------------------------
-	if err := compose.Preflight(runCtx, o.SourceKind == "restic"); err != nil {
+	if err := compose.Preflight(runCtx); err != nil {
+		return rep, nil, err
+	}
+	// The source answers for itself whether it can be read. Whether restic is
+	// installed is not something the docker package should have an opinion about.
+	src, err := newSource(&o)
+	if err != nil {
+		return rep, nil, err
+	}
+	if err := src.Preflight(runCtx); err != nil {
 		return rep, nil, err
 	}
 
@@ -614,43 +623,15 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 		})
 	}
 
-	var desc source.Descriptor
-	var locate func(string) string
-
-	switch o.SourceKind {
-	case "restic":
-		opts := resticsource.Options{
-			Repository: o.From, Snapshot: o.Snapshot, Tags: o.Tags, Host: o.Host, Debug: o.Debug,
-		}
-		snaps, err := resticsource.ListSnapshots(restoreCtx, opts)
-		if err != nil {
-			return desc, nil, err
-		}
-		snap, err := resticsource.Select(snaps, o.Snapshot)
-		if err != nil {
-			return desc, nil, err
-		}
-		if err := resticsource.Restore(restoreCtx, opts, snap, reqs, ws.RestoreDir()); err != nil {
-			return desc, nil, err
-		}
-		desc = source.Descriptor{Kind: "restic", Repository: repositoryLabel(o.From), Snapshot: snap}
-		locate = func(p string) string { return resticsource.Locate(ws.RestoreDir(), p) }
-	case "dir":
-		if o.From == "" {
-			return desc, nil, errors.New("--source dir needs --from <tree>")
-		}
-		if err := dirsource.Check(o.From); err != nil {
-			return desc, nil, err
-		}
-		abs, err := filepath.Abs(o.From)
-		if err != nil {
-			return desc, nil, err
-		}
-		desc = source.Descriptor{Kind: "dir", Repository: abs}
-		locate = func(p string) string { return dirsource.Locate(abs, p) }
-	default:
-		return desc, nil, fmt.Errorf("unknown source %q: restored reads restic or dir", o.SourceKind)
+	src, err := newSource(o)
+	if err != nil {
+		return source.Descriptor{}, nil, err
 	}
+	fetched, err := src.Fetch(restoreCtx, reqs, ws.RestoreDir())
+	if err != nil {
+		return source.Descriptor{}, nil, err
+	}
+	desc, locate := fetched.Descriptor, fetched.Locate
 
 	var warnings []report.Warning
 	for _, in := range res.Inputs {
@@ -663,8 +644,8 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 			}
 			continue
 		}
-		src := locate(in.BackupPath)
-		info, err := os.Stat(src)
+		from := locate(in.BackupPath)
+		info, err := os.Stat(from)
 		if err != nil {
 			if in.Required {
 				// The highest-traffic error in the tool: a recipe's default paths
@@ -685,16 +666,18 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 		if err := os.MkdirAll(filepath.Dir(in.LocalPath), 0o755); err != nil {
 			return desc, warnings, err
 		}
-		if o.SourceKind == "restic" {
-			// The restore directory is the workspace's own, so a move costs nothing
-			// and leaves one copy of the data on disk instead of two.
-			if err := os.Rename(src, in.LocalPath); err != nil {
-				if err := workspace.CopyTree(src, in.LocalPath); err != nil {
-					return desc, warnings, err
-				}
+		// Whether the fetched tree may be moved out of is the source's answer, not
+		// the lifecycle's: it belongs to this run for restic and to the user for
+		// dir, and moving files out of somebody's live directory is not a thing a
+		// restore drill may do.
+		moved := false
+		if fetched.Disposable {
+			moved = os.Rename(from, in.LocalPath) == nil
+		}
+		if !moved {
+			if err := workspace.CopyTree(from, in.LocalPath); err != nil {
+				return desc, warnings, err
 			}
-		} else if err := workspace.CopyTree(src, in.LocalPath); err != nil {
-			return desc, warnings, err
 		}
 		ws2, err := ws.Sanitise(in.LocalPath)
 		if err != nil {
@@ -719,25 +702,12 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 			})
 		}
 	}
-	if err := os.RemoveAll(ws.RestoreDir()); err != nil {
-		return desc, warnings, err
+	if fetched.Disposable {
+		if err := os.RemoveAll(ws.RestoreDir()); err != nil {
+			return desc, warnings, err
+		}
 	}
 	return desc, warnings, nil
-}
-
-// repositoryLabel is what the report shows for the repository. A repository string can
-// carry a user name but never a password, and restored never reads the environment
-// variables that do.
-// repositoryLabel is what the report shows for the repository, with any password
-// taken out of it first. A restic repository string can carry one - `rest:` and every
-// object-store backend accept `user:password@host` - and this string is printed on
-// the terminal, serialised into --json, written by --report, and attached to bug
-// reports by the issue templates. See DECISIONS.md ADR-059.
-func repositoryLabel(from string) string {
-	if from != "" {
-		return resticsource.SafeRepository(from)
-	}
-	return resticsource.SafeRepository(os.Getenv("RESTIC_REPOSITORY"))
 }
 
 // attachHint matches the catalog against what the run produced. At most one hint is
@@ -857,4 +827,20 @@ func sortedKeys[V any](m map[string]V) []string {
 		}
 	}
 	return out
+}
+
+// newSource maps --source to an implementation. This is the only place in the
+// lifecycle that knows the names, and it is the one line a third source adds.
+// See DECISIONS.md ADR-063.
+func newSource(o *Options) (source.Source, error) {
+	switch o.SourceKind {
+	case "restic":
+		return resticsource.New(resticsource.Options{
+			Repository: o.From, Snapshot: o.Snapshot, Tags: o.Tags, Host: o.Host, Debug: o.Debug,
+		}), nil
+	case "dir":
+		return dirsource.New(o.From), nil
+	default:
+		return nil, fmt.Errorf("unknown source %q: restored reads restic or dir", o.SourceKind)
+	}
 }

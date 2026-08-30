@@ -171,3 +171,13 @@ func lastLines(s string, n int) string {
 	}
 	return strings.Join(lines, "; ")
 }
+
+// RepositoryLabel is the repository string this run will use: --repo when it was
+// given, and restic's own environment otherwise. It is what the report names, so it
+// goes through SafeRepository before anyone sees it.
+func (o Options) RepositoryLabel() string {
+	if o.Repository != "" {
+		return o.Repository
+	}
+	return os.Getenv("RESTIC_REPOSITORY")
+}
