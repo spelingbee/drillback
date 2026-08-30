@@ -1571,6 +1571,30 @@ would file, and a double-rename that left the release checklist recommending
 "`drillback` over `drillback`" - plus three stale claims that predate the rename
 (README said five recipes ship; there are twenty). All fixed.
 
+Runs three to five peeled the deepest debt of all, one layer per run - **a teardown
+bug every Linux user would have hit on their first gitea-shaped run**:
+
+4. The application container writes as its own uid (Gitea leaves `queues/` at 0700
+   under uid 1000), and the caller's `RemoveAll` cannot delete what it cannot even
+   stat - so teardown itself died with `permission denied` and the run exited 2 with
+   a workspace left behind. Not a CI quirk: a product bug invisible on Windows,
+   where the daemon maps no ownership. The fix is `compose.Client.Scrub`: when
+   removal fails on a non-Windows host, run the pinned curl helper with the
+   workspace mounted, `chmod -R a+rwX`, and remove again; the runner's teardown and
+   the harness's stage B both use it.
+5. The first scrub changed nothing, and the fourth run said so: the helper image
+   declares its own unprivileged `USER`, so chmod ran as uid 100 against uid 1000's
+   files and exited nonzero - and Scrub read only the exec error, not the exit code.
+   `--user 0:0`, and a nonzero chmod is now the failure it always was.
+
+The fifth run is the first fully green CI in the project's life:
+
+```text
+$ gh run view <run 5> --json jobs
+lint:success  generated:success  unit (ubuntu-latest):success
+unit (macos-latest):success  unit (windows-latest):success  integration:success
+```
+
 #### Evidence
 
 The registry, both stages, all twenty recipes under the new name. The first sweep ran
