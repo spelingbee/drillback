@@ -1,6 +1,6 @@
 # What the drill did not test, and why
 
-A skip is data. This page records every application from `docs/recipes-wanted.txt` that
+The session aimed at fifteen applications and finished fourteen. A skip is data. This page records every application from `docs/recipes-wanted.txt` that
 the drill passed over on its way down the list, and which of three reasons applies. It
 is deliberately blunt about the third one.
 
@@ -51,7 +51,7 @@ ran out of session, not out of capability. They are the obvious next legs, in th
 
 | App | Stars | Why it is next |
 |---|---|---|
-| Stirling-PDF | 90,910 | Fourth on the list, and its documentation has a *Database Backups* page describing automatic daily backups and an import path. The image pull was still running when the session ended. |
+| Stirling-PDF | 90,910 | **Attempted, and stopped short.** Fourth on the list, and its documentation has a *Database Backups* page describing automatic daily backups and an import path. The 3.38 GB image was pulled and the instance deployed; `/configs` came up holding `stirling-pdf-DB-2.3.232.mv.db`, `settings.yml` and a `backup/db` directory, which is a promising shape. The drill stopped because its login could not be driven from a script inside the budget: the v2 interface is a JavaScript client, `POST /login` answers 405, and HTTP Basic on every `/api/v1/user/...` endpoint answers 401. Without a way to seed an account or a setting through the application, a restore check cannot tell a restored instance from a fresh one - which is the drill's whole standard - so no verdict was recorded. Finding the login endpoint is probably ten minutes for somebody who reads the frontend bundle. |
 | photoprism | 40,120 | App plus MariaDB, with real backup documentation and a `photoprism backup` command. |
 | appsmith | 40,783 | One fat container with its own `appsmithctl export-db`. |
 | plausible | 28,797 | PostgreSQL plus ClickHouse - heavier than the rest of this table, but its analytics data is the kind nobody can reconstruct. |
@@ -62,7 +62,7 @@ ran out of session, not out of capability. They are the obvious next legs, in th
 
 ## What this means for the numbers
 
-Every count in [summary.md](summary.md) is over the fifteen applications actually
+Every count in [summary.md](summary.md) is over the fourteen applications actually
 tested. It is not a random sample of self-hosted software: it is the top of a
 popularity list, filtered by what fits in a small budget, which skews it towards
 single-container applications with SQLite databases. The findings that repeat across

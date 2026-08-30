@@ -38,7 +38,7 @@ What works, and is proved by a command below:
 | `restored recipe show [--format] [--compose] [--inputs-only]` | works |
 | `restored recipe init` | works; the scaffolded recipe validates as it comes out |
 | `restored recipe init --compose <file>` | works; reads a real compose file and proposes a recipe that validates |
-| **`restored recipe test [--stage a\|b\|both] [--keep] [--timeout] [--report] [--json]`** | **works; all five recipes pass both stages** |
+| **`restored recipe test [--stage a\|b\|both] [--keep] [--timeout] [--report] [--json]`** | **works; all nineteen recipes pass both stages** |
 | `restored version [--json]` | works, and exits 0 with docker and restic absent |
 | Isolation | enforced: no privileged, no host namespaces, no published ports, no bind outside the workspace, internal networks only |
 | Report | TTY renderer with an ASCII fallback and `NO_COLOR`, plus the JSON document of SPEC.md 5.2; the harness has its own report and its own schema version |
@@ -48,9 +48,12 @@ What works, and is proved by a command below:
 | CI | `ci.yml` (lint, generated-file diff, unit on three platforms, integration), `recipes.yml` (changed recipes, one verdict each), `recipe-health.yml` (weekly, opens and closes issues), `release.yml` (goreleaser skeleton, draft only) |
 | Contributor path | `CONTRIBUTING.md`, `recipes/TEMPLATE`, four issue templates, a PR checklist, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CODEOWNERS`, dependabot |
 
-Bundled recipes: **gitea**, **nextcloud**, **paperless-ngx**, **uptime-kuma**,
-**vaultwarden**. `recipes/TEMPLATE` ships in the binary too but is deliberately not in
-the registry: `BundledNames` skips any directory whose name is not a legal recipe name.
+Bundled recipes, **nineteen** of them since session 5: **beszel**, **changedetection**,
+**filebrowser**, **freshrss**, **gitea**, **gogs**, **gotify**, **listmonk**, **mealie**,
+**memos**, **n8n**, **navidrome**, **nextcloud**, **open-webui**, **paperless-ngx**,
+**siyuan**, **trilium**, **uptime-kuma**, **vaultwarden**. `recipes/TEMPLATE` ships in
+the binary too but is deliberately not in the registry: `BundledNames` skips any
+directory whose name is not a legal recipe name.
 
 What does **not** work yet, deliberately:
 
@@ -60,10 +63,6 @@ What does **not** work yet, deliberately:
   not match SPEC.md section 2. The one exception is `defaults.nudge`, which
   `internal/nudge` reads through a deliberately narrow one-key reader so that a user
   who has written `nudge: false` is believed today.
-- **The sixth recipe** for the v0.1 gate of six (ADR-033). Five exist and all five
-  round-trip. Miniflux is the obvious next one, and session 4's fresh-clone reviewer
-  wrote one that passes both stages: it is in `docs/review/fresh-clone.md` under "The
-  miniflux recipe I ended up with", with the verdict from the run that passed.
 - **`smoke.yml`**, the fresh-clone test of SPEC.md 11.3. The `unit` job proves
   `go test ./...` is green with no docker and no restic, which is most of what it was
   for; session 4's fresh-clone review walked the rest of it by hand.

@@ -39,8 +39,14 @@ And the documentation itself:
 - **6 have a page whose subject is backups**: Open WebUI, Navidrome, Trilium, Mealie,
   FreshRSS, and changedetection.io (a wiki page about restoring, plus the feature in the
   application). Gogs has a section on its CLI reference page.
-- **4 document a restore procedure that works**: Trilium, changedetection.io, Mealie and
-  FreshRSS. Two document one that does not: Gogs and Navidrome.
+- **7 describe a restore at all**: n8n, Gogs, Navidrome, Trilium, changedetection.io,
+  Mealie and FreshRSS. The drill followed five of those procedures step by step, and
+  **three of the five did not work as written**: Gogs' `restore` cannot run in its own
+  image, Navidrome's reports success and restores nothing, and n8n's
+  `import:credentials` aborts on the directory n8n's own export commands write. The two
+  that worked were Trilium's and changedetection.io's. Mealie's (an upload through the
+  admin interface) and FreshRSS's (`db-restore.php`) were not followed end to end and are
+  counted in neither column.
 
 ## The three most instructive cases
 
@@ -98,12 +104,17 @@ only at the database:
 **2. The `-wal` is where the data is.** Four applications keep SQLite in WAL mode, and
 the split is not subtle on a young instance:
 
-| App | `.db` | `-wal` |
-|---|---|---|
-| Memos | 4 KiB | 160 KiB |
-| Beszel | 4 KiB | 700 KiB |
-| n8n | 1.5 MB | 4.1 MB |
-| Open WebUI | 632 KiB | 160 KiB |
+| App | `.db` | `-wal` | What a copy of the `.db` alone gets you |
+|---|---|---|---|
+| Memos | 4 KiB | 160 KiB | nothing - tested, FAIL |
+| Beszel | 4 KiB | 700 KiB | nothing - tested, PARTIAL |
+| n8n | 1.5 MB | 4.1 MB | not tested separately |
+| Open WebUI | 632 KiB | 160 KiB | not tested separately; here the main file holds most of it |
+
+The two that were tested came back completely empty. The other two are listed to show
+that the split is normal rather than exotic, not to claim a failure that was not
+measured: on Open WebUI in particular the main file held most of the data, so a `.db`
+copy would have lost the newest writes rather than everything.
 
 Exactly one project's documentation names the `-wal` and `-shm` files: Trilium's, in its
 restore procedure. Nobody else mentions they exist.
@@ -116,10 +127,10 @@ create the first account. There is no error anywhere. The signal that something 
 is a screen that looks exactly like a new installation, on a day when you are not in the
 mood to notice.
 
-**4. Backup pages are about backing up.** Four of the six real backup pages describe a
-restore, and two of those restores do not work. Backing up is the half that gets
-exercised - by cron, nightly, for years. Restoring is the half nobody runs until the day
-it matters.
+**4. Backup pages are about backing up.** Seven of the fourteen describe a restore at
+all. The drill followed five of those procedures step by step and three did not work as
+written. Backing up is the half that gets exercised - by cron, nightly, for years.
+Restoring is the half nobody runs until the day it matters, and it shows.
 
 **5. Backups carry a lot of re-downloadable content, and nobody says so.**
 
@@ -136,8 +147,9 @@ FreshRSS rebuilds it."
 
 Numbers only as measured, over the fourteen applications tested.
 
-1. **"We followed fourteen self-hosted apps' own backup instructions. Two of the
-   restores didn't work, and seven of the apps have no backup page at all."**
+1. **"We followed fourteen self-hosted apps' own backup instructions. Seven of them have
+   no backup page at all, and of the five documented restore procedures we could follow
+   step by step, three did not work as written."**
 
 2. **"'Restore complete.' The instance was empty."** - Navidrome's restore command
    reports success in six milliseconds and leaves nothing behind; Gogs' restore cannot
@@ -145,9 +157,10 @@ Numbers only as measured, over the fourteen applications tested.
    half that nobody runs.
 
 3. **"On two of fourteen apps, the file called 'the database' was 4 KiB and the file
-   next to it was 160 KiB."** - Restore the first and the app starts, passes its own
-   integrity check, and asks you to create your first account. One project out of
-   fourteen tells you those files exist.
+   next to it held everything."** - Memos' `-wal` was 160 KiB and Beszel's was 700 KiB.
+   Restore the `.db` alone and the application starts, passes its own integrity check,
+   and asks you to create your first account. One project out of fourteen tells you
+   those files exist.
 
 ## Caveats a reader is owed
 

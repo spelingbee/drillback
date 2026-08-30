@@ -11,6 +11,9 @@ Resume point for the official-docs restore drill. Updated after every applicatio
   in CI-class resources are recorded as SKIPPED with the reason and the drill moves on.
 - **Target:** 15 tested applications, extending toward 30 if the per-application budget
   (about 20 minutes) allows.
+- **Reached:** 14. The fifteenth (Stirling-PDF) was deployed and abandoned when its
+  login could not be scripted inside the budget; the reason is in
+  [SKIPPED.md](SKIPPED.md), and no verdict was invented for it.
 
 ## Done
 

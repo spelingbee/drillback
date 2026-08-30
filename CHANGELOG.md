@@ -8,7 +8,24 @@ report and the harness report, and within a major version fields are only ever a
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Fourteen more recipes**, one for each application in the official-docs restore
+  drill: `beszel`, `changedetection`, `filebrowser`, `freshrss`, `gogs`, `gotify`,
+  `listmonk`, `mealie`, `memos`, `n8n`, `navidrome`, `open-webui`, `siyuan`, `trilium`.
+  Every one passes both stages of `restored recipe test`, which brings the registry to
+  nineteen.
+- **`docs/drill/`** - the drill itself. For each application: the official backup
+  documentation quoted as written, the commands that were run, the reports the tool
+  produced, the root cause of every failure, and a draft issue that has not been filed.
+  `docs/drill/summary.md` has the totals and the patterns; `docs/drill/SKIPPED.md` says
+  what was passed over and why.
+
+### Changed
+
+- `scripts/lint-english.sh` skips `docs/drill/*/result*.json`. Those files are written
+  by `restored --report` and carry another application's log output verbatim, which is
+  not this repository's to anglicise.
 
 ## [0.1.0] - unreleased
 
@@ -23,7 +40,8 @@ Compose stack, starts the application, and asserts that the data is actually the
   to be ready, runs the recipe's checks, and tears everything down. `PASS` is exit 0,
   `RESTORE UNUSABLE` is exit 1, a tool error is exit 2.
 - **Five recipes**, each of which proves itself: `gitea`, `nextcloud`,
-  `paperless-ngx`, `uptime-kuma`, `vaultwarden`.
+  `paperless-ngx`, `uptime-kuma`, `vaultwarden`. (Fourteen more arrived after this
+  entry was written; see *Unreleased*.)
 - **`restored recipe test`** - the round-trip harness. Stage A runs a recipe's checks
   against an empty application and requires one to fail; stage B seeds real data
   through the application's own front door, backs it up with restic, destroys
