@@ -24,8 +24,9 @@ could; all 9 P0 and all 21 P1 findings are fixed; the remaining 38 are written u
 `help wanted` issues waiting for the repository to be public.
 **Version:** unreleased. No tags. `0.1.0-dev` is what a local build reports; the release
 version comes from the tag through ldflags and from nowhere else.
-**Module:** `github.com/spelingbee/restored` (ADR-036 - see *Open questions*, the name
-is still a human's to confirm and the rename is one grep).
+**Module:** `github.com/spelingbee/drillback`. The name is settled: the human chose
+the rename at stop point 7 on 2026-08-30, session 8 executed it, ADR-070 records it.
+Pre-rename history in this file says `restored`, deliberately.
 **Language of record:** English, everywhere, enforced by `scripts/lint-english.sh`.
 
 What works, and is proved by a command below:
@@ -1483,6 +1484,103 @@ $ AWS_ACCESS_KEY_ID=AKIAREAL AWS_SECRET_ACCESS_KEY=real \
 ok  	github.com/spelingbee/restored/internal/config	0.736s
 ```
 
+### Session 8 - 2026-08-31 - The rename: `restored` is `drillback`
+
+**Goal:** execute the human's stop-point-7 decision of 2026-08-30 - the rename to
+`drillback` that `docs/name-check.md` recommended - before the first push makes it
+expensive. The owner stays `spelingbee`.
+
+**Done:**
+
+1. **The rename, everywhere the present tense lives** (ADR-070): module
+   `github.com/spelingbee/drillback` and every import; `cmd/drillback` and the binary;
+   `apiVersion: drillback/v1` in the schema, the loader and all twenty-one recipe
+   directories; `${DRILLBACK_*}` placeholders and the `drillback` internal network in
+   every compose file and the scaffold generator; `com.drillback.run` labels and
+   `drillback-<runid>` projects and workspaces; `drillback.yaml` with `/etc/drillback`
+   and `$XDG_CONFIG_HOME/drillback` in the search order; SPEC.md, README.md,
+   CONTRIBUTING.md, the schemas' `$id`s, goreleaser, Dockerfile, install.sh, the
+   workflows, the issue templates, the demo scripts. Historical documents - session
+   logs here, the ADRs, the review reports, the drill's captured outputs - keep the
+   name the runs were made under, deliberately.
+2. **GitHub**: the private repository is renamed `spelingbee/drillback` (the old name
+   redirects), `origin` updated. Still private; stop point 4 untouched.
+3. **The demo texts re-captured** from real runs of the renamed binary - not edited -
+   and spliced into README.md by `scripts/capture-demo.sh`, as the rule requires.
+4. **Not done, and flagged**: `docs/demo/demo.gif` still shows the old name - `vhs` is
+   not on this host - so re-rendering it is on the pre-launch list. The local working
+   directory (`C:\My\Projects\Work\restored`) also keeps its name: a host path outside
+   the repository, the human's to move (CLAUDE.md's container commands use the real
+   path and stay correct).
+
+#### A mistake, recorded
+
+The mechanical rename ran `sed -i` over the whole live file set - **including five
+binary test assets**. GNU sed dropped one byte from each (a 70-byte PNG became
+69 bytes of `data`; the drill-canary MP3 lost its last byte), and the damage was
+invisible to every text-level check: build, unit suite, race, linters and
+`recipe validate` all green. The full round-trip sweep caught it: Gogs silently
+rejected the corrupt avatar upload and failed `avatar-file-present`; listmonk
+answered 500 to the corrupt media upload and errored its seed. Both reproduced
+identically in a second, uncontended sweep - and ConvertX, Gotify and Navidrome
+*passed* with corrupt assets, because nothing in their checks decodes the file. The
+five binaries were restored from git (their bytes contain no name), and all five
+affected recipes re-ran green.
+
+The integration suite then caught a second rename miss the same way: the fixture
+recipe at `testdata/recipes/fixture` still expected `body_matches: "restored
+fixture"` against a page the renamed test now writes as "drillback fixture page" -
+green under every static check, red the moment a container actually served the page.
+Fixed, with the fixture's network name aligned in the same commit.
+
+Two lessons, both this project's own rules restated: the checks that run the real
+thing catch what every static check misses - twice in one session - and a blanket
+`sed -i` belongs on a file list that excludes what `grep -I` calls binary, the same
+mistake `lint-english.sh` already made and fixed in session 4.
+
+#### Evidence
+
+The registry, both stages, all twenty recipes under the new name. The first sweep ran
+concurrently with the demo capture and the race container; the second ran alone and
+reproduced the same two asset failures, which is what proved they were not flakes:
+
+```text
+$ ./bin/drillback recipe test ./recipes/... (all twenty) --timeout 20m
+  20 recipes: 18 passed, 1 failed, 1 errored, in 26m39s   # corrupt assets: gogs, listmonk
+$ git checkout -- <the five binary assets>
+$ ./bin/drillback recipe test ./recipes/gogs ./recipes/listmonk ./recipes/convertx \
+    ./recipes/gotify ./recipes/navidrome
+  5 recipes: 5 passed, 0 failed, 0 errored, in 5m25s
+```
+
+Together: twenty of twenty round-trip green on this commit. The rest of the battery:
+
+```text
+$ go build ./... && go test ./... -count=1
+(13 packages ok)
+$ docker run --rm ... golang:1.27 go test ./... -race
+13 ok, RACE_EXIT=0
+$ gofmt -l . ; go vet ./... && go vet -tags integration ./...
+(nothing)
+$ golangci-lint run && golangci-lint run --build-tags integration
+0 issues.  0 issues.
+$ ./scripts/lint-english.sh
+lint-english: ok
+$ ./bin/drillback recipe validate ./recipes/*/ --strict; echo $?
+... 21 lines, all ok ... 0
+$ ./bin/drillback version | head -1
+drillback 0.1.0-dev
+$ goreleaser check
+1 configuration file(s) validated
+$ ./scripts/capture-demo.sh
+wrote: pass.txt 26 lines, fail.txt 52 lines, kuma.txt 27 lines
+$ go test -tags integration ./... -timeout 30m
+ok  	github.com/spelingbee/drillback/internal/runner	232.480s
+... all ok ... INTEGRATION_EXIT=0
+$ docker ps -aq --filter "label=com.drillback.run" | wc -l
+0
+```
+
 ---
 
 ## Next steps
@@ -1523,7 +1621,8 @@ is so that none of it has to be worked out under time pressure on the day.
 
 ### Then
 
-`docs/security.md`, `smoke.yml`, and a `mysql-dump` input kind - `recipe init --compose`
+Re-render `docs/demo/demo.gif` with `vhs` (it still shows the old name; the tape file
+is already renamed), then `docs/security.md`, `smoke.yml`, and a `mysql-dump` input kind - `recipe init --compose`
 already recognises a MySQL service and tells the contributor, in the file it writes,
 that restored cannot restore it yet. That message is a promise to somebody.
 
@@ -1558,15 +1657,10 @@ them is a stop point in CLAUDE.md with the work up to it finished:
 
 ## Open questions for a human
 
-1. **The name and the owner, still.** `github.com/spelingbee/restored` is in `go.mod`,
-   in both schema `$id`s, in `internal/nudge`, in the CI workflows, in
-   `.all-contributorsrc`, and in every document that links to a file on GitHub.
-   `docs/name-check.md` recommends `drillback` because it is the only candidate clean on
-   every registry and all three TLDs, and `restored` costs discoverability. Changing it
-   is still `grep -rl spelingbee/restored | xargs sed -i` plus a `go mod edit`, and it
-   is still free until something is published - which is stop points 1, 3, 4 and 6, all
-   of which are still closed. It got more expensive this session, because there is more
-   of it. See ADR-036.
+1. **The name and the owner.** **Answered by the human, 2026-08-30**: `drillback`,
+   under `spelingbee`, exactly what `docs/name-check.md` recommended. Session 8
+   executed the rename before anything was published; ADR-070 records the execution
+   and its boundary (history keeps the old name). Closed.
 2. **ADR-023 - is a failed ready probe exit 1 or exit 2?** Unchanged, and now
    implemented as exit 1. Session 3 hit two more instances of the shape the question is
    about, and both were recipe bugs reported as unusable restores: Vaultwarden refusing

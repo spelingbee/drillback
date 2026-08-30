@@ -17,7 +17,7 @@ Anything below that stops being true is a bug in this file.
 
 ```sh
 # build
-make build                  # go build -ldflags ... -o bin/restored ./cmd/restored
+make build                  # go build -ldflags ... -o bin/drillback ./cmd/drillback
 go build ./...
 
 # test
@@ -34,10 +34,10 @@ go vet -tags integration ./...   # build-tagged files compile nowhere else
 ./scripts/lint-english.sh   # fails on non-ASCII outside the allowlist
 
 # recipes
-./bin/restored recipe validate ./recipes/*/ --strict
-./bin/restored recipe show gitea --inputs-only
-./bin/restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
-./bin/restored recipe test ./recipes/gitea      # the round trip, both stages
+./bin/drillback recipe validate ./recipes/*/ --strict
+./bin/drillback recipe show gitea --inputs-only
+./bin/drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+./bin/drillback recipe test ./recipes/gitea      # the round trip, both stages
 make recipe-test                                # all five, in sequence
 
 # generated files - never edit these by hand
@@ -65,7 +65,7 @@ export PATH="/c/My/Projects/Work/gotool/go/bin:/c/Users/kadyr/go/bin:$PATH"
 run the command a target wraps:
 
 ```sh
-go build -o bin/restored ./cmd/restored     # make build
+go build -o bin/drillback ./cmd/drillback     # make build
 go test ./...                               # make test, minus -race, see below
 go test -tags integration ./... -timeout 30m  # make test-integration
 ./scripts/capture-demo.sh                   # make capture-demo
@@ -138,8 +138,8 @@ the **tail of its real output**. Like this:
 
 ```text
 $ go test ./internal/recipe/... -race
-ok      github.com/spelingbee/restored/internal/recipe          0.412s
-ok      github.com/spelingbee/restored/internal/recipe/safety   0.198s
+ok      github.com/spelingbee/drillback/internal/recipe          0.412s
+ok      github.com/spelingbee/drillback/internal/recipe/safety   0.198s
 ```
 
 Not: "tests pass", "should work now", "verified the schema". If the command was not run,
@@ -209,12 +209,13 @@ At each of these, **stop and get explicit human sign-off**. Do not proceed, do n
 5. **Before spending money.** A domain, a registry plan, a hosted runner, a paid service.
 6. **Before publishing anything to a package registry.** ghcr, a Homebrew tap, npm, a
    GitHub Release asset. Building the artifacts is fine; publishing them is not.
-7. **The name.** This stop point has been spent. Session 2 decided `restored` and the
-   owner `spelingbee` under its brief's instruction to decide rather than ask, and
-   recorded it as ADR-036; `go.mod`, both schema `$id`s and `internal/nudge` carry it
-   now. A human still owns the final call, the rename is still one grep, and it gets
-   more expensive the moment anything is published - which is stop points 1, 3, 4 and 6,
-   all of which are still closed.
+7. **The name.** Settled, twice, and closed. Session 2 decided `restored` under the
+   owner `spelingbee`, under its brief's instruction to decide rather than ask
+   (ADR-036). On 2026-08-30, before anything was published, the human chose the rename
+   `docs/name-check.md` had recommended, and session 8 executed it: the project is
+   **`drillback`** - module, binary, recipe format, placeholders, repository - with the
+   execution and its boundaries (historical documents keep the old name) recorded as
+   ADR-070. Do not rename again without a human's explicit instruction.
 
 Everything else — writing code, writing tests, running tests, refactoring, adding
 recipes, adding ADRs, committing to a local branch — proceeds without asking.

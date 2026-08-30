@@ -134,7 +134,7 @@ Ranked, for a human to decide:
 
 **Nothing in the repository has been renamed.** All documents in this session use the
 working name `restored`. If the name changes, the strings to update are: the `go.mod`
-module path, the `apiVersion: restored/v1` recipe field, the `RESTORED_INPUT_*` /
+module path, the `apiVersion: drillback/v1` recipe field, the `RESTORED_INPUT_*` /
 `RESTORED_VAR_*` environment variable prefixes, the compose project prefix
 `restored-<runid>`, the config file name `restored.yaml`, and the nudge URL in
 SPEC.md section *Contribution nudge*. They are listed here so the rename is one grep.
@@ -165,3 +165,9 @@ for n in restored restore-drill drillback bootproof backupdrill; do
   for t in dev sh io; do nslookup -type=NS "$n.$t" 8.8.8.8; done
 done
 ```
+
+---
+
+**Postscript, 2026-08-30 (session 8):** the recommendation above was taken. The
+human chose `drillback` at stop point 7, before anything was published, and ADR-070
+records the execution. This document keeps its original text as the record of why.

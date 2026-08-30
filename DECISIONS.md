@@ -1794,3 +1794,41 @@ the section 5.1 warning exists for, applied to help text.
 **Consequences.** The spec keeps its teeth where teeth matter - a missing flag is
 still a bug in one of the two - without a standing lie about bytes nobody controls.
 UX-11 keeps its finder.
+
+---
+
+## ADR-070: The project is `drillback`; history keeps the name it was written under
+
+**Status:** accepted (session 8; the choice itself was the human's, 2026-08-30)
+
+**Context.** Session 1's name check recommended `drillback` - the only candidate clean
+on every registry and all three TLDs - and session 2 shipped under `restored` anyway,
+recording in ADR-036 that the rename stayed cheap until anything was published. Stop
+point 7 held: before the first push, the human chose the rename.
+
+**Decision.** The project, module, binary, repository, recipe format and placeholder
+vocabulary are `drillback`: `github.com/spelingbee/drillback`, `cmd/drillback`,
+`apiVersion: drillback/v1`, `${DRILLBACK_*}`, `com.drillback.run`, `drillback.yaml`
+with `/etc/drillback` and `$XDG_CONFIG_HOME/drillback` in the search order, the
+`drillback` internal network in every recipe, and `drillback-<runid>` projects and
+workspaces. The format version renames with the tool because nothing has ever been
+released: there is no file in the world whose `apiVersion: restored/v1` a migration
+would owe anything to.
+
+The boundary: **documents that record what happened keep the name it happened under.**
+Session logs in PROGRESS.md, the ADRs above this one, the five review reports, the
+maintainer report, the name-check itself, and every captured output in `docs/drill/`
+(steps, results, the tool's own reports) still say `restored`, because they are
+quotations of real runs and rewriting them would be hand-editing captured output -
+the exact lie the capture rule exists to prevent. The demo texts in `docs/demo/` were
+not edited either: they were re-captured from real runs of the renamed binary. Two
+things deliberately not renamed today: the local working directory on this machine
+(`C:\My\Projects\Work\restored` - a host path outside the repository, the human's to
+move), and `docs/demo/demo.gif`, which still shows the old name because `vhs` is not
+on this host; re-rendering it is on the pre-launch list.
+
+**Consequences.** `grep -rw restored` will match historical documents forever, and
+that is correct. GitHub redirects the old repository name for as long as nobody
+claims it; nothing else published ever carried the old name. The name question is
+closed - ADR-036's escape hatch is spent, and a third name would need a human's
+explicit instruction and a new ADR.
