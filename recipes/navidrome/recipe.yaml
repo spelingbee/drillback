@@ -1,0 +1,153 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: navidrome
+  title: Navidrome (SQLite)
+  description: >
+    Verifies that a Navidrome backup restores: the server comes up, the database passes
+    an integrity check, the accounts and playlists are in it, the library rows are still
+    there, and the account that was backed up can still sign in. It deliberately does
+    not check for music files - Navidrome's own backup documentation says the backup
+    does not contain them.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/navidrome/navidrome
+  tags: [music, sqlite]
+
+vars:
+  nd_port: 4533
+  drill_user: drilladmin
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The Navidrome data folder
+    description: >
+      /data, which holds navidrome.db and the cache. This is what the installation page
+      mounts and what the backup page means by "the database (users, play counts, etc.)".
+    default_path: /data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: navidrome:/data
+
+  db:
+    kind: sqlite
+    title: The Navidrome SQLite database
+    description: >
+      navidrome.db, inside the data folder. Declared separately so that the checks have
+      something to query and so that a truncated or half-copied database is reported
+      here rather than as a music server that has forgotten every playlist.
+    default_path: /data/navidrome.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  # TCP: Navidrome answers / with a 302 to the app, and every /rest endpoint needs
+  # Subsonic authentication, so the readiness question is whether it is listening.
+  - name: Navidrome is accepting connections
+    kind: tcp
+    service: navidrome
+    port: 4533
+    timeout: 240s
+    interval: 2s
+
+checks:
+  - id: serves-ui
+    title: The web interface answers
+    kind: http
+    url: http://navidrome:{{ .vars.nd_port }}/
+    expect:
+      status_in: [200, 302]
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: The accounts survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM user;"
+    expect:
+      scalar_int_min: 1
+
+  - id: playlists-present
+    title: The playlists survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM playlist;"
+    expect:
+      scalar_int_min: 1
+
+  - id: library-rows-present
+    title: The library is still in the database
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    # The rows, not the files. Navidrome's backup does not contain music by design, so
+    # this asks whether the catalogue - with its play counts, ratings and playlist
+    # membership - came back, which is the part that cannot be rebuilt from the files.
+    query: "SELECT count(*) FROM media_file;"
+    expect:
+      scalar_int_min: 1
+
+  - id: signin-works
+    title: The restored account can still sign in
+    kind: http
+    method: POST
+    url: http://navidrome:{{ .vars.nd_port }}/auth/login
+    json_body: '{"username":"{{ .vars.drill_user }}","password":"{{ .vars.drill_password }}"}'
+    timeout: 120s
+    expect:
+      status: 200
+      body_matches: '"token"'
+
+test:
+  seed:
+    - name: create the admin, scan the library, create a playlist
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://navidrome:4533
+          # The first account created on a fresh instance is the administrator.
+          curl -sS -f -X POST "$B/auth/createAdmin" \
+            -H 'content-type: application/json' \
+            -d '{"username":"drilladmin","password":"Drill-Password-1"}' \
+            > /tmp/admin.json
+          SALT=`sed -e 's/.*"subsonicSalt":"//' -e 's/".*//' /tmp/admin.json`
+          TOKEN=`sed -e 's/.*"subsonicToken":"//' -e 's/".*//' /tmp/admin.json`
+          Q="u=drilladmin&t=$TOKEN&s=$SALT&v=1.16.1&c=restored-drill&f=json"
+
+          # Scans are switched off in this recipe's compose so that a restored library
+          # cannot be scanned away before the checks read it. Stage B therefore has to
+          # ask for the one scan it needs.
+          curl -sS -f -o /dev/null "$B/rest/startScan?$Q"
+          i=0
+          while [ $i -lt 60 ]; do
+            if curl -sS -f "$B/rest/search3?$Q&query=Drill" | grep -q '"artist"'; then
+              break
+            fi
+            i=`expr $i + 1`
+            sleep 2
+          done
+          curl -sS -f "$B/rest/search3?$Q&query=Drill" | grep -q '"artist"'
+
+          curl -sS -f -o /dev/null "$B/rest/createPlaylist?$Q&name=drill-canary-playlist"
+          echo "seeded: one admin, one scanned track, one playlist"
+  export: []

@@ -1,0 +1,47 @@
+# The restore side of the drill: `navidrome backup restore`, the command the backup page
+# documents, run while nothing else is using the database - which is the condition that
+# page puts in capital letters.
+#
+# Nothing here works around anything. The music folder is deliberately empty: the backup
+# page says the backup does not contain music, so a restore from it cannot produce any,
+# and scanning is off so that the restored catalogue is not reconciled away before the
+# checks read it.
+services:
+  restore:
+    image: deluan/navidrome:0.63.2
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -x
+        /app/navidrome backup restore --datafolder /data --musicfolder /music \
+          --backup-file /backup/$(cd /backup && ls -1 navidrome_backup_*.db | tail -1) --force
+        echo "DRILL: restore exit $?"
+        ls -la /data
+        exit 0
+    volumes:
+      - ${RESTORED_INPUT_backups}:/backup:ro
+      - navidrome-data:/data
+      - navidrome-music:/music
+    networks: [restored]
+
+  navidrome:
+    image: deluan/navidrome:0.63.2
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      ND_LOGLEVEL: info
+      ND_SCANSCHEDULE: "0"
+      ND_SCANONSTARTUP: "false"
+    volumes:
+      - navidrome-data:/data
+      - navidrome-music:/music:ro
+    networks: [restored]
+
+volumes:
+  navidrome-data:
+  navidrome-music:
+
+networks:
+  restored:
+    internal: true

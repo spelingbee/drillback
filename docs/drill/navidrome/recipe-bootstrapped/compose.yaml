@@ -1,0 +1,64 @@
+# The same restore as ../recipe, with the one step the documentation does not mention:
+# let Navidrome create a database first, because `navidrome backup restore` refuses to
+# run without one ("fatal: No existing database").
+#
+# This recipe is not a fix and is not proposed as one. It exists so that the drill can
+# say which of the two possible causes is true: a backup file that does not contain the
+# data, or a restore procedure with a missing step.
+services:
+  restore:
+    image: deluan/navidrome:0.63.2
+    environment:
+      ND_BACKUP_PATH: /backup
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -x
+        # 1. The undocumented step: start the server once, let it create the database,
+        #    stop it again. The backup page is emphatic that the restore must happen
+        #    with the application not running, so it is stopped before step 2.
+        /app/navidrome --datafolder /data --musicfolder /music &
+        i=0
+        while [ $$i -lt 60 ]; do
+          if [ -f /data/navidrome.db ]; then break; fi
+          i=$$((i+1))
+          sleep 1
+        done
+        sleep 3
+        pkill navidrome || true
+        sleep 3
+        ls -la /data
+        # 2. The documented command - with the second undocumented condition met as
+        #    well: --backup-file is resolved inside Backup.Path, so ND_BACKUP_PATH has
+        #    to be set and the value has to be a file name, not a path. Given an
+        #    absolute path the command fails with an empty "backup path=".
+        /app/navidrome backup restore --datafolder /data --musicfolder /music           --backup-file $(cd /backup && ls -1 navidrome_backup_*.db | tail -1) --force
+        echo "DRILL: restore finished"
+        exit 0
+    volumes:
+      - ${RESTORED_INPUT_backups}:/backup:ro
+      - navidrome-data:/data
+      - navidrome-music:/music
+    networks: [restored]
+
+  navidrome:
+    image: deluan/navidrome:0.63.2
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      ND_LOGLEVEL: info
+      ND_SCANSCHEDULE: "0"
+      ND_SCANONSTARTUP: "false"
+    volumes:
+      - navidrome-data:/data
+      - navidrome-music:/music:ro
+    networks: [restored]
+
+volumes:
+  navidrome-data:
+  navidrome-music:
+
+networks:
+  restored:
+    internal: true

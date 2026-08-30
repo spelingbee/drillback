@@ -1,0 +1,27 @@
+# Navidrome, deployed the way https://www.navidrome.org/docs/installation/docker/ and
+# the backup page say to: the deluan/navidrome image, ./data on /data, the music folder
+# on /music, and the three ND_BACKUP_* variables the backup page gives as its
+# environment-variable example.
+#
+# Deviation, recorded in steps.md: no published port. The drill drives Navidrome from a
+# curl container on this project's network.
+services:
+  navidrome:
+    image: deluan/navidrome:0.63.2
+    environment:
+      ND_LOGLEVEL: info
+      ND_BACKUP_PATH: /backup
+      ND_BACKUP_SCHEDULE: "0 0 * * *"
+      ND_BACKUP_COUNT: "7"
+      # A one-second scan interval is not the documented default; the drill sets it so
+      # the seeded track is in the library before the backup is taken.
+      ND_SCANSCHEDULE: "@every 10s"
+    volumes:
+      - navidrome-data:/data
+      - navidrome-music:/music:ro
+      - navidrome-backup:/backup
+
+volumes:
+  navidrome-data:
+  navidrome-music:
+  navidrome-backup:

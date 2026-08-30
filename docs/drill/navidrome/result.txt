@@ -1,0 +1,28 @@
+restored 0.1.0-dev · recipe navidrome-documented-backup · run mlu6stzz
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/navidrome/restic-backup
+  snapshot   341a03ce  2026-08-30 12:33:13  host=drill  tags=[drill]
+  inputs     backups  /backup  668.0 KiB  1 file
+
+  restore    ok          1.7s   1 input
+  compose    ok          2.0s   2 services
+  ready      ok         0.58s   Navidrome is accepting connections
+
+  CHECKS
+  ✔  serves-ui              The web interface answers                    0.59s
+  ✘  signin-works           The restored account can still sign in       0.57s
+                              expect  status: 200
+                              got     status: 401
+                              expect  body_matches: "token"
+                              got     {"error":"Invalid username or password"}
+  ✘  playlist-restored      The playlist is back, under its owner        0.56s
+                              expect  body_matches: drill-canary-playlist
+                              got     {"subsonic-response":{"status":"failed","version":"1.16.1","type":"navidrome","serverVersion":"0.63.2 (be10f89c)","openSubsonic":true,"error":{"code":40,"message":"Wrong username or password"}}}
+  ✘  library-rows-restored  The library catalogue is back                0.52s
+                              expect  body_matches: Drill Operator
+                              got     {"subsonic-response":{"status":"failed","version":"1.16.1","type":"navidrome","serverVersion":"0.63.2 (be10f89c)","openSubsonic":true,"error":{"code":40,"message":"Wrong username or password"}}}
+
+  RESTORE UNUSABLE  1/4 checks  ·  total 7.7s  ·  teardown ok
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

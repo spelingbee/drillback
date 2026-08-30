@@ -20,6 +20,7 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | 2 | memos | PASS (data directory) / FAIL ("the database" alone) | `recipes/memos`, passes `recipe test` | The -wal file holds everything; the .db is 4 KiB. |
 | 4 | open-webui | SKIPPED (verbatim, host cannot restore its symlinks) / PASS (without cache/) | `recipes/open-webui`, passes `recipe test` | 1.1 GB of backup for 1 MB of data. |
 | 5 | filebrowser | PASS (all three volumes) / PARTIAL (files without the database) | `recipes/filebrowser`, passes `recipe test` | No backup documentation at all; project archived 2026-09-01. |
+| 6 | navidrome | FAIL (documented restore) / PASS (a copy of /data) | `recipes/navidrome`, passes `recipe test` | "Restore complete" and an empty instance. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next

@@ -1,0 +1,34 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  navidrome:
+    image: deluan/navidrome:0.63.2
+    environment:
+      ND_LOGLEVEL: info
+      # Scanning is off, on purpose and in both directions. A restored database
+      # describes music that this throwaway stack does not have, and a scan would
+      # quietly reconcile the two - deleting the very rows the checks are here to find.
+      # A restore check must look at what came back, not at what the application made
+      # of it thirty seconds later.
+      ND_SCANSCHEDULE: "0"
+      ND_SCANONSTARTUP: "false"
+    volumes:
+      - ${RESTORED_INPUT_data}:/data
+      # Empty during `check`; this recipe's own test/ directory, holding one small
+      # generated MP3, during `recipe test`.
+      - ${RESTORED_TEST_ASSETS}:/music:ro
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

@@ -1,0 +1,24 @@
+restored 0.1.0-dev · recipe navidrome · run rmyidlee
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/navidrome/restic-data
+  snapshot   5050f08c  2026-08-30 12:33:44  host=drill  tags=[drill]
+  inputs     data  /data                 4.6 MiB  6 files
+             db    /data/navidrome.db  664.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.2s   1 service
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.53s   Navidrome is accepting connections
+
+  CHECKS
+  ✔  serves-ui             The web interface answers                     0.55s
+  ✔  db-integrity          The SQLite database passes PRAGMA             0.01s
+                           integrity_check → ok
+  ✔  users-present         The accounts survived the restore → 1         0.01s
+  ✔  playlists-present     The playlists survived the restore → 1        0.01s
+  ✔  library-rows-present  The library is still in the database → 1      0.01s
+  ✔  signin-works          The restored account can still sign in        0.59s
+
+  PASS  6/6 checks  ·  total 5.1s  ·  teardown ok
+
+This backup boots.

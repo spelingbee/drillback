@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "rmyidlee",
+    "compose_project": "restored-rmyidlee",
+    "started_at": "2026-08-30T12:33:45Z",
+    "finished_at": "2026-08-30T12:33:50Z",
+    "duration_ms": 5108,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-rmyidlee"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "navidrome",
+    "title": "Navidrome (SQLite)",
+    "source": "path",
+    "digest": "sha256:22d40f81d820f827ee958e98407a91b64dd046669c932b2a853fc8f2280947eb"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/navidrome/restic-data",
+    "snapshot": {
+      "id": "5050f08c5ce79dcd82f9c97706db558ed83e8e4df1d2256a942d7239e5f7d6f7",
+      "short_id": "5050f08c",
+      "time": "2026-08-30T12:33:44.17682277Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/data"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/data",
+      "bytes": 4853336,
+      "files": 6,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/data/navidrome.db",
+      "bytes": 679936,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1698,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1189,
+      "services": [
+        "navidrome"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 12,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 531,
+      "probes": [
+        {
+          "name": "Navidrome is accepting connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 531
+        }
+      ],
+      "note": "Navidrome is accepting connections"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves-ui",
+      "title": "The web interface answers",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 548,
+      "expect": {
+        "status_in": [
+          200,
+          302
+        ]
+      },
+      "observed": {
+        "status": 302,
+        "body_bytes": 28
+      },
+      "url": "http://navidrome:4533/"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 15,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "The accounts survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 9,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM user;"
+    },
+    {
+      "id": "playlists-present",
+      "title": "The playlists survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 9,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM playlist;"
+    },
+    {
+      "id": "library-rows-present",
+      "title": "The library is still in the database",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 9,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM media_file;"
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 594,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"token\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 400,
+        "matched": true
+      },
+      "url": "http://navidrome:4533/auth/login"
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 6,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

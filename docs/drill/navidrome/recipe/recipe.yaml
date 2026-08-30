@@ -1,0 +1,73 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: navidrome-documented-backup
+  title: Navidrome, restored from the file `navidrome backup create` writes
+  description: >
+    The drill recipe for Navidrome. Its input is the directory ND_BACKUP_PATH points at,
+    holding the navidrome_backup_<timestamp>.db files the documented backup produces,
+    and the restore step is the other documented command, `navidrome backup restore`,
+    run offline as the backup page insists.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/navidrome/navidrome
+  tags: [music, drill]
+
+vars:
+  nd_port: 4533
+
+inputs:
+  backups:
+    kind: dir
+    title: The directory ND_BACKUP_PATH points at
+    description: >
+      One or more navidrome_backup_<timestamp>.db files. /backup is the path the backup
+      page's own environment-variable example uses.
+    default_path: /backup
+    required: true
+    mount:
+      env: RESTORED_INPUT_backups
+      into: restore:/backup
+
+ready:
+  - name: Navidrome is accepting connections
+    kind: tcp
+    service: navidrome
+    port: 4533
+    timeout: 240s
+    interval: 2s
+
+checks:
+  - id: serves-ui
+    title: The web interface answers
+    kind: http
+    url: http://navidrome:{{ .vars.nd_port }}/
+    expect:
+      status_in: [200, 302]
+
+  - id: signin-works
+    title: The restored account can still sign in
+    kind: http
+    method: POST
+    url: http://navidrome:{{ .vars.nd_port }}/auth/login
+    json_body: '{"username":"drilladmin","password":"Drill-Password-1"}'
+    timeout: 120s
+    expect:
+      status: 200
+      body_matches: '"token"'
+
+  - id: playlist-restored
+    title: The playlist is back, under its owner
+    kind: http
+    url: http://navidrome:{{ .vars.nd_port }}/rest/getPlaylists?u=drilladmin&p=Drill-Password-1&v=1.16.1&c=restored-drill&f=json
+    expect:
+      status: 200
+      body_matches: "drill-canary-playlist"
+
+  - id: library-rows-restored
+    title: The library catalogue is back
+    kind: http
+    url: http://navidrome:{{ .vars.nd_port }}/rest/search3?u=drilladmin&p=Drill-Password-1&v=1.16.1&c=restored-drill&f=json&query=Drill
+    expect:
+      status: 200
+      body_matches: "Drill Operator"
