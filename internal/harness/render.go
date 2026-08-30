@@ -109,6 +109,15 @@ func writeResult(b *strings.Builder, o report.Options, res Result) {
 		if st.Command != "" {
 			fmt.Fprintf(b, "           %s\n", paint(o, "$ "+st.Command, colDim))
 		}
+		// The check report, indented under the stage that produced it. This is the
+		// per-check query, expectation and observation, the service logs and the
+		// hint - the whole RESTORE UNUSABLE block the README sells. It used to be
+		// computed and dropped, leaving a contributor with one sentence naming which
+		// checks failed and no way to learn why without reproducing it locally.
+		// See ADR-061.
+		if st.Check != nil {
+			writeIndented(b, o, st.Check)
+		}
 	}
 	if res.Error != "" && len(res.Stages) == 0 {
 		for _, line := range wrap(res.Error, 74) {
@@ -199,4 +208,26 @@ func duration(ms int64) string {
 	default:
 		return fmt.Sprintf("%dm%02ds", int(d.Minutes()), int(d.Seconds())%60)
 	}
+}
+
+// writeIndented renders a check report underneath the harness stage it belongs to,
+// reusing the check renderer rather than growing a second one. Everything is pushed
+// right by two spaces so the nesting is visible in a CI log, where the two reports
+// would otherwise run together.
+func writeIndented(b *strings.Builder, o report.Options, rep *report.Report) {
+	var inner strings.Builder
+	if err := rep.WriteTTY(&inner, o); err != nil {
+		// The renderer is a pure function of the report and has no reason to fail.
+		// If it somehow does, the stage line above still stands on its own.
+		return
+	}
+	fmt.Fprintf(b, "\n           %s\n", paint(o, "the check that produced this verdict:", colDim))
+	for _, line := range strings.Split(strings.TrimRight(inner.String(), "\n"), "\n") {
+		if line == "" {
+			fmt.Fprintln(b)
+			continue
+		}
+		fmt.Fprintf(b, "  %s\n", line)
+	}
+	fmt.Fprintln(b)
 }

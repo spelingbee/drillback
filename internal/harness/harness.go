@@ -105,8 +105,19 @@ type Stage struct {
 	DurationMS int64   `json:"duration_ms"`
 	Phases     []Phase `json:"phases,omitempty"`
 	Error      string  `json:"error,omitempty"`
-	// Command is what a human types to reproduce the stage's final step.
+	// Command is what a human types to reproduce the stage's final step. It has to
+	// still work after the stage has finished: the harness deletes its workspaces
+	// unless --keep was passed, so a command naming one of them is a command that
+	// answers "no such file or directory". See ADR-061.
 	Command string `json:"command,omitempty"`
+	// Check is the report from the `restored check` this stage ran, when there was
+	// one. It carries the per-check query, expectation and observation, the service
+	// logs and the hint - which is to say, everything a contributor needs to know
+	// what went wrong, and all of which used to be computed and thrown away. It is
+	// omitted for a stage that passed, because nobody reads a passing check's
+	// observations and the JSON is uploaded as a CI artifact.
+	// See docs/review/maintainer.md MNT-03 and docs/review/fresh-clone.md FC-05.
+	Check *report.Report `json:"check,omitempty"`
 }
 
 // Result is one recipe, tested.
@@ -288,8 +299,10 @@ func (o Options) stageA(ctx context.Context, budget time.Duration) (st Stage, ke
 		return st, nil, err
 	}
 
-	st.Command = fmt.Sprintf("restored check --recipe %s --source dir --from %s --ready-timeout %s",
-		recipeRef(o.Recipe), tree, stageAReady)
+	// `tree` is deleted by the deferred cleanup above unless --keep was passed, so a
+	// command naming it is a command that answers "no such file or directory". This
+	// one rebuilds the stage. See ADR-061.
+	st.Command = fmt.Sprintf("restored recipe test %s --stage a --keep", recipeRef(o.Recipe))
 
 	phaseStart := time.Now()
 	rep, innerKept, runErr := runner.Run(ctx, runner.Options{
@@ -311,6 +324,7 @@ func (o Options) stageA(ctx context.Context, budget time.Duration) (st Stage, ke
 		kept = &Kept{Stage: "A", Workspace: innerKept.Workspace, Project: innerKept.Project}
 	}
 	if runErr != nil {
+		st.Check = rep
 		phase.Status = StatusError
 		phase.Error = runErr.Error()
 		st.Phases = append(st.Phases, phase)
@@ -336,6 +350,10 @@ func (o Options) stageA(ctx context.Context, budget time.Duration) (st Stage, ke
 		st.Reason = fmt.Sprintf("%d of %d checks failed against an empty stack: %s",
 			rep.Summary.ChecksFailed, rep.Summary.ChecksTotal, failedIDs(rep))
 	default:
+		// Every check passed against an empty stack, so none of them is looking at
+		// the data. The contributor's next question is "which of my checks is not
+		// data-sensitive, and what did it see?", and the answer is in the report.
+		st.Check = rep
 		phase.Status = StatusFail
 		phase.Note = fmt.Sprintf("all %d checks passed", rep.Summary.ChecksTotal)
 		st.Status = StatusFail

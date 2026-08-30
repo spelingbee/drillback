@@ -231,8 +231,12 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 	st.Phases = append(st.Phases, phaseOK("down", downStart, "stack and volumes removed"))
 
 	// ---- the real command --------------------------------------------------
-	st.Command = fmt.Sprintf("restored check --recipe %s --source restic --from %s --snapshot latest",
-		recipeRef(o.Recipe), repoDir)
+	// Not `check --from <repoDir>`: repoDir is inside the harness workspace, which
+	// this function deletes on the way out unless --keep was passed, so that command
+	// used to answer "no such file or directory" for everyone who pasted it. The one
+	// below rebuilds the whole stage, which is what a contributor actually wants.
+	// See ADR-061.
+	st.Command = fmt.Sprintf("restored recipe test %s --stage b --keep", recipeRef(o.Recipe))
 
 	checkStart := time.Now()
 	var rep *report.Report
@@ -259,10 +263,14 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 		st.Note("kept the check workspace at " + innerKept.Workspace)
 	}
 	if runErr != nil {
+		// A tool error still produces a report - since ADR-058 it carries the stages
+		// that ran and a hint - so it is worth keeping too.
+		st.Check = rep
 		st.Phases = append(st.Phases, phaseErr("check", checkStart, runErr))
 		return failStage(st, runErr)
 	}
 	if rep.Verdict != report.VerdictPass {
+		st.Check = rep
 		st.Phases = append(st.Phases, Phase{
 			Name:       "check",
 			Status:     StatusFail,

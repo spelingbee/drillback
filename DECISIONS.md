@@ -1426,3 +1426,53 @@ The loop guard on `refresh-registry.yml` is load-bearing and doubled: the trigge
 excludes `recipes/README.md`, and the push uses `GITHUB_TOKEN`, which by GitHub's own
 rule does not trigger further workflow runs. Remove either and the job re-triggers
 itself forever.
+
+## ADR-061: A failed round trip carries the check that failed it
+
+**Status:** accepted
+**Extends:** SPEC.md section 7, the round-trip harness
+**Found by:** the session 4 maintainer review (`docs/review/maintainer.md` MNT-03) and
+the fresh-clone walk (`docs/review/fresh-clone.md` FC-05)
+
+**Context.** `harness.Stage` had `Reason` and `Error` and nothing else. Stage B ran a
+real `restored check`, read two counters off the report, and let it go out of scope.
+
+So a contributor whose recipe failed in CI got one sentence - "2 of 5 checks failed
+after a real round trip (repos-in-db, api-lists-repos)" - and nothing else. Not the
+query, not the expectation, not what came back, not what the application logged. All
+of it had been computed. The `--report` JSON that `recipes.yml` uploads as an artifact
+had no check array in it at all. The workspace holding the debug log was deleted,
+because CI does not pass `--keep`.
+
+The one actionable line that was printed made it worse: `st.Command` named the restic
+repository inside the harness workspace that the same function had just removed, so
+pasting the reproduction command answered "no such file or directory".
+
+The fresh-clone reviewer hit exactly this from the other side and lost 6.5 of their
+13.4 recipe-writing minutes to two blind three-minute runs.
+
+This is the review burden the harness exists to remove, reappearing on every failing
+pull request: either the contributor reproduces it locally with Docker, or the
+maintainer does.
+
+**Decision.** `harness.Stage` gains `Check *report.Report`, populated whenever a stage
+did not pass - a failed round trip, a stage A that found no data-sensitive check, and
+a tool error, which since ADR-058 also produces a report worth keeping. It is omitted
+for a passing stage, because nobody reads a passing check's observations and this
+document is uploaded as a CI artifact.
+
+`writeResult` renders it with `report.Report.WriteTTY`, indented two spaces under the
+stage that produced it. That renderer already exists, is pure, and is golden-tested;
+the harness grows no second renderer.
+
+Both `st.Command` values are replaced with commands that still work after teardown:
+`restored recipe test <ref> --stage a --keep` and `--stage b --keep`.
+
+**Consequences.** A failing recipe pull request now shows the contributor what the
+check asked, what it expected, what it got, what the services logged and which hint
+matched - in the CI log, without downloading anything, and in the JSON artifact for
+anyone who wants to parse it.
+
+The harness JSON is larger, because it now nests up to two check reports per recipe.
+That is the point of it. The 200-line-per-service log embedding that makes it large is
+its own finding (SEC-08) with its own entry in the backlog.
