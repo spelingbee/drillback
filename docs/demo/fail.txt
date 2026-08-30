@@ -1,35 +1,35 @@
-restored 0.1.0-dev · recipe gitea · run du4u7rzu
+restored 0.1.0-dev · recipe gitea · run hfnneq6j
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   819352b5  2026-08-30 00:23:12  host=demo-host  tags=[gitea-broken]
+  snapshot   782c24b1  2026-08-30 03:56:39  host=demo-host  tags=[gitea-broken]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql      489 B  plain SQL
 
   restore    ok          1.8s   2 inputs
-  compose    ok          2.1s   2 services, db first for the dump
-  load db    ok          3.1s   db: psql, 0 stderr lines
-  ready      ok          6.7s   postgres accepts connections, gitea answers on the internal network
+  compose    ok          1.2s   2 services, db first for the dump
+  load db    ok          2.3s   db: psql, 0 stderr lines
+  ready      ok          5.3s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.81s
-  ✘  repos-in-db         The database contains at least one repository   0.69s
+  ✔  web-ui-renders      The web UI renders the instance home page       0.53s
+  ✘  repos-in-db         The database contains at least one repository   0.43s
                          row
                            query   SELECT count(*) FROM repository;
                            expect  scalar_int_min: 1
                            got     0
-  ✘  users-in-db         The database contains at least one real user    0.75s
+  ✘  users-in-db         The database contains at least one real user    0.43s
                          account
                            query   SELECT count(*) FROM "user" WHERE lower_name <> 'ghost';
                            expect  scalar_int_min: 1
                            got     0
   ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
                          → 1 match for */*.git/HEAD
-  ✘  api-lists-repos     The API lists repositories, so the database     0.83s
+  ✘  api-lists-repos     The API lists repositories, so the database     0.54s
                          and the disk agree
                            expect  json_path_len_min: 1
                            got     0
 
-  RESTORE UNUSABLE  2/5 checks  ·  total 18.9s  ·  teardown ok
+  RESTORE UNUSABLE  2/5 checks  ·  total 13.9s  ·  teardown ok
 
   LIKELY CAUSE
     The application's tables are there, but they are empty

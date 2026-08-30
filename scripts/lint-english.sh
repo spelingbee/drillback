@@ -40,9 +40,15 @@ nonascii=$(printf '[\200-\377]')
 
 for f in $files; do
   case "$f" in
-  LICENSE | *.png | *.jpg | *.gz | *.zip | *.exe) continue ;;
+  LICENSE) continue ;;
   esac
   [ -f "$f" ] || continue
+
+  # Skip anything that is not text. This used to be a list of extensions, which is a
+  # list that is always one entry out of date - docs/demo/demo.gif arrived and the
+  # check reported the GIF's own bytes as non-English. `grep -I` calls a file binary
+  # if it contains a NUL, which is the same test git uses, and needs no maintenance.
+  grep -Iq . "$f" 2>/dev/null || continue
 
   strip_allowed <"$f" | grep -n "$nonascii" 2>/dev/null | sed "s|^|$f:|" >>"$found" || true
 done

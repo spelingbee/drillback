@@ -27,6 +27,11 @@ test-integration:
 lint:
 	gofmt -l .
 	$(GO) vet ./...
+	# Build-tagged files are invisible to every command above, so a signature change
+	# can break the integration suite and nothing notices until CI runs it - which is
+	# how `compose.Preflight` lost its second argument in session 4 and stayed broken
+	# through a green `go test ./...`. This compiles them without running them.
+	$(GO) vet -tags integration ./...
 	golangci-lint run
 	./scripts/lint-english.sh
 

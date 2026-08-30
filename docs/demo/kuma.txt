@@ -1,27 +1,27 @@
-restored 0.1.0-dev · recipe uptime-kuma · run zlleosna
+restored 0.1.0-dev · recipe uptime-kuma · run jj5anzli
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   4bff8d25  2026-08-30 00:23:57  host=demo-host  tags=[uptime-kuma]
+  snapshot   017ce311  2026-08-30 03:57:11  host=demo-host  tags=[uptime-kuma]
   inputs     data  /srv/uptime-kuma/data          228.0 KiB  1 file
              db    /srv/uptime-kuma/data/kuma.db  228.0 KiB  1 file
 
   restore    ok          1.7s   2 inputs
-  compose    ok          2.1s   1 service
-  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
-  ready      ok          4.9s   kuma serves HTTP
+  compose    ok          1.2s   1 service
+  load db    ok         0.00s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok          4.0s   kuma serves HTTP
 
   CHECKS
-  ✔  dashboard-renders   The dashboard entrypoint renders                0.84s
-  ✔  db-integrity        The SQLite database passes PRAGMA               0.05s
+  ✔  dashboard-renders   The dashboard entrypoint renders                0.55s
+  ✔  db-integrity        The SQLite database passes PRAGMA               0.02s
                          integrity_check → ok
-  ✔  monitors-present    At least one monitor survived the restore →     0.02s
+  ✔  monitors-present    At least one monitor survived the restore →     0.01s
                          1
   ✔  users-present       At least one user account survived the          0.01s
                          restore → 1
-  ✔  heartbeats-present  Heartbeat history survived the restore, so      0.02s
+  ✔  heartbeats-present  Heartbeat history survived the restore, so      0.01s
                          this is not a fresh database → 1
-  ✔  api-entry-page      The API entry point answers                     0.85s
+  ✔  api-entry-page      The API entry point answers                     0.54s
 
-  PASS  6/6 checks  ·  total 11.3s  ·  teardown ok
+  PASS  6/6 checks  ·  total 8.5s  ·  teardown ok
 
 This backup boots.

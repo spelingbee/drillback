@@ -28,8 +28,9 @@ go test ./internal/recipe/ -run TestSchemaRejects -v
 go test ./internal/report/ -update     # rewrite the golden renderings
 
 # lint
-make lint                   # gofmt -l, go vet, golangci-lint run
+make lint                   # gofmt -l, go vet (twice), golangci-lint run
 gofmt -l .                  # must print nothing
+go vet -tags integration ./...   # build-tagged files compile nowhere else
 ./scripts/lint-english.sh   # fails on non-ASCII outside the allowlist
 
 # recipes

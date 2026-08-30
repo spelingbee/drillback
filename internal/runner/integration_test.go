@@ -46,7 +46,7 @@ func requireDocker(t *testing.T) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := compose.Preflight(ctx, false); err != nil {
+	if err := compose.Preflight(ctx); err != nil {
 		t.Skipf("skipping: %v", err)
 	}
 }
