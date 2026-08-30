@@ -18,10 +18,12 @@ Rules for this file:
 
 ## Current state
 
-**Phase:** the core works, and so does the machinery that lets a stranger's recipe be
-trusted without a maintainer reading it. `restored check` runs end to end; `restored
-recipe test` runs the round trip; five recipes pass it.
-**Version:** unreleased. No tags. `0.1.0-dev` is what the binary reports.
+**Phase:** reviewed, hardened, and ready to release - up to the tag, which is a human's
+(stop point 1). Five independent reviewers went through the repository before strangers
+could; all 9 P0 and all 21 P1 findings are fixed; the remaining 38 are written up as
+`help wanted` issues waiting for the repository to be public.
+**Version:** unreleased. No tags. `0.1.0-dev` is what a local build reports; the release
+version comes from the tag through ldflags and from nowhere else.
 **Module:** `github.com/spelingbee/restored` (ADR-036 - see *Open questions*, the name
 is still a human's to confirm and the rename is one grep).
 **Language of record:** English, everywhere, enforced by `scripts/lint-english.sh`.
@@ -40,7 +42,7 @@ What works, and is proved by a command below:
 | `restored version [--json]` | works, and exits 0 with docker and restic absent |
 | Isolation | enforced: no privileged, no host namespaces, no published ports, no bind outside the workspace, internal networks only |
 | Report | TTY renderer with an ASCII fallback and `NO_COLOR`, plus the JSON document of SPEC.md 5.2; the harness has its own report and its own schema version |
-| Hints | 17 rules, embedded, `--hints FILE` for extra rules matched first |
+| Hints | 18 rules, embedded, `--hints FILE` for extra rules matched first; matched on every exit path since ADR-058 |
 | Nudge | built, tested, printed only when all five conditions in SPEC.md 8.1 hold; `--no-nudge` and `defaults.nudge: false` both silence it |
 | Teardown | `compose down -v --remove-orphans` plus the workspace, on every exit path |
 | CI | `ci.yml` (lint, generated-file diff, unit on three platforms, integration), `recipes.yml` (changed recipes, one verdict each), `recipe-health.yml` (weekly, opens and closes issues), `release.yml` (goreleaser skeleton, draft only) |
@@ -59,14 +61,21 @@ What does **not** work yet, deliberately:
   `internal/nudge` reads through a deliberately narrow one-key reader so that a user
   who has written `nudge: false` is believed today.
 - **The sixth recipe** for the v0.1 gate of six (ADR-033). Five exist and all five
-  round-trip. Miniflux is the obvious next one.
+  round-trip. Miniflux is the obvious next one, and session 4's fresh-clone reviewer
+  wrote one that passes both stages: it is in `docs/review/fresh-clone.md` under "The
+  miniflux recipe I ended up with", with the verdict from the run that passed.
 - **`smoke.yml`**, the fresh-clone test of SPEC.md 11.3. The `unit` job proves
   `go test ./...` is green with no docker and no restic, which is most of what it was
-  for.
-- **`CHANGELOG.md`, `docs/recipes.md`, `docs/security.md`, `install.sh`.**
-  `docs/recipe-spec.md` now exists and is generated from the JSON Schema.
-- **Nothing is published.** No tag, no image, no tap, no issues filed, no labels
-  created, and the repository is not public. Those are stop points; see CLAUDE.md.
+  for; session 4's fresh-clone review walked the rest of it by hand.
+- **`docs/recipes.md`, `docs/security.md`.** `CHANGELOG.md`, `install.sh`,
+  `docs/docker.md`, `docs/homebrew-tap.md`, `docs/release-checklist.md` and
+  `docs/recipe-spec.md` all exist now.
+- **The 38 P2 and P3 findings** in `docs/review/backlog.md`. Deliberately not fixed:
+  they are the contributor entry points, and `scripts/backlog-issues.sh` files them the
+  hour the repository goes public.
+- **Nothing is published.** No tag, no image pushed, no tap, no issues filed, no labels
+  created, and the repository is not public. Those are stop points; see CLAUDE.md and
+  `docs/release-checklist.md`, which is the ordered list.
 
 Repository layout now matches SPEC.md section 13, plus `internal/runner` (ADR-038),
 `internal/sqlite`, `internal/harness`, `tools/gen`, and `assets.go` at the root
@@ -762,13 +771,389 @@ $ for f in .wfcheck/*.sh; do bash -n "$f" || echo "SYNTAX $f"; done
 shell syntax errors: 0
 ```
 
+### Session 4 - 2026-08-30 - Five reviews, the fixes, and everything but the tag
+
+The brief: find what is wrong before strangers do, fix it, and prepare the first public
+release, stopping before the tag.
+
+#### What the reviews found
+
+Five reviewers worked from fresh contexts, read the repository independently, and
+reported without fixing anything. Their reports are in `docs/review/`, one file each,
+every finding with a file:line and either a real reproduction or a concrete scenario.
+
+| review | P0 | P1 | P2 | P3 | the one that mattered most |
+|---|---|---|---|---|---|
+| security | 2 | 3 | 4 | 4 | a recipe variable injects arbitrary YAML into the compose file that runs |
+| architecture | 1 | 4 | 7 | 4 | a run that exceeded `--timeout` was reported as `RESTORE UNUSABLE` |
+| UX | 2 | 4 | 8 | 3 | the hint catalog could never fire on any failure that returned an error |
+| maintainer | 3 | 5 | 7 | 3 | a recipe-only pull request always failed `ci / generated`, which CONTRIBUTING promised it would not |
+| fresh-clone | 1 | 5 | 6 | 4 | the README never says how to install the tool |
+
+**9 P0 and 21 P1, all fixed.** The 38 P2 and P3 findings are written up in
+`docs/review/backlog.md` and filed by `scripts/backlog-issues.sh` once the repository is
+public - deliberately not fixed, because they are the contributor entry points and a
+project measured by external contributors should not arrive at launch having done every
+job small enough for a stranger.
+
+They corroborated each other where it counted, which is the useful signal from running
+five. Three independently found that hints never fire on an error path. Security and
+maintainer found the unvalidated top-level `volumes:` block from opposite directions -
+one probing the validator, one reading what a maintainer would have to check by hand.
+
+#### The two that were genuinely dangerous
+
+Both were accepted by `restored recipe validate --strict` with exit 0, and both end in
+root on the machine running the drill - including the GitHub runner that tests every
+fork pull request.
+
+**SEC-01, YAML injection through a recipe variable.** The safety schema runs on
+`compose.yaml` as written, with the `${RESTORED_*}` placeholders intact (ADR-039), so
+the only structural check happens before the values go in. A `vars` value containing a
+line break therefore added `privileged: true`, `network_mode: host` and `pid: host` to a
+service, after validation had passed. Fixed by asserting the invariant interpolation is
+supposed to have - it replaces scalar values and changes nothing else about the
+document - and by routing every caller through it, `recipe validate` included, so the
+injection is refused where a maintainer looks. ADR-056.
+
+**SEC-02, the deny-list losing to the compose specification.** The top-level `volumes:`
+block was not validated at all, so a named volume with
+`driver_opts: {type: none, device: /, o: bind}` was a bind mount of the host root, and
+`device: /var/run` handed a container the Docker socket that SPEC.md 9.3 says restored
+never mounts. The service body accepted every key nobody had listed, of which
+`volumes_from: ["container:<name>"]` attaches a running container's volumes. The schema
+is now an allow-list at the root, the service, the network and the volume. ADR-057.
+
+#### The one that would have been most expensive
+
+**ARCH-01.** Every stage past LOAD DUMPS routed through `fail()`, which set
+`RESTORE_UNUSABLE` and exit 1 unconditionally - so a run that merely ran out of
+`--timeout` accused a backup that may be perfectly good. The defaults guaranteed it:
+`--timeout 15m` with a 10m restore budget and a 5m ready budget inside it left nothing
+for compose up, the dump load and the checks.
+
+Exit 1 is the number people put in cron jobs and alerting rules. It was wrong in the one
+case where a false alarm costs the most: at 03:00, about a backup that was fine.
+ADR-058.
+
+#### What a terminal found that nothing else could
+
+Rendering the demo GIF is the first time anything in this project ran `restored check`
+on a real TTY. The recording hung, and the screenshot said why: after the `PASS`, the
+contribution nudge had printed about three thousand characters of percent-encoded YAML,
+wrapped across twenty lines, pushing the report off the screen.
+
+Nothing had caught it in three sessions for a specific reason: **the nudge only fires on
+a TTY, and every test, every golden file and all five reviewers captured output through
+a pipe, where it does not fire at all.** The one output path every user sees was the
+one path nothing exercised. The URL is gone (ADR-066), and `docs/demo/demo.tape` is now
+the test that would have caught it.
+
+The same run showed the nudge inviting a contribution of `gitea`, which ships in the
+binary, because `rec.Bundled` is false for `--recipe ./recipes/gitea` - which is what
+`scripts/demo.sh` does.
+
+#### The release, up to the tag
+
+- `.goreleaser.yaml`: six targets, archives, `checksums.txt`, an SBOM per archive, a
+  changelog grouped from conventional commits, and a Homebrew cask with `skip_upload`.
+- `install.sh`: OS and architecture detection, checksum verification against
+  `checksums.txt`, `~/.local/bin` by default, and a refusal to run as root without
+  `--system`.
+- `Dockerfile` and `docs/docker.md`: the image NAS users need, and a document that says
+  plainly that a mounted Docker socket is root on the host and that restored's own
+  isolation rules do not cover it.
+- `CHANGELOG.md`, `docs/homebrew-tap.md`, `docs/release-checklist.md`.
+- `docs/demo/demo.gif`, rendered by `vhs` from the real `scripts/demo.sh` and
+  `scripts/demo-broken.sh`.
+
+Nothing is published. The checklist for what a human does next is
+`docs/release-checklist.md`, and every item on it is a stop point.
+#### Evidence
+
+Every command below was run on this commit, on this host, and the output is its real
+tail. Where something could not be run here, it says so and says why.
+
+**The suite, and the race detector CI uses.** `-race` needs a C compiler, which this
+host does not have, so it runs in the image CI runs:
+
+```text
+$ docker run --rm -v "C:/My/Projects/Work/restored:/src" \
+    -v "C:/Users/kadyr/go/pkg/mod:/go/pkg/mod" -w /src golang:1.27 go test ./... -race
+ok  	github.com/spelingbee/restored/internal/check           1.124s
+ok  	github.com/spelingbee/restored/internal/cli             1.311s
+ok  	github.com/spelingbee/restored/internal/harness         1.167s
+ok  	github.com/spelingbee/restored/internal/hints           1.153s
+ok  	github.com/spelingbee/restored/internal/loader          1.124s
+ok  	github.com/spelingbee/restored/internal/nudge           1.031s
+ok  	github.com/spelingbee/restored/internal/recipe          1.335s
+ok  	github.com/spelingbee/restored/internal/recipe/safety   1.228s
+ok  	github.com/spelingbee/restored/internal/report          1.674s
+ok  	github.com/spelingbee/restored/internal/runner          1.154s
+ok  	github.com/spelingbee/restored/internal/source/restic   1.031s
+ok  	github.com/spelingbee/restored/internal/workspace       1.099s
+RACE_EXIT=0
+```
+
+**The symlink-escape test, which skips on Windows and must not go unrun.** It is the
+security-critical path, and the schema hardening this session touches the same threat
+model:
+
+```text
+$ CGO_ENABLED=0 GOOS=linux go test -c -o /tmp/workspace.test ./internal/workspace
+$ docker run --rm -v /tmp:/t alpine:3.20 /t/workspace.test -test.run 'Symlink|Sanitise' -test.v
+=== RUN   TestSanitiseNeutralisesEscapingSymlinks
+--- PASS: TestSanitiseNeutralisesEscapingSymlinks (0.01s)
+=== RUN   TestSanitiseRefusesToLeaveTheWorkspace
+--- PASS: TestSanitiseRefusesToLeaveTheWorkspace (0.00s)
+PASS
+```
+
+**Every probe the security review left behind, re-run against the fixed validator.**
+Seven of these were accepted with exit 0 before this session:
+
+```text
+$ for d in scratchpad/secrev/p*; do ./bin/restored recipe validate "$d" --strict; done
+p01-privileged     exit=2  INVALID
+p02-netmode        exit=2  INVALID
+p03-absbind        exit=2  INVALID
+p04-driveropts     exit=2  INVALID   <- was ok
+p05-merge          exit=2  INVALID
+p06-docksock       exit=2  INVALID   <- was ok
+p07-volumesfrom    exit=2  INVALID   <- was ok
+p08-extrahosts     exit=2  INVALID   <- was ok
+p09-longbind       exit=2  INVALID
+p10-longvolopts    exit=2  INVALID   <- was ok
+p11-capadd         exit=2  INVALID
+p12-secopt         exit=2  INVALID   <- was ok
+p13-extnet         exit=2  INVALID
+p14-externalvol    exit=2  INVALID   <- was ok
+p15-yamlinject     exit=2  INVALID   <- was ok, and is SEC-01
+p17-dotdot         exit=2  INVALID
+```
+
+and the injection now fails where a maintainer looks:
+
+```text
+$ ./bin/restored recipe validate .../p15-yamlinject --strict
+INVALID  .../p15-yamlinject
+         compose.yaml: the value of ${RESTORED_VAR_port} contains a line break, which
+         would add lines to the compose file rather than fill in a value. Recipe
+         variables are single-line values; use an input for anything larger
+exit=2
+```
+
+**All five bundled recipes still validate under the allow-list.** They use seven
+compose service keys between them, which is what makes the list credible rather than
+merely tight:
+
+```text
+$ ./bin/restored recipe validate ./recipes/*/ --strict
+ok       ./recipes/TEMPLATE/
+ok       ./recipes/gitea/
+ok       ./recipes/nextcloud/
+ok       ./recipes/paperless-ngx/
+ok       ./recipes/uptime-kuma/
+ok       ./recipes/vaultwarden/
+exit=0
+```
+
+**The highest-traffic error now arrives with a report and a hint that had never once
+been printed** (ARCH-04, UX-01, UX-03):
+
+```text
+$ NO_COLOR=1 ./bin/restored check --recipe gitea --source dir --from <empty tree>
+restored 0.1.0-dev - recipe gitea - run uf2dwuts
+
+  restore    FAILED     0.00s
+             required input "data": no matching files found for
+             /srv/gitea/data in the backup.
+
+  ERROR  0/0 checks  -  total 0.54s  -  teardown ok
+
+  required input "data": no matching files found for /srv/gitea/data in the backup.
+  A recipe default path is a guess at your layout. Point this input
+  at the path your backup actually uses:
+      --input data=/your/path
+  `restored recipe show gitea --inputs-only` lists every input this recipe wants.
+
+  LIKELY CAUSE
+    The recipe's default path is not where your backup keeps that data
+    ...
+      restic ls latest | head -50
+                                         (hint: restore/path-not-in-snapshot)
+EXIT=2
+```
+
+Before this session that invocation printed one line, no report, no hint, and the rule
+`restore/path-not-in-snapshot` was unreachable code.
+
+**The release build, end to end.**
+
+```text
+$ goreleaser check
+  - 1 configuration file(s) validated
+
+$ goreleaser release --snapshot --clean
+  - archives: 6 (linux/darwin/windows x amd64/arm64)
+  - software bill of materials: 6 catalogued with syft
+  - calculating checksums
+  - homebrew cask: writing dist\homebrew\Casks\restored.rb
+  - release succeeded after 1m44s
+```
+
+**The Linux binary out of that archive, run through the real demo.** Not the host
+build - the artifact:
+
+```text
+$ tar -xzf dist/restored_0.0.1-snapshot_linux_amd64.tar.gz -C /rel
+$ docker run --rm -u 0 -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /var/lib/restored-demo:/var/lib/restored-demo -v .../restored:/src:ro -v /rel:/rel:ro \
+    -e TMPDIR=/var/lib/restored-demo -e RESTORED_BIN=/rel/restored -w /src \
+    --entrypoint sh restored:dev -c './scripts/demo.sh'
+
+restored 0.0.1-snapshot - recipe gitea - run ffaczssj
+  source     restic  /var/lib/restored-demo/tmp.jFkOFD/repo
+  snapshot   1961a4a9  2026-08-30 02:38:11  host=demo-host  tags=[gitea]
+  restore    ok          1.5s   2 inputs
+  compose    ok         0.57s   2 services, db first for the dump
+  load db    ok          2.2s   db: psql, 0 stderr lines
+  ready      ok          4.7s   postgres accepts connections, gitea answers
+  PASS  5/5 checks  -  total 10.5s  -  teardown ok
+RELEASE_DEMO_EXIT=0
+```
+
+That is also the proof for `docs/docker.md`: a `restored check` from inside the image,
+driving the host's daemon through a mounted socket, with the workspace mounted at the
+same path on both sides.
+
+**The image.**
+
+```text
+$ docker run --rm restored:dev version
+restored 0.0.0-docker
+  docker:    not found
+  restic:    0.18.0
+  recipes:   5 bundled
+exit=0
+
+$ docker run --rm --group-add 0 -v /var/run/docker.sock:/var/run/docker.sock restored:dev version
+  docker:    29.5.2 (compose v2.36.2)
+
+$ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock restored:dev version
+  docker:    not found        # the non-root user cannot read the socket without --group-add
+```
+
+**`install.sh`, every guard that does not need a release to exist.**
+
+```text
+$ docker run --rm alpine:3.22 sh /i.sh            # as root, no --system
+install.sh: refusing to run as root without --system.
+exit=1
+
+$ docker run --rm alpine:3.22 sh /i.sh --nope
+install.sh: unknown option --nope. Run install.sh --help.
+exit=1
+
+$ docker run --rm --network none -u 1000 alpine:3.22 sh /i.sh --version v0.1.0
+Downloading restored_0.1.0_linux_amd64.tar.gz (v0.1.0, linux/amd64)...
+install.sh: could not download https://github.com/spelingbee/restored/releases/download/v0.1.0/restored_0.1.0_linux_amd64.tar.gz
+exit=1
+```
+
+The asset name it builds matches `.goreleaser.yaml`'s `name_template` exactly, which is
+the coupling that would otherwise break silently. **Not tested: the actual download and
+checksum verification against a real release**, because there is no release. That is
+item 4 of the checklist in `docs/release-checklist.md`, to be done against the draft's
+own assets before the draft is published.
+
+**The round trip, all five recipes, in sequence.** This is what `recipes.yml` runs one
+recipe per job:
+
+```text
+$ ./bin/restored recipe test ./recipes/gitea ./recipes/nextcloud \
+    ./recipes/paperless-ngx ./recipes/uptime-kuma ./recipes/vaultwarden --timeout 20m
+
+  stage A  negative: the checks must fail against an empty sta... PASS      13.9s
+  stage B  round trip: seed, export, back up, restore, check     PASS      35.3s
+  PASS   gitea in 49.7s
+  PASS   nextcloud in 1m18s
+  PASS   paperless-ngx in 1m43s
+  PASS   uptime-kuma in 2m02s
+  PASS   vaultwarden in 17.1s
+
+  5 recipes: 5 passed, 0 failed, 0 errored, in 6m11s
+exit=0
+```
+
+Every stage now also prints a reproduction command that still works after teardown -
+`restored recipe test recipes\gitea --stage a --keep` - which is ADR-061.
+
+**The integration suite**, which stands up Gitea, PostgreSQL and Uptime Kuma several
+times, after the build-tag fix below:
+
+```text
+$ go test -tags integration ./... -timeout 30m
+ok  	github.com/spelingbee/restored/internal/runner   170.991s
+ok  	github.com/spelingbee/restored/internal/check    (cached)
+ok  	github.com/spelingbee/restored/internal/harness  (cached)
+ok  	github.com/spelingbee/restored/internal/report   0.777s
+...
+INTEGRATION_EXIT=0
+```
+
+**Nothing was left behind.**
+
+```text
+$ docker ps -aq --filter "label=com.restored.run" | wc -l
+0
+```
+
+**The captured demo text, re-captured on this commit.** `scripts/capture-demo.sh` runs
+all three demos for real and splices the result into README.md between its markers:
+
+```text
+$ ./scripts/capture-demo.sh
+capturing ./scripts/demo.sh       -> docs/demo/pass.txt
+capturing ./scripts/demo-broken.sh -> docs/demo/fail.txt
+capturing ./scripts/demo-kuma.sh  -> docs/demo/kuma.txt
+exit=0
+
+$ git diff -- docs/demo/ | grep '^[-+]' | grep -v 'run id|snapshot|timing'
+(nothing: only run ids, snapshot ids and durations differ)
+```
+
+**The demo GIF**, from a real run of both demos: 146 seconds at double speed, 776 KB,
+ending on `RESTORE UNUSABLE 2/5 checks` with the `db/tables-empty` hint and `exit=1`.
+Its last frame was inspected rather than assumed.
+
+#### What the verification run caught
+
+Worth recording, because it is the argument for running the whole thing rather than the
+parts that are quick:
+
+**`go test -tags integration ./...` did not compile.** ADR-063 removed the boolean from
+`compose.Preflight`, and the call in `internal/runner/integration_test.go` still passed
+one. That file is behind a build tag, so `gofmt`, `go vet`, `golangci-lint`, `go build`
+and the entire unit suite compile past it without looking - all of them green, all
+session. It would have gone red in CI's `integration` job and nowhere else.
+
+`make lint` and CI's `lint` job now also run `go vet -tags integration ./...`.
+
+**`scripts/lint-english.sh` reported the demo GIF's own bytes as non-English.** It
+skipped binaries by an extension list, which is a list that is always one entry out of
+date. It now asks `grep -I` whether the file is text.
+
+Both are the same bug in different clothes: a check whose coverage depends on somebody
+remembering to extend it.
+
 ---
 
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
 
-### Session 4 - configuration and the rest of the CLI surface
+### Session 5 - `internal/config`, and the rest of the CLI surface
 
 `internal/config`: `restored.yaml`, sources, targets, the precedence chain, `--config`,
 `--target`, `--all`, and the `--all` report shape. Then diff `--help` against SPEC.md
@@ -780,28 +1165,33 @@ at that one key and uses SPEC.md 2.9's search order. It exists so a user who wro
 `nudge: false` is believed today. When `internal/config` lands it should take that over
 and `nudge/config.go` should go; the behaviour must not change under anyone.
 
-### Session 5 - the sixth recipe, and the launch
+### Session 6 - the sixth recipe
 
 Miniflux reaches the six-recipe gate (ADR-033). It is the easiest of the remaining
-candidates: one binary, PostgreSQL, no first-run wizard.
+candidates: one binary, PostgreSQL, no first-run wizard - and session 4's fresh-clone
+reviewer already wrote one that passes both stages, in `docs/review/fresh-clone.md`
+under "The miniflux recipe I ended up with". Adopting it is not the same as taking it:
+it was written from the documentation in thirteen minutes by somebody who had never
+seen the codebase, so read the two notes they left underneath it first.
 
-Then the launch, which is entirely stop points and therefore entirely a human's:
+### The launch, which is entirely a human's
 
-1. `scripts/labels.sh --apply` - the labels have to exist before anything applies one.
-2. Make the repository public (stop point 4).
-3. `scripts/recipes-wanted.sh --apply --limit 5` first, read what the first five look
-   like on a real repository, then the rest (stop point 3 for anything that amounts to
-   posting).
-4. The release checklist in SPEC.md 12.6 (stop points 1 and 6).
-
-Nothing in that list should be done by a session on its own initiative.
+`docs/release-checklist.md` is the ordered list, and every item on it is a stop point in
+CLAUDE.md. In summary: six repository settings that no shell can turn on, then labels,
+then public, then the tag, then the image and the tap, then the issues. Nothing on it
+should be done by a session on its own initiative, and the reason the checklist exists
+is so that none of it has to be worked out under time pressure on the day.
 
 ### Then
 
-`CHANGELOG.md`, `docs/security.md`, `install.sh`, the ghcr image, `smoke.yml`, and a
-`mysql-dump` input kind - `recipe init --compose` already recognises a MySQL service
-and tells the contributor, in the file it writes, that restored cannot restore it yet.
-That message is a promise to somebody.
+`docs/security.md`, `smoke.yml`, and a `mysql-dump` input kind - `recipe init --compose`
+already recognises a MySQL service and tells the contributor, in the file it writes,
+that restored cannot restore it yet. That message is a promise to somebody.
+
+And the 38 findings in `docs/review/backlog.md`, which are not for a session to do:
+they are what a stranger picks up. `scripts/backlog-issues.sh --apply` files them once
+the repository is public, and the four best first issues in the list were left unfixed
+on purpose.
 
 `docs/roadmap.md` has the rest, including the two harness gaps worth closing first: a
 `wait` step so a recipe can seed something the application processes asynchronously,
@@ -816,11 +1206,16 @@ and a real document round trip.
 |---|---|---|---|---|
 | - | Nothing. | - | - | - |
 
-Three things are *waiting*, which is different from blocked: every one of them is a
-stop point in CLAUDE.md, the work up to the stop point is done, and a human has to take
-the next step. They are listed under *Next steps*, session 5.
+Everything that is *waiting* is waiting on a human, not on a discovery, and every one of
+them is a stop point in CLAUDE.md with the work up to it finished:
 
----
+- the repository is not public (stop point 4), so `scripts/backlog-issues.sh` and
+  `scripts/recipes-wanted.sh` cannot file the 38 + 50 issues that are written and ready;
+- nothing is tagged (stop point 1), so `install.sh` cannot be tested against a real
+  release asset - the only part of it that is unverified;
+- nothing is pushed to ghcr or a tap (stop point 6);
+- six repository settings have to be turned on by hand, three of which documents in
+  this repository already promise. `docs/release-checklist.md` is the ordered list.
 
 ## Open questions for a human
 
@@ -862,8 +1257,24 @@ the next step. They are listed under *Next steps*, session 5.
    CLAUDE.md says to prefer against. A `prepare:` block in the recipe format would be a
    mechanism. It would also be a new way for a recipe to run arbitrary code, which is
    exactly what the isolation rules exist to constrain.
-8. **New: the review promise in CONTRIBUTING.md is a promise.** "First response within
+8. **The review promise in CONTRIBUTING.md is a promise.** "First response within
    24 hours, merged within 48 when CI is green." It is the right promise - it is most of
    what makes a first contribution feel worth making - and there is one maintainer. It
    should be confirmed or changed before the repository is public, not after somebody
-   has relied on it.
+   has relied on it. Session 4 made it cheaper to keep (`recipes / verdict` is now a
+   single check to look at rather than a matrix to read) and told contributors that
+   their first run waits for approval - but the clock is still a human's.
+9. **New: is a `contact address` needed, and whose?** `SECURITY.md` and
+   `CODE_OF_CONDUCT.md` both route through GitHub's private advisory form, which is a
+   repository setting that has to be turned on (`docs/release-checklist.md` item 1.1).
+   Session 4 added the two fallbacks that do not need an address - a public issue
+   containing only the request, and GitHub's abuse report for a conduct complaint about
+   the maintainer - deliberately without inventing an email address to put in a public
+   repository. Whether to publish one is a human's call, and it is cheap now and
+   awkward later.
+10. **New: `dist/homebrew/` versus `docs/homebrew-tap.md`.** The session brief asked for
+    the tap content under `dist/homebrew/`. It is in `docs/homebrew-tap.md` instead,
+    because `goreleaser --clean` empties `dist/` on every run: a checked-in file there
+    disappears the next time somebody builds a release, and then gets committed as a
+    deletion by whoever runs `git add -A` afterwards. If the tap repository should be a
+    subtree of this one later, that decision changes this.
