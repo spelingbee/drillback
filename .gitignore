@@ -1,4 +1,7 @@
-# Build output
+# Build output. All of it: `goreleaser --clean` empties this directory on every run,
+# so a checked-in file under dist/ is a file that silently disappears. The Homebrew tap
+# documentation therefore lives in docs/homebrew-tap.md, and the cask goreleaser writes
+# to dist/homebrew/Casks/ is generated per release and never committed.
 /dist/
 /bin/
 /restored

@@ -18,6 +18,66 @@ One command, about a minute, and an exit code a cron job can act on.
 
 ---
 
+## Why this exists
+
+A green backup job is not evidence. The dump taken with `--schema-only`, the SQLite
+file copied while the application was writing to it, the bind mount that was empty
+because the data was in a named volume — all of them are silent until the day you need
+the restore, and then you find out under pressure. The only evidence is a restore that
+boots, and doing that by hand is expensive enough that nobody does it.
+
+---
+
+## Install
+
+```sh
+# any Linux or macOS, verifies the checksum, installs to ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/spelingbee/restored/main/install.sh | sh
+
+# macOS, via Homebrew
+brew install spelingbee/tap/restored
+
+# anywhere Go is installed
+go install github.com/spelingbee/restored/cmd/restored@latest
+```
+
+Or download an archive from [Releases](https://github.com/spelingbee/restored/releases)
+and unpack it: `checksums.txt` covers every one, and an SBOM ships beside each.
+
+For a NAS, there is an image with `restored`, the Docker CLI, the Compose plugin and
+`restic` already in it. Read [docs/docker.md](docs/docker.md) first - it needs the
+Docker socket, and it is blunt about what that grants.
+
+```sh
+docker run --rm ghcr.io/spelingbee/restored:0.1.0 version
+```
+
+**What you need:** a Docker daemon, and `restic` if your backups are restic
+repositories. `restored version` tells you what it can see:
+
+```sh
+restored version      # exits 0 even when docker and restic are both missing
+```
+
+---
+
+## See it work, without a backup of your own
+
+This is the fastest way to find out whether the tool does what this page says, and it
+needs nothing but Docker and restic:
+
+```sh
+git clone https://github.com/spelingbee/restored && cd restored
+./scripts/demo.sh          # stands up a real Gitea, backs it up, restores it: PASS, exit 0
+./scripts/demo-broken.sh   # the same backup with an empty dump: RESTORE UNUSABLE, exit 1
+```
+
+Both build a real application, put real data in it, back it up with restic, destroy it,
+and restore it. About a minute each. The second one is the more useful of the two: it
+is what a backup that passes its own backup job and fails a restore looks like.
+
+---
+
 ## What it looks like
 
 A Gitea backup that is fine:
@@ -130,33 +190,39 @@ be run twice in a row.
 
 ---
 
-## Why this exists
-
-A green backup job is not evidence. The dump taken with `--schema-only`, the SQLite
-file copied while the application was writing to it, the bind mount that was empty
-because the data was in a named volume — all of them are silent until the day you need
-the restore, and then you find out under pressure. The only evidence is a restore that
-boots, and doing that by hand is expensive enough that nobody does it.
-
----
-
-## Quick start
+## Quick start, against your own backup
 
 ```sh
 export RESTIC_REPOSITORY=/mnt/backups/restic
-export RESTIC_PASSWORD_FILE=/etc/restic/pass
-restored recipe show gitea --inputs-only          # which paths does this recipe want?
-restored check --recipe gitea --input data=/srv/gitea --input db=/srv/dumps/gitea.sql
-echo $?                                           # 0 pass, 1 unusable, 2 tool error
+export RESTIC_PASSWORD_FILE=/etc/restic/pass        # your restic password file
+
+restored recipe show gitea --inputs-only            # which paths does this recipe want?
+# data  dir            required  /srv/gitea/data
+# db    postgres-dump  required  /srv/gitea/db.sql
+
+restored check --recipe gitea                       # if your paths match the two above
+echo $?                                             # 0 pass, 1 unusable, 2 tool error
 ```
+
+If your layout differs - and it usually does, because those defaults are the recipe
+author's machine - point each input at your path:
+
+```sh
+restored check --recipe gitea   --input data=/var/lib/gitea   --input db=/srv/dumps/gitea.sql
+```
+
+`restic ls latest | head -50` shows what your snapshot actually contains, which is the
+fastest way to fill those in. If you get it wrong, the error says so and names the flag.
 
 Exit codes are the contract:
 
 | code | meaning | what a cron job should do |
 |---|---|---|
 | 0 | every check passed | nothing |
-| 1 | **restore unusable** — this backup will not save you | page someone |
-| 2 | tool error: docker missing, restic failed, recipe invalid | fix the runner, then re-run; **do not** treat as a pass |
+| 1 | **restore unusable** - this backup will not save you | page someone |
+| 2 | tool error: docker missing, restic failed, recipe invalid, out of time | fix the runner, then re-run; **do not** treat as a pass |
+
+Exit 2 says nothing about your backup. Only 0 and 1 are verdicts.
 
 ---
 

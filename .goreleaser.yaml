@@ -1,8 +1,15 @@
-# Skeleton only. Nothing is published from here yet: tagging a release, pushing an
-# image, and creating a tap are all stop points that need a human (CLAUDE.md).
+# The release build. Six binaries, one archive each, a checksum file, an SBOM per
+# archive, and a changelog grouped from conventional commit subjects.
 #
-# `goreleaser build --snapshot --clean` is what CI will run, so that all six targets
-# are proved to compile on every commit rather than only at tag time.
+# Nothing here publishes on its own initiative:
+#   - `release: draft: true` means a tag produces a draft a human has to publish;
+#   - `homebrew_casks[0].skip_upload: true` means a tag never pushes a Homebrew cask.
+# Both are stop points in CLAUDE.md (1 and 6). The release checklist in SPEC.md 12.6
+# says when to flip them, and flipping them is a human's keystroke.
+#
+# Proved locally with:
+#   goreleaser check
+#   goreleaser release --snapshot --clean
 version: 2
 
 project_name: restored
@@ -24,16 +31,36 @@ builds:
       - -X github.com/spelingbee/restored/internal/cli.Date={{ .Date }}
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
-  - formats: [tar.gz]
+  - id: default
+    # Pinned rather than left to the default, because install.sh builds this exact
+    # string to find the asset. Change one and you must change the other.
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
     format_overrides:
       - goos: windows
         formats: [zip]
-    files: [LICENSE, README.md, SPEC.md, recipes/**, schema/**, docs/hints.yaml]
+    # The recipes and the schemas ship with the binary as well as inside it: a user
+    # who wants to read a recipe before running it should not have to clone.
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - SECURITY.md
+      - src: recipes/**
+      - src: schema/**
+      - src: docs/hints.yaml
+      - src: docs/recipe-spec.md
 
 checksum:
   name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: archives
+    artifacts: archive
 
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot"
@@ -41,7 +68,93 @@ snapshot:
 changelog:
   use: git
   sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - '^style:'
+      - "^Merge branch"
+      - "^Merge pull request"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Recipes
+      regexp: '^.*?recipe(\(.+\))??!?:.+$'
+      order: 2
+    - title: Performance
+      regexp: '^.*?perf(\(.+\))??!?:.+$'
+      order: 3
+    - title: Refactors
+      regexp: '^.*?refactor(\(.+\))??!?:.+$'
+      order: 4
+    - title: Others
+      order: 999
+
+# Homebrew ships prebuilt binaries as casks now, not formulae; `brews` is deprecated
+# in goreleaser v2. A cask is macOS-only, which is the honest scope: Linux users get
+# install.sh or `go install`.
+homebrew_casks:
+  - name: restored
+    binaries: [restored]
+    # The tap repository has to exist before this can push to it, and creating it is
+    # a human's job: docs/homebrew-tap.md says how. Until then, and until the
+    # release checklist says otherwise, goreleaser writes the cask into dist/ and
+    # pushes nothing.
+    skip_upload: true
+    repository:
+      owner: spelingbee
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/spelingbee/restored"
+    description: "Prove a backup restores, by restoring it into a throwaway stack."
+    license: "Apache-2.0"
+    commit_author:
+      name: goreleaser
+      email: noreply@github.com
+    commit_msg_template: "restored {{ .Tag }}"
+    # Not a `dependencies:` entry for either of them: restored runs `recipe validate`,
+    # `recipe show` and `version` with neither installed, and says precisely which one
+    # is missing when it does need one. A hard dependency would install a second
+    # docker on a machine that already has colima.
+    caveats: |
+      restored needs a Docker daemon, and restic for restic sources:
+        brew install restic
+        # plus Docker Desktop, colima, or any daemon DOCKER_HOST points at
+      Start with:
+        restored check --recipe gitea --source restic --from /path/to/repo
+    hooks:
+      post:
+        # Without this, macOS quarantines a binary downloaded outside a browser and
+        # the first run dies with "cannot be opened because the developer cannot be
+        # verified" - which looks like restored is broken rather than unsigned.
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/restored"]
+          end
 
 release:
+  # Stated rather than sniffed from `git remote`, because this repository has no
+  # remote yet (it is not public: stop point 4) and goreleaser refuses to run without
+  # knowing where a release would go.
+  github:
+    owner: spelingbee
+    name: restored
   draft: true
   prerelease: auto
+  name_template: "{{ .ProjectName }} {{ .Tag }}"
+  footer: |
+    ---
+    **Verify what you downloaded.** `checksums.txt` covers every archive, and an
+    SBOM ships beside each one.
+
+        sha256sum -c checksums.txt --ignore-missing
+
+    Full instructions: https://github.com/spelingbee/restored#install
