@@ -119,17 +119,15 @@ wait_http() {
 # restic_in_container runs restic against $REPO with $SRV mounted at /srv, so the
 # snapshot carries clean POSIX paths that match the recipe defaults on every host.
 #
-# On Linux it runs as the caller, not as the image's root: the `drillback check`
-# that follows reads the repository as the caller, and a root-owned repo/keys is
-# `permission denied` on any real Linux host. The harness solved this in
-# containerUser (ADR-051); the first CI run caught these scripts missing it. On
-# Windows the daemon does not map ownership and the flag means nothing. --no-cache
-# for the same reason the harness uses it: a non-root restic has no writable HOME.
+# It runs as the image's root on purpose: the data being backed up was written by
+# the application's own container - Gitea keeps .ssh at 700 and its JWT key at 600
+# under uid 1000 - and no other uid may read it. Root may. The repository that
+# comes out is then root's, which the `drillback check` that follows, running as
+# the caller, cannot open on a real Linux host (`permission denied` on repo/keys) -
+# so restic_init_and_backup hands the finished repository back to the caller
+# below. The first two CI runs ever caught both halves of this, one each.
 restic_in_container() {
-  user_flag=""
-  [ "$(uname -s)" = "Linux" ] && user_flag="-u $(id -u):$(id -g)"
-  # shellcheck disable=SC2086
-  docker run --rm $user_flag \
+  docker run --rm \
     -v "$(hostpath "$REPO"):/repo" \
     -v "$(hostpath "$SRV"):/srv:ro" \
     -e RESTIC_REPOSITORY=/repo \
@@ -141,6 +139,12 @@ restic_init_and_backup() {
   say "backing $* up into a throwaway restic repository"
   restic_in_container init >/dev/null
   restic_in_container backup --host demo-host --tag "$DEMO_NAME" "$@" >/dev/null
+  # On Windows the daemon maps no ownership and there is nothing to hand back.
+  if [ "$(uname -s)" = "Linux" ]; then
+    docker run --rm --entrypoint "" \
+      -v "$(hostpath "$REPO"):/repo" \
+      "$IMAGE_RESTIC" chown -R "$(id -u):$(id -g)" /repo
+  fi
 }
 
 run_check() {
