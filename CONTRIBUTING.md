@@ -176,9 +176,13 @@ non-trivial, the fork-and-branch route above is less work, not more.
 | `ci.yml` | every PR | gofmt, `go vet`, golangci-lint, the English-only check, the unit suite on Linux/macOS/Windows, and the integration suite |
 | `recipes.yml` | PRs touching `recipes/**` | works out which recipes changed and runs `restored recipe test` on each, in a matrix, one verdict per recipe |
 | `recipe-health.yml` | weekly | runs every recipe and opens an issue when one breaks |
+| `refresh-registry.yml` | after your PR merges | regenerates the recipe tables in `recipes/README.md` and `README.md`, so you never have to |
 
 **A pull request that touches only `recipes/<name>/**` needs only `recipes.yml` to be
-green.** You are not expected to make the Go test suite pass to add a recipe.
+green.** You are not expected to make the Go test suite pass to add a recipe, and you
+are not expected to run any generator: the two files that list every recipe are
+regenerated on `main` after your pull request merges. If `ci / generated` mentions
+them, it is a notice and not a failure.
 
 A change to `internal/**`, `schema/**` or `docs/hints.yaml` runs *every* recipe, because
 those are the things that can break all of them at once.

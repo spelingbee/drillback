@@ -66,12 +66,18 @@ jobs:
       - id: run
         name: round trip
         continue-on-error: true
+        env:
+          # Through the environment, not through interpolation into the script. This
+          # matrix is built from `ls` on the default branch rather than from a pull
+          # request, so it was never reachable the way recipes.yml was - but the two
+          # files should not differ on how they handle the same value. See SEC-05.
+          RECIPE: ${{ matrix.recipe }}
         run: |
           set -o pipefail
           # Nothing may follow this command. The step's own exit status has to be the
           # recipe's verdict, or `continue-on-error` would report every run as a
           # success and no issue would ever be opened.
-          ./bin/restored recipe test ./recipes/${{ matrix.recipe }} \
+          ./bin/restored recipe test "./recipes/$RECIPE" \
             --timeout 15m --pull always --log-level debug \
             --report recipe-test.json 2>&1 | tee recipe-test.log
 

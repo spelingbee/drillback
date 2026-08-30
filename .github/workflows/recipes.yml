@@ -64,10 +64,18 @@ jobs:
               echo "a shared file changed: running every recipe"
               all > changed.txt
             else
+              # The name filter is not cosmetic. This value is contributor-
+              # controlled - git permits ';', '$(' and backticks in a path
+              # component - and it used to be interpolated straight into a shell
+              # `run:` block below. It now goes through the environment AND is
+              # constrained here to the pattern schema/recipe.schema.json already
+              # requires of metadata.name. A directory whose name is not a legal
+              # recipe name is not a recipe. See docs/review/security.md SEC-05.
               echo "$files" \
                 | grep -E '^recipes/[^/]+/' \
                 | cut -d/ -f2 \
                 | grep -v '^TEMPLATE$' \
+                | grep -E '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$' \
                 | sort -u > changed.txt || true
             fi
           fi
@@ -121,8 +129,14 @@ jobs:
       - name: build
         run: go build -o bin/restored ./cmd/restored
 
+      # RECIPE reaches the script through the environment, never through GitHub
+      # expression interpolation into the script text. Interpolation happens before
+      # the shell sees the line, so the value is not an argument - it is source code.
+      # See docs/review/security.md SEC-05.
       - name: validate
-        run: ./bin/restored recipe validate ./recipes/${{ matrix.recipe }} --strict
+        env:
+          RECIPE: ${{ matrix.recipe }}
+        run: ./bin/restored recipe validate "./recipes/$RECIPE" --strict
 
       # The whole point of the round trip: nothing here needs a secret. The throwaway
       # restic repository's password is a literal, it lives inside the run workspace,
@@ -131,8 +145,10 @@ jobs:
       # 15 minutes, not the tool's default 20: a contributor should see a green check
       # inside a quarter of an hour, and a recipe that needs longer is out of scope.
       - name: round trip
+        env:
+          RECIPE: ${{ matrix.recipe }}
         run: |
-          ./bin/restored recipe test ./recipes/${{ matrix.recipe }} \
+          ./bin/restored recipe test "./recipes/$RECIPE" \
             --timeout 15m \
             --log-level debug \
             --report recipe-test.json \
@@ -178,9 +194,11 @@ jobs:
         run: go build -o bin/restored ./cmd/restored
 
       - name: round trip, every selected recipe
+        env:
+          SELECTED: ${{ needs.select.outputs.recipes }}
         run: |
           set -o pipefail
-          dirs=$(echo '${{ needs.select.outputs.recipes }}' | jq -r '.[]' | sed 's#^#./recipes/#')
+          dirs=$(printf '%s' "$SELECTED" | jq -r '.[]' | sed 's#^#./recipes/#')
           ./bin/restored recipe test $dirs \
             --timeout 15m --report recipe-test.json 2>&1 | tee recipe-test.log
 

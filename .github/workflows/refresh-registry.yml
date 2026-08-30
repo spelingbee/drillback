@@ -1,0 +1,63 @@
+# The recipe tables in recipes/README.md and README.md are generated from the recipe
+# registry. They therefore change whenever a recipe is added, and gating a pull
+# request on them made CONTRIBUTING.md's promise - "a pull request that touches only
+# recipes/<name>/** needs only recipes.yml to be green" - false for every recipe
+# contributor.
+#
+# So main regenerates them itself, after the merge. A contributor adds a directory;
+# nobody has to remember a generator command; the tables stay accurate. See ADR-060
+# and docs/review/maintainer.md MNT-02.
+#
+# Third-party actions are pinned by commit SHA, never by tag.
+name: refresh-registry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "recipes/**"
+      # Without this the job's own commit re-triggers the job. The negation is what
+      # stops the loop; do not remove it.
+      - "!recipes/README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-registry
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The commit below is pushed with GITHUB_TOKEN, which deliberately does not
+          # trigger further workflow runs. That is the second half of the loop guard.
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: regenerate the registry tables
+        run: |
+          go run ./tools/gen recipes-index > recipes/README.md
+          go run ./tools/gen readme-table
+
+      - name: commit them if they changed
+        run: |
+          if git diff --quiet -- recipes/README.md README.md; then
+            echo "The tables are already up to date. Nothing to do."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add recipes/README.md README.md
+          git commit \
+            -m "docs: regenerate the recipe tables" \
+            -m "The tables in recipes/README.md and README.md are generated from the recipe registry. This commit is refresh-registry.yml keeping them in step with what was just merged, so that adding a recipe stays a one-directory pull request."
+          git push

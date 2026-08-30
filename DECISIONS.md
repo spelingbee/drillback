@@ -1384,3 +1384,45 @@ This does not make the report safe to publish in general: SEC-08 (200 lines of e
 service's container log) and SEC-06 (`expect.glob` as a filesystem oracle) are
 separate findings with their own entries in the issue tracker. It closes the one that
 was a promise in the specification.
+
+## ADR-060: The recipe tables are regenerated on main, not by the contributor
+
+**Status:** accepted
+**Extends:** ADR-030 (generated files are checked in and CI diffs them)
+**Found by:** the session 4 maintainer review (`docs/review/maintainer.md` MNT-02)
+
+**Context.** `recipes/README.md` and the table in `README.md` are generated from the
+recipe registry, are checked in, and were diffed by CI's `generated` job. Adding
+`recipes/<name>/` changes both. So `ci / generated` went red on *every* recipe pull
+request, while CONTRIBUTING.md promised, in bold, that a recipe-only pull request
+needs nothing but `recipes.yml` to be green. The walkthrough and the pull request
+template never mention regenerating anything, because when they were written nobody
+had walked the path with a new directory in it.
+
+The contributor this project measures itself by - a stranger adding one recipe - was
+therefore guaranteed a red check on their first attempt, with the fix being a
+generator command nothing had told them about. That is the most expensive possible
+place to put an unwritten step.
+
+**Decision.** Split the generated files by where they come from.
+
+`docs/recipe-spec.md` is generated from `schema/recipe.schema.json`. It still hard
+fails in CI, for everyone: changing the schema without regenerating the document
+contributors read is a real mistake by whoever changed the schema.
+
+`recipes/README.md` and the `README.md` table are generated from the registry, which
+changes because someone added a recipe. CI reports them as a notice and does not gate
+on them, and a new workflow, `refresh-registry.yml`, regenerates and commits them on
+`main` after the merge.
+
+**Consequences.** The promise in CONTRIBUTING.md is now true, which was the point. A
+recipe contributor adds one directory and is done.
+
+The tables can be stale for the length of one merge, on `main` only. That is
+acceptable: they are a convenience index, and `restored recipe validate ./recipes/*`
+and the registry itself are the sources of truth.
+
+The loop guard on `refresh-registry.yml` is load-bearing and doubled: the trigger
+excludes `recipes/README.md`, and the push uses `GITHUB_TOKEN`, which by GitHub's own
+rule does not trigger further workflow runs. Remove either and the job re-triggers
+itself forever.

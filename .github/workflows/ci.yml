@@ -67,11 +67,28 @@ jobs:
           go run ./tools/gen recipe-spec   > docs/recipe-spec.md
           go run ./tools/gen recipes-index > recipes/README.md
           go run ./tools/gen readme-table
-          if ! git diff --exit-code -- docs/recipe-spec.md recipes/README.md README.md; then
+
+          # docs/recipe-spec.md is generated from schema/recipe.schema.json. If it
+          # drifted, somebody changed the schema without regenerating the document
+          # contributors read, and that is a hard failure for whoever did it.
+          if ! git diff --exit-code -- docs/recipe-spec.md; then
             echo
-            echo "The generated files are out of date. Run:"
-            echo "    make docs recipes-index"
+            echo "docs/recipe-spec.md is out of date with schema/recipe.schema.json. Run:"
+            echo "    make docs"
             exit 1
+          fi
+
+          # recipes/README.md and the table in README.md are generated from the
+          # recipe registry, so they change whenever a recipe is ADDED - which is
+          # precisely the pull request CONTRIBUTING.md promises needs nothing but
+          # recipes.yml to be green. Gating on them here made that promise false for
+          # every recipe contributor, which is the one contributor this project is
+          # optimising for. refresh-registry.yml regenerates them on main after the
+          # merge instead. Reported here, never gated. See ADR-060 and
+          # docs/review/maintainer.md MNT-02.
+          if ! git diff --exit-code -- recipes/README.md README.md; then
+            echo
+            echo "::notice::The recipe tables changed. main regenerates them after this merges; there is nothing for you to do."
           fi
 
   unit:
