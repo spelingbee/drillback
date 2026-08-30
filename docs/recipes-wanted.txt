@@ -1,0 +1,79 @@
+# Recipes wanted
+#
+# Fifty self-hosted applications that people run with docker compose and that have no
+# recipe yet, ranked by GitHub stars. scripts/recipes-wanted.sh turns this file into
+# one "Recipe: <app>" issue per line, labelled `recipe` and `good first issue`.
+#
+# This is a starting point for a launch, not a plan. An application on this list may
+# turn out to be a poor fit - some keep no state worth restoring, some cannot round
+# trip inside the fifteen-minute CI budget, and some are installed in a way this
+# recipe format does not describe. Finding that out is itself a useful contribution,
+# and the issue should be closed saying so.
+#
+# Gathered: 2026-08-30
+# Query (gh 2.x, authenticated):
+#
+#   gh search repos --topic self-hosted    --sort stars --limit 200 --json fullName,stargazersCount,description
+#   gh search repos --topic selfhosted     --sort stars --limit 200 --json fullName,stargazersCount,description
+#   gh search repos --topic docker-compose --sort stars --limit 100 --json fullName,stargazersCount,description
+#
+# then: deduplicated by repository, sorted by stars, and filtered by hand to remove
+# awesome-lists, guides, project templates, script collections, desktop applications,
+# operating systems, PaaS and container-management layers, projects whose development
+# has moved off GitHub, and the five applications that already have a recipe (gitea,
+# nextcloud, paperless-ngx, uptime-kuma, vaultwarden).
+#
+# Star counts are a snapshot of the date above and are not maintained. Re-run the
+# query rather than editing them.
+#
+# Format, pipe-separated:  name | stars | owner/repo | one line
+n8n | 202807 | n8n-io/n8n | Fair-code workflow automation platform with native AI capabilities. Combine vi
+open-webui | 150348 | open-webui/open-webui | User-friendly AI Interface (Supports Ollama, OpenAI API, ...)
+immich | 112933 | immich-app/immich | High performance self-hosted photo and video management solution
+Stirling-PDF | 90910 | Stirling-Tools/Stirling-PDF | #1 PDF Application on GitHub that lets you edit PDFs on any device anywhere
+memos | 62640 | usememos/memos | Open-source, self-hosted note-taking tool built for quick capture. Markdown-na
+appwrite | 57160 | appwrite/appwrite | Appwrite - complete cloud infrastructure for your web, mobile and AI apps. Inc
+gogs | 47784 | gogs/gogs | The painless way to host your own Git service
+siyuan | 46036 | siyuan-note/siyuan | An open-source, privacy-first, self-hosted knowledge workspace where humans an
+reactive-resume | 41925 | amruthpillai/reactive-resume | A one-of-a-kind resume builder that keeps your privacy in mind. Completely sec
+ToolJet | 40790 | ToolJet/ToolJet | ToolJet is the open-source foundation of ToolJet AI - the enterprise app gener
+appsmith | 40783 | appsmithorg/appsmith | Platform to build admin panels, internal tools, and dashboards. Integrates wit
+photoprism | 40120 | photoprism/photoprism | AI-Powered Photos App
+Trilium | 37632 | TriliumNext/Trilium | Build your personal knowledge base with Trilium Notes
+khoj | 36788 | khoj-ai/khoj | Your AI second brain. Self-hostable. Get answers from the web or your docs. Bu
+glance | 36715 | glanceapp/glance | A self-hosted dashboard that puts all your feeds in one place
+filebrowser | 35968 | filebrowser/filebrowser | File Browser provides a file managing interface within a specified directory a
+langfuse | 33910 | langfuse/langfuse | Open source AI engineering platform: LLM evals, observability, metrics, prompt
+changedetection.io | 33415 | dgtlmoon/changedetection.io | Best and simplest tool for website change detection, web page monitoring, and 
+homepage | 32289 | gethomepage/homepage | A highly customizable homepage (or startpage / application dashboard) with Doc
+signoz | 31970 | SigNoz/signoz | SigNoz is an open-source, OpenTelemetry-native observability platform for your
+onyx | 31827 | onyx-dot-app/onyx | Open Source AI Platform - AI Chat with advanced features that works with every
+plausible | 28797 | plausible/analytics | Open source, privacy-first web analytics. Lightweight, cookie-free Google Anal
+karakeep | 28665 | karakeep-app/karakeep | A self-hostable bookmark-everything app (links, notes and images) with AI-base
+ArchiveBox | 28205 | ArchiveBox/ArchiveBox | Open source self-hosted web archiving. Takes URLs/browser history/bookmarks/Po
+dashy | 26325 | lissy93/dashy | A self-hostable personal dashboard built for you. Includes status-checking, wi
+beszel | 24830 | henrygd/beszel | Lightweight server monitoring with historical data, docker stats, and alerts
+nocobase | 23929 | nocobase/nocobase | NocoBase is an open-source AI + no-code platform for building business systems
+navidrome | 23213 | navidrome/navidrome | Your Personal Streaming Service
+listmonk | 23172 | knadh/listmonk | High performance, self-hosted, newsletter and mailing list manager with a mode
+airbyte | 21971 | airbytehq/airbyte | Open-source data movement for ELT pipelines and AI agents from APIs, databases
+linkwarden | 19629 | linkwarden/linkwarden | Self-hosted collaborative bookmark manager to collect, read, annotate, and ful
+ConvertX | 18630 | C4illin/ConvertX | Self-hosted online file converter. Supports 1000+ formats
+docuseal | 18404 | docusealco/docuseal | Open source DocuSign alternative. Create, fill, and sign digital documents
+maxun | 17324 | getmaxun/maxun | The open-source no-code platform for web scraping, crawling, search and AI dat
+lasuite-docs | 16756 | suitenumerique/docs | Docs is an open-source text editor: web-native, made for real-time collaborati
+FreshRSS | 15873 | FreshRSS/FreshRSS | A free, self-hostable news aggregator
+gotify | 15815 | gotify/server | A simple server for sending and receiving messages in real-time per WebSocket.
+cachet | 15229 | cachethq/cachet | Cachet, the open source, self-hosted status page system
+onedev | 15198 | theonedev/onedev | The Unified and Autonomous Development Platform
+Termix | 14952 | Termix-SSH/Termix | Self-hosted SSH and remote desktop management
+bentopdf | 14935 | alam00000/bentopdf | The Privacy First PDF Toolkit
+documenso | 14804 | documenso/documenso | The Open Source DocuSign Alternative
+metube | 14546 | alexta69/metube | Self-hosted video downloader for YouTube and other sites (web UI for yt-dlp)
+notesnook | 14482 | streetwriters/notesnook | A fully open source & end-to-end encrypted note taking alternative to Evernote
+audiobookshelf | 14178 | advplyr/audiobookshelf | Self-hosted audiobook and podcast server
+nitter | 14054 | zedeus/nitter | Alternative Twitter front-end
+automatisch | 13950 | automatisch/automatisch | The open source Zapier alternative. Build workflow automation without spending
+mailcow-dockerized | 13338 | mailcow/mailcow-dockerized | mailcow: dockerized - + =
+OpenWA | 13332 | rmyndharis/OpenWA | Free, Open Source, Self-Hosted WhatsApp API Gateway
+mealie | 13095 | mealie-recipes/mealie | Mealie is a self hosted recipe manager and meal planner with a RestAPI backend

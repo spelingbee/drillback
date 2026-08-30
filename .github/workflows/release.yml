@@ -1,0 +1,83 @@
+# Skeleton. Nothing has been released, and tagging one is a stop point that needs a
+# human: see CLAUDE.md. This exists so that the release path is written down and
+# proved to compile before it is ever used in anger.
+#
+# What it does NOT do yet, deliberately:
+#   - push a container image to ghcr
+#   - update a Homebrew tap
+#   - publish anything anywhere
+#
+# Third-party actions are pinned by commit SHA, never by tag.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs on a manual dispatch and proves every target still compiles, without
+  # publishing anything. `--snapshot` refuses to touch the network or the tag.
+  snapshot:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: "~> v2"
+          args: build --snapshot --clean
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: snapshot-binaries
+          path: dist/**/restored*
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # A tag that does not pass its own tests is a tag that has to be deleted, and a
+      # deleted tag is the one kind of mistake this project cannot take back.
+      - name: the suite that must pass before anything is built
+        run: |
+          gofmt -l . | tee /dev/stderr | wc -l | grep -qx 0
+          go vet ./...
+          ./scripts/lint-english.sh
+          go test ./... -race
+
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # .goreleaser.yaml sets `release: draft: true`, so this stops here with a draft
+      # a human has to look at and publish. That is on purpose.
+      - name: what happens next
+        run: |
+          echo "A DRAFT release was created. It is not public."
+          echo "Work through the release checklist in SPEC.md section 12.6 before publishing it."

@@ -1,0 +1,166 @@
+# Every recipe, every week.
+#
+# A recipe breaks because the application upstream changed, not because anybody did
+# anything. Nobody notices until somebody's drill fails at the worst possible moment,
+# so this runs the whole set on a schedule and opens an issue when one stops working.
+#
+# The issue is deliberately labelled `help wanted` and `recipe-broken`: a broken recipe
+# is usually a one-line fix in somebody else's application, which makes it one of the
+# better first contributions this project has to offer.
+name: recipe-health
+
+on:
+  schedule:
+    # 04:17 on Mondays. Not on the hour, because everybody schedules on the hour.
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recipe-health
+  cancel-in-progress: false
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      recipes: ${{ steps.pick.outputs.recipes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: pick
+        run: |
+          set -euo pipefail
+          ls -d recipes/*/ | sed 's#recipes/##; s#/##' | grep -v '^TEMPLATE$' | sort > all.txt
+          sed 's/^/  /' all.txt
+          echo "recipes=$(jq -R -s -c 'split("\n") | map(select(length > 0))' < all.txt)" >> "$GITHUB_OUTPUT"
+
+  health:
+    needs: list
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe: ${{ fromJSON(needs.list.outputs.recipes) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: install restic
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
+
+      - name: build
+        run: go build -o bin/restored ./cmd/restored
+
+      # --pull always, unlike recipes.yml: the point of the weekly run is to notice
+      # that an upstream image moved, so it must not be answered from a stale cache.
+      - id: run
+        name: round trip
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          # Nothing may follow this command. The step's own exit status has to be the
+          # recipe's verdict, or `continue-on-error` would report every run as a
+          # success and no issue would ever be opened.
+          ./bin/restored recipe test ./recipes/${{ matrix.recipe }} \
+            --timeout 15m --pull always --log-level debug \
+            --report recipe-test.json 2>&1 | tee recipe-test.log
+
+      - name: upload the logs
+        if: steps.run.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: recipe-health-${{ matrix.recipe }}
+          path: |
+            recipe-test.log
+            recipe-test.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      # Deduplicated by the title's stable prefix, `recipe <name> failing`, rather than
+      # by the whole title: the title carries the date it FIRST broke, so an exact
+      # match would open a new issue every week for the same failure.
+      - name: open or update the issue
+        if: steps.run.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECIPE: ${{ matrix.recipe }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CONTRIBUTING: ${{ github.server_url }}/${{ github.repository }}/blob/main/CONTRIBUTING.md
+        run: |
+          set -euo pipefail
+          prefix="recipe ${RECIPE} failing"
+          today=$(date -u +%Y-%m-%d)
+          excerpt=$(tail -n 40 recipe-test.log || echo "(no log)")
+
+          existing=$(gh issue list --state open --label recipe-broken \
+            --search "in:title \"$prefix\"" --json number,title \
+            --jq "[.[] | select(.title | startswith(\"$prefix\"))] | .[0].number // empty")
+
+          body=$(cat <<EOF
+          \`restored recipe test ./recipes/${RECIPE}\` failed on the weekly run of ${today}.
+
+          A recipe almost always breaks because the application upstream changed - a new
+          image tag, a renamed table, a moved endpoint - rather than because anything in
+          this repository did. The fix is usually one line, which makes this a good first
+          contribution. See [CONTRIBUTING.md](${CONTRIBUTING}).
+
+          Reproduce it locally with exactly what CI ran:
+
+          \`\`\`sh
+          restored recipe test ./recipes/${RECIPE} --timeout 15m --pull always
+          \`\`\`
+
+          Last 40 lines:
+
+          \`\`\`text
+          ${excerpt}
+          \`\`\`
+
+          [Full logs and the JSON report are attached to the run.](${RUN_URL})
+          EOF
+          )
+
+          if [ -n "$existing" ]; then
+            echo "updating issue #$existing"
+            gh issue comment "$existing" --body "$body"
+          else
+            echo "opening a new issue"
+            gh issue create \
+              --title "$prefix ($today)" \
+              --label recipe-broken --label "help wanted" --label recipe \
+              --body "$body"
+          fi
+
+      # Closing it automatically is the other half of the bargain: an issue tracker
+      # that only ever grows is one nobody reads.
+      - name: close the issue if it passed again
+        if: steps.run.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECIPE: ${{ matrix.recipe }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          prefix="recipe ${RECIPE} failing"
+          gh issue list --state open --label recipe-broken \
+            --search "in:title \"$prefix\"" --json number,title \
+            --jq ".[] | select(.title | startswith(\"$prefix\")) | .number" \
+          | while read -r number; do
+              echo "closing issue #$number"
+              gh issue close "$number" \
+                --comment "\`restored recipe test ./recipes/${RECIPE}\` passed again on the weekly run. [Run.](${RUN_URL})"
+            done
+
+      - name: fail the job if the recipe failed
+        if: steps.run.outcome == 'failure'
+        run: exit 1

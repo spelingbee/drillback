@@ -1,0 +1,196 @@
+# The round trip, for every recipe a pull request could have broken.
+#
+# This is the workflow that decides whether a recipe is mergeable. A pull request that
+# touches only recipes/<name>/** needs this one green and nothing else: a maintainer
+# does not have to understand the application, because stage A proves the checks fail
+# against an empty stack and stage B proves they pass after a real restore.
+#
+# Third-party actions are pinned by commit SHA, never by tag.
+name: recipes
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: "Space-separated recipe names, or empty for all of them"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recipes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      recipes: ${{ steps.pick.outputs.recipes }}
+      count: ${{ steps.pick.outputs.count }}
+      mode: ${{ steps.pick.outputs.mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - id: pick
+        name: work out which recipes this change could have broken
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          MANUAL: ${{ github.event.inputs.recipes }}
+        run: |
+          set -euo pipefail
+          all() {
+            # TEMPLATE is the skeleton a contributor copies, not a recipe.
+            ls -d recipes/*/ | sed 's#recipes/##; s#/##' | grep -v '^TEMPLATE$' | sort
+          }
+
+          if [ -n "${MANUAL:-}" ]; then
+            printf '%s\n' $MANUAL | sort -u > changed.txt
+          elif [ -z "${BASE_REF:-}" ]; then
+            all > changed.txt
+          else
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            files=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+            echo "changed files:"; echo "$files" | sed 's/^/  /'
+
+            # internal/**, schema/** and the hint catalog are the things that can
+            # break every recipe at once, so a change to any of them runs all of them.
+            if echo "$files" | grep -qE '^(internal/|schema/|tools/|docs/hints\.yaml$|go\.(mod|sum)$)'; then
+              echo "a shared file changed: running every recipe"
+              all > changed.txt
+            else
+              echo "$files" \
+                | grep -E '^recipes/[^/]+/' \
+                | cut -d/ -f2 \
+                | grep -v '^TEMPLATE$' \
+                | sort -u > changed.txt || true
+            fi
+          fi
+
+          count=$(wc -l < changed.txt | tr -d ' ')
+          echo "selected $count recipe(s):"; sed 's/^/  /' changed.txt
+
+          # Above twenty, a matrix would eat the whole concurrency allowance, so the
+          # job falls back to running them in sequence on one runner. See SPEC.md 7.5.
+          # Written as an if rather than `[ ... ] && mode=none`, because under
+          # `set -e` a false test at the end of an && list ends the script.
+          if [ "$count" -eq 0 ]; then
+            mode=none
+          elif [ "$count" -gt 20 ]; then
+            mode=sequential
+          else
+            mode=matrix
+          fi
+
+          {
+            echo "count=$count"
+            echo "mode=$mode"
+            echo "recipes=$(jq -R -s -c 'split("\n") | map(select(length > 0))' < changed.txt)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: nothing to do
+        if: steps.pick.outputs.count == '0'
+        run: echo "No recipe was touched by this change. Reporting success."
+
+  # One verdict per recipe. fail-fast is off on purpose: five changed recipes should
+  # give five independent answers, not one truncated log.
+  test:
+    needs: select
+    if: needs.select.outputs.mode == 'matrix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe: ${{ fromJSON(needs.select.outputs.recipes) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: install restic
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
+
+      - name: build
+        run: go build -o bin/restored ./cmd/restored
+
+      - name: validate
+        run: ./bin/restored recipe validate ./recipes/${{ matrix.recipe }} --strict
+
+      # The whole point of the round trip: nothing here needs a secret. The throwaway
+      # restic repository's password is a literal, it lives inside the run workspace,
+      # and it is destroyed with it.
+      #
+      # 15 minutes, not the tool's default 20: a contributor should see a green check
+      # inside a quarter of an hour, and a recipe that needs longer is out of scope.
+      - name: round trip
+        run: |
+          ./bin/restored recipe test ./recipes/${{ matrix.recipe }} \
+            --timeout 15m \
+            --log-level debug \
+            --report recipe-test.json \
+            2>&1 | tee recipe-test.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: upload the logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: recipe-test-${{ matrix.recipe }}
+          path: |
+            recipe-test.log
+            recipe-test.json
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: nothing was left behind
+        if: always()
+        run: |
+          leftover=$(docker ps -aq --filter "label=com.restored.run" | wc -l)
+          echo "containers labelled com.restored.run: $leftover"
+          test "$leftover" -eq 0
+
+  # The fallback for a change that touches more than twenty recipes: slower, but it
+  # does not exhaust the concurrency allowance.
+  test-sequential:
+    needs: select
+    if: needs.select.outputs.mode == 'sequential'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: install restic
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
+
+      - name: build
+        run: go build -o bin/restored ./cmd/restored
+
+      - name: round trip, every selected recipe
+        run: |
+          set -o pipefail
+          dirs=$(echo '${{ needs.select.outputs.recipes }}' | jq -r '.[]' | sed 's#^#./recipes/#')
+          ./bin/restored recipe test $dirs \
+            --timeout 15m --report recipe-test.json 2>&1 | tee recipe-test.log
+
+      - name: upload the logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: recipe-test-sequential
+          path: |
+            recipe-test.log
+            recipe-test.json
+          retention-days: 14
+          if-no-files-found: warn
