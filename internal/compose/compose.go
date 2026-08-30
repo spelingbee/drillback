@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -265,6 +266,9 @@ type ContainerOptions struct {
 	// User is the uid:gid the container runs as. It is set on Linux so that files
 	// written into a bind mount belong to the caller rather than to root.
 	User string
+	// Entrypoint, when non-nil, overrides the image's entrypoint - "" clears it,
+	// which is how a single-binary image like the curl helper runs something else.
+	Entrypoint *string
 	// Network defaults to "none". A throwaway container that reads and writes only
 	// the workspace has no reason to reach anything.
 	Network string
@@ -279,6 +283,9 @@ func (c *Client) RunContainer(ctx context.Context, o ContainerOptions) (Result, 
 	args := []string{"run", "--rm", "--network", network, "--label", LabelRun + "=" + c.RunID}
 	if o.User != "" {
 		args = append(args, "--user", o.User)
+	}
+	if o.Entrypoint != nil {
+		args = append(args, "--entrypoint", *o.Entrypoint)
 	}
 	names := make([]string, 0, len(o.Env))
 	for k := range o.Env {
@@ -316,4 +323,26 @@ func firstLines(s string, n int) string {
 		return s
 	}
 	return strings.Join(lines[:n], "\n") + "\n..."
+}
+
+// Scrub makes everything under hostDir removable by the caller. An application
+// container writes as its own uid - Gitea leaves queues/ at 0700 under uid 1000 -
+// and on a real Linux host the caller's RemoveAll that follows teardown then dies
+// with `permission denied` on files no other uid may even stat. Root inside a
+// throwaway helper container may open the modes; with them open, deleting needs
+// only the parent directories' write bits, which the caller now has. Windows maps
+// no ownership onto bind mounts, so callers skip this there. Found by the third CI
+// run in the project's life; every earlier host was Windows.
+func (c *Client) Scrub(ctx context.Context, hostDir, helperImage string) error {
+	entrypoint := ""
+	_, err := c.RunContainer(ctx, ContainerOptions{
+		Image:      helperImage,
+		Entrypoint: &entrypoint,
+		Binds:      []Bind{{Host: filepath.ToSlash(hostDir), Container: "/scrub"}},
+		Argv:       []string{"chmod", "-R", "a+rwX", "/scrub"},
+	})
+	if err != nil {
+		return fmt.Errorf("scrubbing %s for removal: %w", hostDir, err)
+	}
+	return nil
 }

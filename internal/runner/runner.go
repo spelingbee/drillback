@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -182,7 +183,20 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 				_, _ = fmt.Fprintf(debug, "teardown: %v\n", downErr)
 			}
 		}
-		if rmErr := ws.Remove(); rmErr != nil {
+		rmErr := ws.Remove()
+		if rmErr != nil && runtime.GOOS != "windows" {
+			// The application container wrote as its own uid, and some of what
+			// it wrote - Gitea's queues arrive 0700 under uid 1000 - no other
+			// uid may delete. Root in a throwaway helper can open the modes;
+			// then the removal is ordinary. Windows maps no ownership onto
+			// bind mounts and never needs this.
+			if scrubErr := cli.Scrub(downCtx, ws.Root, helperImage()); scrubErr == nil {
+				rmErr = ws.Remove()
+			} else if debug != nil {
+				_, _ = fmt.Fprintf(debug, "teardown: %v\n", scrubErr)
+			}
+		}
+		if rmErr != nil {
 			rep.Run.WorkspaceRemoved = false
 			if err == nil {
 				err = rmErr

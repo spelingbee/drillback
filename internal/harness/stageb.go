@@ -84,7 +84,15 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 				_, _ = fmt.Fprintf(debug, "teardown: %v\n", downErr)
 			}
 		}
-		if rmErr := ws.Remove(); rmErr != nil && err == nil {
+		rmErr := ws.Remove()
+		if rmErr != nil && runtime.GOOS != "windows" {
+			// Same recovery as the runner's teardown: what a container wrote as
+			// its own uid, only root in a helper container can make removable.
+			if scrubErr := cli.Scrub(downCtx, ws.Root, runner.DefaultHelperImage); scrubErr == nil {
+				rmErr = ws.Remove()
+			}
+		}
+		if rmErr != nil && err == nil {
 			err = rmErr
 		}
 	}()
