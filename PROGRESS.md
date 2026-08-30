@@ -18,13 +18,13 @@ Rules for this file:
 
 ## Current state
 
-**Phase:** the core works. `restored check` runs end to end against a real restic
-repository and against an already-restored tree, with two bundled recipes.
+**Phase:** the core works, and so does the machinery that lets a stranger's recipe be
+trusted without a maintainer reading it. `restored check` runs end to end; `restored
+recipe test` runs the round trip; five recipes pass it.
 **Version:** unreleased. No tags. `0.1.0-dev` is what the binary reports.
 **Module:** `github.com/spelingbee/restored` (ADR-036 - see *Open questions*, the name
 is still a human's to confirm and the rename is one grep).
-**Language of record:** English, everywhere, and now enforced by
-`scripts/lint-english.sh`.
+**Language of record:** English, everywhere, enforced by `scripts/lint-english.sh`.
 
 What works, and is proved by a command below:
 
@@ -35,33 +35,42 @@ What works, and is proved by a command below:
 | `restored recipe validate [--strict] [--json]` | works, schema + safety schema + the three Go rules |
 | `restored recipe show [--format] [--compose] [--inputs-only]` | works |
 | `restored recipe init` | works; the scaffolded recipe validates as it comes out |
+| `restored recipe init --compose <file>` | works; reads a real compose file and proposes a recipe that validates |
+| **`restored recipe test [--stage a\|b\|both] [--keep] [--timeout] [--report] [--json]`** | **works; all five recipes pass both stages** |
 | `restored version [--json]` | works, and exits 0 with docker and restic absent |
 | Isolation | enforced: no privileged, no host namespaces, no published ports, no bind outside the workspace, internal networks only |
-| Report | TTY renderer with an ASCII fallback and `NO_COLOR`, plus the JSON document of SPEC.md 5.2 |
+| Report | TTY renderer with an ASCII fallback and `NO_COLOR`, plus the JSON document of SPEC.md 5.2; the harness has its own report and its own schema version |
 | Hints | 17 rules, embedded, `--hints FILE` for extra rules matched first |
-| Nudge | built, and printed only when all five conditions in SPEC.md 8.1 hold |
+| Nudge | built, tested, printed only when all five conditions in SPEC.md 8.1 hold; `--no-nudge` and `defaults.nudge: false` both silence it |
 | Teardown | `compose down -v --remove-orphans` plus the workspace, on every exit path |
+| CI | `ci.yml` (lint, generated-file diff, unit on three platforms, integration), `recipes.yml` (changed recipes, one verdict each), `recipe-health.yml` (weekly, opens and closes issues), `release.yml` (goreleaser skeleton, draft only) |
+| Contributor path | `CONTRIBUTING.md`, `recipes/TEMPLATE`, four issue templates, a PR checklist, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CODEOWNERS`, dependabot |
+
+Bundled recipes: **gitea**, **nextcloud**, **paperless-ngx**, **uptime-kuma**,
+**vaultwarden**. `recipes/TEMPLATE` ships in the binary too but is deliberately not in
+the registry: `BundledNames` skips any directory whose name is not a legal recipe name.
 
 What does **not** work yet, deliberately:
 
-- **`restored recipe test`** - the round-trip harness of SPEC.md section 7. The command
-  exists, says it is not implemented, and exits 2 (ADR-046). This is the biggest hole:
-  it is the piece that lets a stranger's recipe be trusted without a maintainer reading
-  it, and until it lands a recipe is proved only by `scripts/demo.sh`.
 - **`restored.yaml`, `--target`, `--all`, `--config`** - `internal/config` is not
   written and the flags are not registered, so an invocation using one fails loudly
   rather than silently doing nothing (ADR-045). `restored check --help` therefore does
-  not match SPEC.md section 2.
-- **The four other recipes** for the v0.1 gate of six (ADR-033): Vaultwarden,
-  Paperless-ngx, Miniflux, Nextcloud.
-- **CI beyond lint and unit.** `ci.yml` has the lint and unit jobs. `recipes.yml`,
-  `smoke.yml`, `recipe-health.yml` and `release.yml` are unwritten, and the integration
-  job is not wired into CI even though the tests exist and pass locally.
-- **`CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `docs/recipes.md`,
-  `docs/security.md`, `install.sh`.** README.md exists.
+  not match SPEC.md section 2. The one exception is `defaults.nudge`, which
+  `internal/nudge` reads through a deliberately narrow one-key reader so that a user
+  who has written `nudge: false` is believed today.
+- **The sixth recipe** for the v0.1 gate of six (ADR-033). Five exist and all five
+  round-trip. Miniflux is the obvious next one.
+- **`smoke.yml`**, the fresh-clone test of SPEC.md 11.3. The `unit` job proves
+  `go test ./...` is green with no docker and no restic, which is most of what it was
+  for.
+- **`CHANGELOG.md`, `docs/recipes.md`, `docs/security.md`, `install.sh`.**
+  `docs/recipe-spec.md` now exists and is generated from the JSON Schema.
+- **Nothing is published.** No tag, no image, no tap, no issues filed, no labels
+  created, and the repository is not public. Those are stop points; see CLAUDE.md.
 
 Repository layout now matches SPEC.md section 13, plus `internal/runner` (ADR-038),
-`internal/sqlite`, and `assets.go` at the root (ADR-037).
+`internal/sqlite`, `internal/harness`, `tools/gen`, and `assets.go` at the root
+(ADR-037).
 
 ---
 
@@ -368,24 +377,396 @@ garbage collected (`.git` is 286 KB), and `.gitignore` now covers both paths. No
 was ever published. Check with `git log --stat | grep -i restic_` if in doubt.
 
 
+### Session 3 - 2026-08-30 - The round trip, the recipes, and the contributor path
+
+**Goal:** `restored recipe test`, `recipe init --compose`, three more recipes, CI, and
+everything a stranger needs to go from "no recipe for my app" to a merged pull request
+in one sitting.
+
+**Environment.** Unchanged from session 2: Windows 11, Docker Desktop 29.5.2 with the
+WSL2 engine, compose v5.1.3, Go 1.27.0 from `C:\My\Projects\Work\gotool\go`, restic
+0.19.1 and golangci-lint 2.13.2 in `~/go/bin`. Every command below was run with
+
+```sh
+export PATH="/c/My/Projects/Work/gotool/go/bin:/c/Users/kadyr/go/bin:$PATH"
+```
+
+One thing worth writing down for the next session on this machine: any `docker run`
+with an absolute container path needs `export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'`
+first, or Git Bash rewrites `-w /src` into `C:/Program Files/Git/src` before the daemon
+sees it. CLAUDE.md now says so.
+
+**Done, in order:**
+
+1. **`internal/harness` and `restored recipe test`.** Stage A runs the ordinary `check`
+   code path against a tree of empty inputs and requires that a check fails. Stage B
+   starts a fresh stack, seeds it, exports what a backup would have taken, puts that
+   into a throwaway restic repository, tears everything down, and runs an ordinary
+   `restored check` against it. Per-phase timing, `--stage`, `--keep`, `--timeout`,
+   `--report`, `--json`, and guaranteed cleanup.
+2. **`restored recipe init --compose <file>`.** Reads a real compose file and proposes a
+   recipe from it.
+3. **The nudge** got the six tests it never had, and `defaults.nudge: false`.
+4. **Three recipes**: vaultwarden, paperless-ngx, nextcloud. Plus `recipes/TEMPLATE`
+   and a README for all five.
+5. **CI**: `ci.yml` gained the integration job and a generated-file diff;
+   `recipes.yml`, `recipe-health.yml` and `release.yml` are new.
+6. **Contributor infrastructure**: `CONTRIBUTING.md`, `SECURITY.md`,
+   `CODE_OF_CONDUCT.md`, `CODEOWNERS`, `.github/dependabot.yml`, four issue templates
+   plus `config.yml`, a pull request template, `.all-contributorsrc`.
+7. **Generated documentation**: `tools/gen` writes `docs/recipe-spec.md` from the JSON
+   Schema and `recipes/README.md` from the registry, and splices the recipe table into
+   `README.md`. CI fails on a diff.
+8. **Launch tooling, none of it executed against a live repository**:
+   `docs/recipes-wanted.txt`, `scripts/recipes-wanted.sh`, `scripts/labels.sh`,
+   `scripts/contributors.sh`.
+
+---
+
+#### Six things reality contradicted the plan about
+
+Each was measured, each is fixed in the code and in the document that was wrong, and
+each has an ADR.
+
+1. **restic has no path-rewriting flag.** `restic backup` resolves every argument to an
+   absolute path on the machine it runs on, so a snapshot of the staging tree records
+   `C:/Users/.../staging/srv/gitea/data` and stage B's `restored check` finds nothing at
+   `/srv/gitea/data`. The harness now runs `restic/restic:0.19.1` in a container with
+   each staged input bind-mounted at *its own* `default_path`, so the snapshot records
+   exactly what the recipe declares and step 8 needs no `--input` override. ADR-051.
+
+2. **Stage B cannot start from stage A's empty inputs.** SPEC.md 7.3 said "EMPTY inputs
+   (same as stage A)". A zero-length `kuma.db` is a perfectly good empty *restore* and a
+   hopeless empty *start*: Uptime Kuma crash-loops instead of running its migrations,
+   and the ready probe burned its full budget three times before this was understood.
+   Stage B now creates only the dir inputs and any non-dir input that compose
+   bind-mounts. ADR-053, and SPEC.md 7.3 corrected.
+
+3. **A container runs as a uid that is not the caller's.** On Linux a bind mount carries
+   the host's permissions straight through, so a 0755 directory owned by the caller is a
+   directory Gitea (uid 1000) or Nextcloud (uid 33) cannot write. Invisible on Windows,
+   which ignores the mode; it would have been a CI-only failure. Empty inputs are now
+   created 0777, and the workspace root was tightened from 0755 to **0700** to make that
+   safe. ADR-054.
+
+4. **A restored tree carries the ownership of the machine the backup came from.**
+   Measured: a restored Nextcloud data directory arrives as `drwxrwx--- root root`, and
+   Nextcloud answers 503 "your data directory is not writable". That is a fact about uid
+   mapping, not about the backup, and reporting it as an unusable restore would be
+   exactly the false alarm this tool exists to remove. `restored` now opens the modes of
+   every restored input after sanitising it. ADR-055.
+
+5. **The exit codes in SPEC.md 2.7 contradicted the brief.** A recipe whose checks all
+   pass against an empty stack has not failed a test; it is not a test. That is the same
+   class of defect as a recipe that does not match the schema, so it exits 2 with
+   `recipe has no data-sensitive check`, and only a stage B failure exits 1. ADR-052,
+   and SPEC.md 2.7 corrected.
+
+6. **Vaultwarden refuses to start with an empty `SMTP_HOST`.** "Both `SMTP_HOST` and
+   `SMTP_FROM` need to be set." An empty value is a value. Absent means "no mail".
+
+---
+
+#### Three things measured rather than assumed
+
+Each of these would have shipped as a recipe that looks right and proves nothing.
+
+- **Paperless-ngx creates two accounts before anybody signs up.** `consumer` and
+  `AnonymousUser`, on a completely fresh install. `SELECT count(*) FROM auth_user` is
+  therefore *not* a data-sensitive check, and stage A said so: it passed when it should
+  have failed. The recipe now excludes both by name, and says why.
+
+  ```text
+  $ docker compose -p restored-uhvswlz2 exec -T db psql -tAq -U paperless -d paperless \
+      -c "select id,username,is_superuser,is_active from auth_user;"
+  1|consumer|f|t
+  2|AnonymousUser|f|t
+  ```
+
+- **Nextcloud's installer creates its own database role.** Given a superuser it makes
+  `oc_<admin user>`, which then owns every table, and a plain `pg_dump` carries
+  `ALTER ... OWNER TO oc_drilluser` into a database that has never heard of it. The
+  export step uses `--no-owner --no-acl`; the recipe README says the same about your own
+  dump; and `restored`'s existing `postgres/role-missing` hint already explains it.
+
+- **`not_empty` counts directory entries.** It is never met by a regular file, so
+  `exists: true, not_empty: true` on `rsa_key.pem` failed in both stages for a reason
+  that had nothing to do with the restore. `size_min: 1` is the file-shaped
+  expectation. Now stated in `docs/recipe-spec.md`, which is generated, so it cannot
+  drift.
+
+---
+
+#### A mistake, recorded
+
+`.all-contributorsrc` used emoji for two custom contribution types. `lint-english.sh`
+scans what git *tracks*, so the check passed while the file was untracked and went red
+the moment the commit added it — and the commit was made before that was noticed. The
+next commit says so in its subject line rather than quietly amending it. The custom
+types are gone; the built-in ones carry their own symbols.
+
+---
+
+#### Evidence
+
+**The round trip, against every bundled recipe.** This is the whole session in one
+command, and it is what `recipes.yml` runs one recipe per matrix job.
+
+The report also prints, under each stage, the exact `restored check` command that stage
+ran, so that any line of it can be reproduced by hand. Those lines are elided here and
+nothing else is:
+
+```text
+$ ./bin/restored recipe test ./recipes/gitea ./recipes/nextcloud ./recipes/paperless-ngx \
+    ./recipes/uptime-kuma ./recipes/vaultwarden
+recipe test gitea (Gitea + PostgreSQL)
+  stage A  negative: the checks must fail against an empty sta… PASS      25.3s
+           4 of 5 checks failed against an empty stack: repos-in-db,
+  stage B  round trip: seed, export, back up, restore, check    PASS      55.3s
+           the round trip restored and all 5 checks passed
+           up 2.3s · ready 8.0s · seed 4.3s · export 3.9s · restic 6.9s · down 2.8s · check 26.9s
+  PASS   gitea in 1m21s
+recipe test nextcloud (Nextcloud (PostgreSQL))
+  stage A  negative: the checks must fail against an empty sta… PASS      31.4s
+           3 of 6 checks failed against an empty stack: instance-installed,
+  stage B  round trip: seed, export, back up, restore, check    PASS      1m21s
+           the round trip restored and all 6 checks passed
+           up 3.8s · ready 9.8s · seed 24.6s · export 3.4s · restic 6.8s · down 3.7s · check 28.8s
+  PASS   nextcloud in 1m53s
+recipe test paperless-ngx (Paperless-ngx (PostgreSQL + Redis))
+  stage A  negative: the checks must fail against an empty sta… PASS      55.7s
+           2 of 5 checks failed against an empty stack: users-present,
+  stage B  round trip: seed, export, back up, restore, check    PASS      1m37s
+           the round trip restored and all 5 checks passed
+           up 2.3s · ready 31.0s · seed 6.0s · export 2.0s · restic 5.9s · down 8.7s · check 41.8s
+  PASS   paperless-ngx in 2m34s
+recipe test uptime-kuma (Uptime Kuma (SQLite))
+  stage A  negative: the checks must fail against an empty sta… PASS      1m33s
+           PASS-BY-STARTUP-REFUSAL: ready: kuma serves HTTP: curl: (7) Failed
+           to connect to kuma port 3001 after 1 ms: Could not connect to
+           server
+  stage B  round trip: seed, export, back up, restore, check    PASS      53.5s
+           the round trip restored and all 6 checks passed
+           up 2.4s · ready 4.9s · seed 738ms · export 662ms · restic 6.0s · down 21.1s · check 17.7s
+  PASS   uptime-kuma in 2m27s
+recipe test vaultwarden (Vaultwarden (SQLite))
+  stage A  negative: the checks must fail against an empty sta… PASS       6.6s
+           1 of 5 checks failed against an empty stack: accounts-present
+  stage B  round trip: seed, export, back up, restore, check    PASS      19.5s
+           the round trip restored and all 5 checks passed
+           up 2.0s · ready 849ms · seed 990ms · export 665ms · restic 6.0s · down 1.4s · check 7.6s
+  PASS   vaultwarden in 26.9s
+  5 recipes: 5 passed, 0 failed, 0 errored, in 8m43s
+
+$ echo $?
+0
+$ docker ps -aq --filter "label=com.restored.run" | wc -l
+0
+$ ls -d "$TMPDIR"/restored-* 2>/dev/null || echo "no workspaces left"
+no workspaces left
+```
+
+Round-trip time per recipe, both stages, on this machine:
+
+| recipe | total | stage A | stage B | stage A verdict |
+|---|---|---|---|---|
+| vaultwarden | 26.9s | 6.6s | 19.5s | 1 of 5 checks failed |
+| gitea | 1m21s | 25.3s | 55.3s | 4 of 5 checks failed |
+| nextcloud | 1m53s | 31.4s | 1m21s | 3 of 6 checks failed |
+| uptime-kuma | 2m27s | 1m33s | 53.5s | PASS-BY-STARTUP-REFUSAL |
+| paperless-ngx | 2m34s | 55.7s | 1m37s | 2 of 5 checks failed |
+| **all five** | **8m43s** | | | |
+
+Uptime Kuma's stage A is 93 seconds of a ready probe waiting for a Kuma that was never
+going to start: given a zero-length `kuma.db` it crash-loops rather than starting
+empty. SPEC.md 7.2 calls that PASS-BY-STARTUP-REFUSAL and accepts it, and the report
+names the stage that refused rather than merely reporting a pass.
+
+Every recipe is inside the 15-minute budget `recipes.yml` gives a matrix job, the
+slowest at a sixth of it.
+
+**Full suite including integration, on the host, against the real daemon.**
+
+```text
+$ go test -tags integration ./... -timeout 40m
+ok  	github.com/spelingbee/restored/internal/check	2.521s
+ok  	github.com/spelingbee/restored/internal/cli	0.975s
+ok  	github.com/spelingbee/restored/internal/harness	0.727s
+ok  	github.com/spelingbee/restored/internal/hints	(cached)
+ok  	github.com/spelingbee/restored/internal/loader	2.433s
+ok  	github.com/spelingbee/restored/internal/nudge	1.451s
+ok  	github.com/spelingbee/restored/internal/recipe	2.202s
+ok  	github.com/spelingbee/restored/internal/recipe/safety	2.153s
+ok  	github.com/spelingbee/restored/internal/report	2.352s
+ok  	github.com/spelingbee/restored/internal/runner	252.438s
+ok  	github.com/spelingbee/restored/internal/source/restic	(cached)
+ok  	github.com/spelingbee/restored/internal/workspace	0.706s
+```
+
+**Unit suite with the race detector.** The host has no C toolchain, so this runs in the
+image CI uses.
+
+```text
+$ export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
+$ docker run --rm -v "C:/My/Projects/Work/restored:/src" \
+    -v "C:/Users/kadyr/go/pkg/mod:/go/pkg/mod" -w /src golang:1.27 go test ./... -race
+ok  	github.com/spelingbee/restored/internal/check	1.217s
+ok  	github.com/spelingbee/restored/internal/cli	1.567s
+ok  	github.com/spelingbee/restored/internal/harness	1.294s
+ok  	github.com/spelingbee/restored/internal/hints	1.190s
+ok  	github.com/spelingbee/restored/internal/loader	1.225s
+ok  	github.com/spelingbee/restored/internal/nudge	1.073s
+ok  	github.com/spelingbee/restored/internal/recipe	1.622s
+ok  	github.com/spelingbee/restored/internal/recipe/safety	1.339s
+ok  	github.com/spelingbee/restored/internal/report	1.294s
+ok  	github.com/spelingbee/restored/internal/source/restic	1.119s
+ok  	github.com/spelingbee/restored/internal/workspace	1.105s
+```
+
+**Workspace permissions, the security-critical path**, cross-compiled and run on Linux
+because Windows has no POSIX mode to assert and skips the symlink test.
+
+```text
+$ CGO_ENABLED=0 GOOS=linux go test -c -o "$TEMP/workspace.test" ./internal/workspace
+$ docker run --rm -v "C:/Users/kadyr/AppData/Local/Temp:/t" alpine:3.20 /t/workspace.test -test.v
+--- PASS: TestNewCreatesTheTree (0.01s)
+--- PASS: TestRunIDIsUsableEverywhere (0.00s)
+--- PASS: TestContains (0.00s)
+--- PASS: TestSanitiseNeutralisesEscapingSymlinks (0.00s)
+--- PASS: TestSanitiseRefusesToLeaveTheWorkspace (0.00s)
+--- PASS: TestMeasure (0.00s)
+--- PASS: TestCopyTree (0.00s)
+--- PASS: TestRelaxOpensARestoredTree (0.00s)
+--- PASS: TestWorkspaceRootIsPrivate (0.00s)
+--- PASS: TestRelaxRefusesToLeaveTheWorkspace (0.00s)
+PASS
+```
+
+**Lint, and the generated files.** The last command printing nothing is the point: the
+three generated files match what the generator produces from the schema and the
+registry.
+
+```text
+$ gofmt -l .
+$ go vet ./...
+$ golangci-lint run
+0 issues.
+$ golangci-lint run --build-tags integration
+0 issues.
+$ ./scripts/lint-english.sh
+lint-english: ok
+$ go run ./tools/gen recipe-spec > docs/recipe-spec.md
+$ go run ./tools/gen recipes-index > recipes/README.md
+$ go run ./tools/gen readme-table
+$ git diff --stat -- docs/recipe-spec.md recipes/README.md README.md
+```
+
+**Every recipe against the schema and the safety rules**, including the template, which
+validates but is deliberately not in the registry:
+
+```text
+$ ./bin/restored recipe validate ./recipes/gitea ./recipes/nextcloud \
+    ./recipes/paperless-ngx ./recipes/uptime-kuma ./recipes/vaultwarden --strict
+ok       ./recipes/gitea
+ok       ./recipes/nextcloud
+ok       ./recipes/paperless-ngx
+ok       ./recipes/uptime-kuma
+ok       ./recipes/vaultwarden
+$ echo $?
+0
+$ ./bin/restored recipe validate ./recipes/TEMPLATE
+ok       ./recipes/TEMPLATE
+$ ./bin/restored check --recipe nosuch
+restored: no bundled recipe named "nosuch" (bundled: gitea, nextcloud, paperless-ngx, uptime-kuma, vaultwarden)
+```
+
+**The demos**, re-run after the workspace permission changes, and the README recaptured
+from them:
+
+```text
+$ ./scripts/demo.sh          ; echo exit=$?
+exit=0
+$ ./scripts/demo-broken.sh   ; echo exit=$?
+exit=1
+$ ./scripts/demo-kuma.sh     ; echo exit=$?
+exit=0
+$ ./scripts/capture-demo.sh
+wrote:
+  docs/demo/pass.txt     26 lines
+  docs/demo/fail.txt     52 lines
+  docs/demo/kuma.txt     27 lines
+```
+
+**`recipe init --compose` against a real Paperless-ngx compose file**, the fixture now
+checked in at `testdata/compose/paperless.yml`:
+
+```text
+$ ./bin/restored recipe init demo-paperless --compose ./testdata/compose/paperless.yml --dir /tmp/initout
+Wrote ...\initout\demo-paperless from ./testdata/compose/paperless.yml
+
+  application:  webserver (ghcr.io/paperless-ngx/paperless-ngx), port 8000
+  dir input:    data from webserver:/usr/src/paperless/data
+  dir input:    media from webserver:/usr/src/paperless/media
+  dir input:    export from webserver:/usr/src/paperless/export
+  dir input:    consume from webserver:/usr/src/paperless/consume
+  database:     postgres-dump in service db
+  note:         service "broker" looks like a cache or a helper
+                (docker.io/library/redis:7). It is kept so the application
+                starts, but nothing about it is restored, and no check
+                should depend on it.
+$ ./bin/restored recipe validate /tmp/initout/demo-paperless; echo $?
+ok       ...\initout\demo-paperless
+warning  metadata.maintainers is empty: nobody is named as the contact for this recipe
+0
+```
+
+The database's own data directory and the Redis volume are correctly *not* proposed as
+inputs, the published port is gone, and `PAPERLESS_SECRET_KEY` became a literal.
+
+**The launch tooling, dry-run only.** Nothing was filed, no label was created, and the
+repository is still private.
+
+```text
+$ ./scripts/labels.sh | tail -3
+would create or update  bug                #d73a4a  restored did something wrong
+would create or update  enhancement        #a2eeef  Something restored should be able to do and cannot
+
+This was a dry run. Nothing was created. Re-run with --apply.
+$ ./scripts/recipes-wanted.sh --limit 3
+would open  Recipe: n8n
+would open  Recipe: open-webui
+would open  Recipe: immich
+
+stopping at --limit 3
+3 issue(s), 0 already existed
+$ ./scripts/contributors.sh --repo louislam/uptime-kuma --days 120 | tail -1
+  44 distinct external contributor(s), 53 merged pull request(s)
+```
+
+That last command is this project's KPI, run against somebody else's repository because
+this one has no contributors yet. Against `spelingbee/restored` it prints, correctly:
+
+```text
+No external contributor has had a pull request merged yet.
+```
+
+**Every workflow's shell was syntax-checked**, not only its YAML. The 30 `run:`
+fragments were extracted, their GitHub expressions stubbed out, and each was passed
+through `bash -n`. That found two bugs which would both have been silent in production:
+`[ "$count" -eq 0 ] && mode=none` ends the script under `set -e` whenever the count is
+not zero, and an `echo` after the harness in `recipe-health.yml` made every run report
+success, so no issue would ever have been opened.
+
+```text
+$ for f in .wfcheck/*.sh; do bash -n "$f" || echo "SYNTAX $f"; done
+shell syntax errors: 0
+```
+
 ---
 
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
-
-### Session 3 - the round-trip harness
-
-`internal/harness` and `restored recipe test`, exactly as SPEC.md section 7 describes
-it. This is the largest remaining hole and the one the contribution flow rests on:
-stage A must prove a recipe's checks fail against an empty stack, stage B must prove
-they pass against a real round trip. Both bundled recipes already have the `test:`
-section the harness needs; it is parsed and validated today and nothing executes it.
-
-Note for whoever writes it: `${RESTORED_TEST_ASSETS}` and `${RESTORED_EXPORT}` already
-resolve to `<workspace>/test-assets` and `<workspace>/export`, which exist and are
-empty during `check`. The harness has to copy the recipe's `test/` directory into the
-first one, and collect `produces:` outputs out of the second.
 
 ### Session 4 - configuration and the rest of the CLI surface
 
@@ -393,18 +774,39 @@ first one, and collect `produces:` outputs out of the second.
 `--target`, `--all`, and the `--all` report shape. Then diff `--help` against SPEC.md
 section 2 and fix whichever of the two is wrong (ADR-045).
 
-### Session 5 - CI, and the four remaining recipes
+One thing to fold in rather than work around: `internal/nudge.Silenced` already reads
+`defaults.nudge` out of `restored.yaml`, through a deliberately narrow reader that looks
+at that one key and uses SPEC.md 2.9's search order. It exists so a user who wrote
+`nudge: false` is believed today. When `internal/config` lands it should take that over
+and `nudge/config.go` should go; the behaviour must not change under anyone.
 
-`recipes.yml` with the changed-recipe selection of SPEC.md 7.5, the integration job in
-`ci.yml`, `smoke.yml`, and `recipe-health.yml`. Then Vaultwarden, Paperless-ngx,
-Miniflux and Nextcloud, to reach the six-recipe gate (ADR-033). Nextcloud is the one
-that will test whether the isolation rules hold.
+### Session 5 - the sixth recipe, and the launch
+
+Miniflux reaches the six-recipe gate (ADR-033). It is the easiest of the remaining
+candidates: one binary, PostgreSQL, no first-run wizard.
+
+Then the launch, which is entirely stop points and therefore entirely a human's:
+
+1. `scripts/labels.sh --apply` - the labels have to exist before anything applies one.
+2. Make the repository public (stop point 4).
+3. `scripts/recipes-wanted.sh --apply --limit 5` first, read what the first five look
+   like on a real repository, then the rest (stop point 3 for anything that amounts to
+   posting).
+4. The release checklist in SPEC.md 12.6 (stop points 1 and 6).
+
+Nothing in that list should be done by a session on its own initiative.
 
 ### Then
 
-`CONTRIBUTING.md` (the README already points at it), `SECURITY.md`, `docs/recipes.md`,
-`install.sh`, the ghcr image, and the release checklist. None of the publishing steps
-happen without a human: see CLAUDE.md's stop points.
+`CHANGELOG.md`, `docs/security.md`, `install.sh`, the ghcr image, `smoke.yml`, and a
+`mysql-dump` input kind - `recipe init --compose` already recognises a MySQL service
+and tells the contributor, in the file it writes, that restored cannot restore it yet.
+That message is a promise to somebody.
+
+`docs/roadmap.md` has the rest, including the two harness gaps worth closing first: a
+`wait` step so a recipe can seed something the application processes asynchronously,
+and a way to hand a test asset to a service, which is what stands between Paperless-ngx
+and a real document round trip.
 
 ---
 
@@ -414,31 +816,54 @@ happen without a human: see CLAUDE.md's stop points.
 |---|---|---|---|---|
 | - | Nothing. | - | - | - |
 
-B-1, the project name and the GitHub owner, was resolved by this session under the
-brief's instruction to decide rather than ask, and is recorded as ADR-036. It is listed
-below as an open question rather than as a blocker, because the code exists and the
-rename is mechanical.
+Three things are *waiting*, which is different from blocked: every one of them is a
+stop point in CLAUDE.md, the work up to the stop point is done, and a human has to take
+the next step. They are listed under *Next steps*, session 5.
 
 ---
 
 ## Open questions for a human
 
 1. **The name and the owner, still.** `github.com/spelingbee/restored` is in `go.mod`,
-   in both schema `$id`s, and in `internal/nudge`. `docs/name-check.md` recommends
-   `drillback` because it is the only candidate clean on every registry and all three
-   TLDs, and `restored` costs discoverability. Changing it now is
-   `grep -rl spelingbee/restored | xargs sed -i` plus a `go mod edit`; changing it after
-   anything is published is not. This is the cheapest hour this project will ever have
-   to spend. See ADR-036.
-2. **ADR-023 - is a failed ready probe exit 1 or exit 2?** Unchanged from session 1, and
-   now implemented as exit 1. Session 2 saw one real instance of it: an Uptime Kuma
-   ready probe that failed because the recipe expected a 200 and the application answers
-   a 302. That was a recipe bug reported as an unusable restore, which is exactly the
-   false alarm the question is about. The recipe is fixed; the question stands.
+   in both schema `$id`s, in `internal/nudge`, in the CI workflows, in
+   `.all-contributorsrc`, and in every document that links to a file on GitHub.
+   `docs/name-check.md` recommends `drillback` because it is the only candidate clean on
+   every registry and all three TLDs, and `restored` costs discoverability. Changing it
+   is still `grep -rl spelingbee/restored | xargs sed -i` plus a `go mod edit`, and it
+   is still free until something is published - which is stop points 1, 3, 4 and 6, all
+   of which are still closed. It got more expensive this session, because there is more
+   of it. See ADR-036.
+2. **ADR-023 - is a failed ready probe exit 1 or exit 2?** Unchanged, and now
+   implemented as exit 1. Session 3 hit two more instances of the shape the question is
+   about, and both were recipe bugs reported as unusable restores: Vaultwarden refusing
+   to start over an empty `SMTP_HOST`, and Nextcloud answering 503 because a restored
+   tree carried somebody else's uids. Both are fixed in the recipes. What the question
+   is really asking is whether "the app did not start" and "the data did not come back"
+   deserve different exit codes, and after three sessions the honest answer is that a
+   user cannot tell them apart from the exit code today.
 3. **ADR-030 - should digest pinning be required rather than encouraged?** Unchanged.
-4. **ADR-033 - are six recipes the right gate for v0.1?** Two exist and both round-trip.
-5. **Is Nextcloud achievable inside the isolation rules?** Still unknown, and still the
-   recipe most likely to force an exception.
-6. **New: `restored recipe test` is not built.** Until it is, a recipe cannot be
-   accepted from a stranger on evidence alone, which is the mechanism the success metric
-   depends on. Session 3 is the whole answer, and nothing else should jump the queue.
+   Five recipes now pin tags, and `recipe-health.yml` runs weekly with `--pull always`
+   specifically so that a moved tag is noticed. That weakens the case for requiring
+   digests, because the failure is now detected rather than silent.
+4. **ADR-033 - are six recipes the right gate for v0.1?** Five exist and all five
+   round-trip in under three minutes each. The sixth is a session's work.
+5. **Is Nextcloud achievable inside the isolation rules?** **Answered: yes**, and
+   without an exception. It needed a `prepare` service in the recipe's own compose file
+   that chowns the restored tree and lays a config overlay over `config.php` - which is
+   the same procedure Nextcloud's own restore documentation gives a human. No isolation
+   rule was bent. The new question it raises is item 7.
+6. **`restored recipe test` is not built.** **Answered: it is**, and all five recipes
+   pass it. A recipe from a stranger can now be accepted on evidence.
+7. **New: should a recipe be able to declare a preparation step?** The Nextcloud recipe
+   declares a twenty-line compose service that fixes ownership and writes a config
+   overlay before the application starts. It works and it is honest, but every recipe
+   for an application that is fussy about ownership will now copy it, and a copied
+   twenty-line service is a convention rather than a mechanism - which is the thing
+   CLAUDE.md says to prefer against. A `prepare:` block in the recipe format would be a
+   mechanism. It would also be a new way for a recipe to run arbitrary code, which is
+   exactly what the isolation rules exist to constrain.
+8. **New: the review promise in CONTRIBUTING.md is a promise.** "First response within
+   24 hours, merged within 48 when CI is green." It is the right promise - it is most of
+   what makes a first contribution feel worth making - and there is one maintainer. It
+   should be confirmed or changed before the repository is public, not after somebody
+   has relied on it.
