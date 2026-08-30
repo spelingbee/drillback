@@ -17,15 +17,16 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | # | App | Verdict | Registry recipe | Notes |
 |---|---|---|---|---|
 | 1 | n8n | PARTIAL (documented export) / PASS (data directory) | `recipes/n8n`, passes `recipe test` | Two documented readings, tested both. |
+| 2 | memos | PASS (data directory) / FAIL ("the database" alone) | `recipes/memos`, passes `recipe test` | The -wal file holds everything; the .db is 4 KiB. |
 
 ## Next
 
 Working down `docs/recipes-wanted.txt` from the top:
 
-- open-webui (150,348)
+- open-webui (150,348) - image pull started 2026-08-30 11:26 UTC and was still running
+  after 25 minutes; the leg is written and waiting on it
 - immich (112,933)
 - Stirling-PDF (90,910)
-- memos (62,640)
 - appwrite (57,160)
 - gogs (47,784)
 - siyuan (46,036)

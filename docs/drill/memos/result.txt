@@ -1,0 +1,23 @@
+restored 0.1.0-dev · recipe memos · run fn2iihd3
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/memos/restic
+  snapshot   866a4cdf  2026-08-30 11:39:00  host=drill  tags=[drill]
+  inputs     data  /var/opt/memos                192.9 KiB  3 files
+             db    /var/opt/memos/memos_prod.db    4.0 KiB  1 file
+
+  restore    ok          1.9s   2 inputs
+  compose    ok          1.1s   1 service
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.52s   Memos answers /healthz
+
+  CHECKS
+  ✔  healthz        The server answers its health endpoint               0.57s
+  ✔  db-integrity   The SQLite database passes PRAGMA integrity_check    0.01s
+                    → ok
+  ✔  users-present  At least one account survived the restore → 1        0.01s
+  ✔  memos-present  The memos survived the restore → 1                   0.01s
+  ✔  signin-works   The restored account can still sign in               0.62s
+
+  PASS  5/5 checks  ·  total 5.1s  ·  teardown ok
+
+This backup boots.

@@ -1,0 +1,18 @@
+# Memos, deployed the way https://usememos.com/docs/deploy/docker-compose says to: the
+# neosmemo/memos image with the data directory on /var/opt/memos and MEMOS_DRIVER=sqlite.
+#
+# Two deviations, recorded in steps.md, neither touching what gets backed up: no
+# published port (the drill drives it from a curl container on this project's network),
+# and MEMOS_INSTANCE_URL is left empty, which the documentation itself gives as the
+# setting for a private deployment.
+services:
+  memos:
+    image: neosmemo/memos:0.30.0
+    environment:
+      MEMOS_PORT: 5230
+      MEMOS_DRIVER: sqlite
+    volumes:
+      - memos-data:/var/opt/memos
+
+volumes:
+  memos-data:

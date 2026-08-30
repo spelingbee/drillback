@@ -1,0 +1,135 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: memos
+  title: Memos (SQLite)
+  description: >
+    Verifies that a Memos backup restores: the server answers /healthz, the SQLite
+    database passes an integrity check, the accounts and the memos are still in it, and
+    the account that was backed up can still sign in.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/usememos/memos
+  tags: [notes, sqlite]
+
+vars:
+  memos_port: 5230
+  drill_user: drill
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The Memos data directory
+    description: >
+      /var/opt/memos, which is the directory the documented compose file mounts and the
+      one its deployment pages tell you to keep on persistent storage. It holds
+      memos_prod.db and, unless attachments are kept in the database or in S3, the
+      local assets beside it.
+    default_path: /var/opt/memos
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: memos:/var/opt/memos
+
+  db:
+    kind: sqlite
+    title: The Memos SQLite database
+    description: >
+      memos_prod.db, inside the data directory. Memos runs it in WAL mode, so a backup
+      that copied the .db and left the -wal behind is a backup missing whatever was
+      written last; declaring the file separately is what makes that a failed check
+      rather than a surprise.
+    default_path: /var/opt/memos/memos_prod.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: Memos answers /healthz
+    kind: http
+    url: http://memos:{{ .vars.memos_port }}/healthz
+    expect_status: 200
+    timeout: 180s
+    interval: 2s
+
+checks:
+  - id: healthz
+    title: The server answers its health endpoint
+    kind: http
+    url: http://memos:{{ .vars.memos_port }}/healthz
+    expect:
+      status: 200
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: At least one account survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM user;"
+    expect:
+      scalar_int_min: 1
+
+  - id: memos-present
+    title: The memos survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM memo;"
+    expect:
+      scalar_int_min: 1
+
+  - id: signin-works
+    title: The restored account can still sign in
+    kind: http
+    method: POST
+    url: http://memos:{{ .vars.memos_port }}/api/v1/auth/signin
+    json_body: '{"passwordCredentials":{"username":"{{ .vars.drill_user }}","password":"{{ .vars.drill_password }}"}}'
+    timeout: 120s
+    expect:
+      status: 200
+      body_matches: '"accessToken"'
+
+test:
+  seed:
+    # One step: the memo has to be created with the token the sign-in returns, and seed
+    # steps cannot hand a value to each other. The image is distroless-ish - no shell
+    # tools worth relying on - so this runs from a curl container that is only there
+    # during `recipe test`.
+    - name: create the first account and one memo
+      kind: exec
+      service: seeder
+      timeout: 180s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          # The first account created on a fresh instance becomes the host admin.
+          curl -sS -f -X POST http://memos:5230/api/v1/users \
+            -H 'content-type: application/json' \
+            -d '{"username":"drill","password":"Drill-Password-1","role":"HOST"}' \
+            > /dev/null
+          curl -sS -f -X POST http://memos:5230/api/v1/auth/signin \
+            -H 'content-type: application/json' \
+            -d '{"passwordCredentials":{"username":"drill","password":"Drill-Password-1"}}' \
+            > /tmp/signin.json
+          TOKEN=`sed -e 's/.*"accessToken": *"//' -e 's/".*//' /tmp/signin.json`
+          test -n "$TOKEN"
+          curl -sS -f -X POST http://memos:5230/api/v1/memos \
+            -H "authorization: Bearer $TOKEN" \
+            -H 'content-type: application/json' \
+            -d '{"content":"drill-canary-memo: this line proves the restore","visibility":"PRIVATE"}' \
+            > /dev/null
+          echo "seeded one account and one memo"
+  export: []

@@ -1,0 +1,29 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.11.1
+    environment:
+      # WEBUI_SECRET_KEY signs the session JWTs. It is NOT what encrypts anything in
+      # webui.db, so a restore does not need the original: sign-in works with any key.
+      # It is set to a fixed value here only so the two runs of a round trip agree.
+      WEBUI_SECRET_KEY: "restored-drill"
+      PORT: "${RESTORED_VAR_webui_port}"
+      # Everything here runs on an internal network with no route out. Without these,
+      # start-up spends its whole budget on connection attempts to model backends that
+      # are not there, and the first RAG call would try to fetch an embedding model.
+      ENABLE_OLLAMA_API: "false"
+      ENABLE_OPENAI_API: "false"
+      OFFLINE_MODE: "true"
+      HF_HUB_OFFLINE: "1"
+      WEBUI_AUTH: "true"
+    volumes:
+      - ${RESTORED_INPUT_data}:/app/backend/data
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

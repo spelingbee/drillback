@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "5zsg7sbn",
+    "compose_project": "restored-5zsg7sbn",
+    "started_at": "2026-08-30T11:39:13Z",
+    "finished_at": "2026-08-30T11:39:18Z",
+    "duration_ms": 5033,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-5zsg7sbn"
+  },
+  "verdict": "RESTORE_UNUSABLE",
+  "exit_code": 1,
+  "recipe": {
+    "name": "memos",
+    "title": "Memos (SQLite)",
+    "source": "path",
+    "digest": "sha256:a520d049eda37e4fba9125643863dcfad305a03e3dd90ef10735c4078926c205"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/memos/restic-db-only",
+    "snapshot": {
+      "id": "bba3a84028cc8b2a5b6cf99afb3897da099926fdcb731b881cc6f60dfaa3b6d3",
+      "short_id": "bba3a840",
+      "time": "2026-08-30T11:39:12.376083403Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/var/opt/memos"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/var/opt/memos",
+      "bytes": 4096,
+      "files": 1,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/var/opt/memos/memos_prod.db",
+      "bytes": 4096,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1619,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1029,
+      "services": [
+        "memos"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 20,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 488,
+      "probes": [
+        {
+          "name": "Memos answers /healthz",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 488
+        }
+      ],
+      "note": "Memos answers /healthz"
+    }
+  ],
+  "checks": [
+    {
+      "id": "healthz",
+      "title": "The server answers its health endpoint",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 585,
+      "expect": {
+        "status": 200
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 14
+      },
+      "url": "http://memos:5230/healthz"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 13,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "At least one account survived the restore",
+      "kind": "sql",
+      "status": "fail",
+      "duration_ms": 14,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "0",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM user;",
+      "failures": [
+        {
+          "expect": "scalar_int_min: 1",
+          "got": "0"
+        }
+      ]
+    },
+    {
+      "id": "memos-present",
+      "title": "The memos survived the restore",
+      "kind": "sql",
+      "status": "fail",
+      "duration_ms": 17,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "0",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM memo;",
+      "failures": [
+        {
+          "expect": "scalar_int_min: 1",
+          "got": "0"
+        }
+      ]
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "http",
+      "status": "fail",
+      "duration_ms": 539,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"accessToken\""
+      },
+      "observed": {
+        "status": 400,
+        "body_bytes": 69
+      },
+      "url": "http://memos:5230/api/v1/auth/signin",
+      "failures": [
+        {
+          "expect": "status: 200",
+          "got": "status: 400"
+        },
+        {
+          "expect": "body_matches: \"accessToken\"",
+          "got": "{\"code\":3, \"message\":\"unmatched username and password\", \"details\":[]}"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks_total": 5,
+    "checks_passed": 2,
+    "checks_failed": 3,
+    "checks_skipped": 0
+  },
+  "hint": {
+    "id": "db/tables-empty",
+    "matched_on": "checks[2].failures",
+    "title": "The application's tables are there, but they are empty",
+    "text": "Every table the checks read exists and holds nothing. Two causes produce exactly this. Either the dump was taken from the wrong database, or with `pg_dump --schema-only`, or narrowed with `--table`, so it carried a schema and none of the rows. Or the dump carried nothing at all and the application rebuilt an empty schema for itself on start, which is what an application with automatic migrations does the moment it meets an empty database. Compare the size of the dump with the size of the data directory in the report above: a forge with repositories on disk and a half-kilobyte dump is not a backup.\n",
+    "commands": [
+      "grep -c 'INSERT INTO' /var/opt/memos/memos_prod.db",
+      "ls -l /var/opt/memos/memos_prod.db"
+    ]
+  },
+  "logs": {
+    "memos": [
+      "memos: starting as UID:GID 10001:10001",
+      "time=2026-08-30T11:39:16.194Z level=INFO msg=\"initializing new database with latest schema\" file=migration/sqlite/LATEST.sql",
+      "time=2026-08-30T11:39:16.213Z level=INFO msg=\"database initialized successfully\" schemaVersion=0.30.1",
+      "Memos 0.30.0 started successfully!",
+      "Data directory: /var/opt/memos",
+      "Database driver: sqlite",
+      "Server running on port 5230",
+      "Access your memos at: http://localhost:5230",
+      "Access mode: private",
+      "",
+      "Documentation: https://usememos.com",
+      "Source code: https://github.com/usememos/memos",
+      "",
+      "Happy note-taking!",
+      "time=2026-08-30T11:39:16.248Z level=INFO msg=\"background runners started\""
+    ]
+  }
+}

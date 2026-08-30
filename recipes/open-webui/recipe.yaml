@@ -1,0 +1,141 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: open-webui
+  title: Open WebUI (SQLite)
+  description: >
+    Verifies that an Open WebUI backup restores: the server answers /health, the SQLite
+    database passes an integrity check, the accounts and the chat history are still in
+    it, and the account that was backed up can still sign in.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/open-webui/open-webui
+  tags: [ai, chat, sqlite]
+
+vars:
+  webui_port: 8080
+  # The account the round-trip harness creates, and the one signin-works signs in as.
+  # A restore is only proved by a password that still works, so both live here.
+  drill_email: drill@example.invalid
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The Open WebUI data directory
+    description: >
+      /app/backend/data in the container, which Open WebUI's own backup page lists as
+      the thing to persist: webui.db, uploads/, vector_db/, cache/ and audit.log. The
+      documented host path in that page's bind-mount example is /opt/open-webui.
+    default_path: /opt/open-webui
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: open-webui:/app/backend/data
+
+  db:
+    kind: sqlite
+    title: The Open WebUI SQLite database
+    description: >
+      webui.db, inside the data directory. Declared separately so a truncated database,
+      or one copied out from under a running instance without its -wal companion, is
+      reported here rather than as an instance that has forgotten everybody.
+    default_path: /opt/open-webui/webui.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: Open WebUI answers /health
+    kind: http
+    url: http://open-webui:{{ .vars.webui_port }}/health
+    expect_status: 200
+    timeout: 300s
+    interval: 3s
+
+checks:
+  - id: health
+    title: The server reports itself healthy
+    kind: http
+    url: http://open-webui:{{ .vars.webui_port }}/health
+    expect:
+      status: 200
+      body_matches: '"status"\s*:\s*true'
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: At least one account survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM user;"
+    expect:
+      scalar_int_min: 1
+
+  - id: chats-present
+    title: Chat history survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM chat;"
+    expect:
+      scalar_int_min: 1
+
+  - id: signin-works
+    title: The restored account can still sign in
+    kind: http
+    method: POST
+    url: http://open-webui:{{ .vars.webui_port }}/api/v1/auths/signin
+    # The password hash and the auth table are the part of a restore people notice
+    # first, and a row in `user` does not prove either of them came back intact.
+    json_body: '{"email":"{{ .vars.drill_email }}","password":"{{ .vars.drill_password }}"}'
+    timeout: 120s
+    expect:
+      status: 200
+      body_matches: '"token"'
+
+test:
+  seed:
+    # One step, not two, because Open WebUI's chat endpoint needs the bearer token that
+    # signup returns and seed steps cannot pass a value to each other. urllib is stdlib;
+    # the image is a Python application, so nothing is installed to make this work.
+    - name: sign up an account and save a chat
+      kind: exec
+      service: open-webui
+      timeout: 180s
+      command:
+        - python3
+        - -c
+        - |
+          import json, urllib.request
+          BASE = 'http://127.0.0.1:8080'
+
+          def post(path, body, token=None):
+              req = urllib.request.Request(
+                  BASE + path, data=json.dumps(body).encode(),
+                  headers={'content-type': 'application/json'})
+              if token:
+                  req.add_header('authorization', 'Bearer ' + token)
+              with urllib.request.urlopen(req) as r:
+                  return json.load(r)
+
+          user = post('/api/v1/auths/signup', {
+              'name': 'Drill Operator',
+              'email': 'drill@example.invalid',
+              'password': 'Drill-Password-1'})
+          chat = post('/api/v1/chats/new', {'chat': {
+              'title': 'drill-canary-chat',
+              'models': ['drill-model'],
+              'messages': [{'id': 'drill-msg-1', 'role': 'user',
+                            'content': 'drill canary message'}]}}, user['token'])
+          print('signed up', user['email'], '- saved chat', chat['id'], chat['title'])
+  export: []

@@ -1,0 +1,16 @@
+# Open WebUI, deployed the way https://docs.openwebui.com/getting-started/quick-start
+# says to: the ghcr.io/open-webui/open-webui image with a volume on /app/backend/data.
+#
+# Deviation, recorded in steps.md: no published port. The drill drives the instance from
+# a curl container on this project's network, so nothing it runs is reachable from
+# outside the machine. Nothing else is changed, and nothing that affects the backup.
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.11.1
+    environment:
+      WEBUI_SECRET_KEY: "drill-secret-key"
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  open-webui:

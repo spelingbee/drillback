@@ -13,13 +13,15 @@ Each directory has a README saying which of your directories each input is.
 | recipe | application | state it restores | checks | upstream |
 |---|---|---|---|---|
 | [`gitea`](gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 | [source](https://github.com/go-gitea/gitea) |
+| [`memos`](memos/) | Memos (SQLite) | directories + SQLite | 5 | [source](https://github.com/usememos/memos) |
 | [`n8n`](n8n/) | n8n (SQLite) | directories + SQLite | 6 | [source](https://github.com/n8n-io/n8n) |
 | [`nextcloud`](nextcloud/) | Nextcloud (PostgreSQL) | directories + PostgreSQL | 6 | [source](https://github.com/nextcloud/server) |
+| [`open-webui`](open-webui/) | Open WebUI (SQLite) | directories + SQLite | 5 | [source](https://github.com/open-webui/open-webui) |
 | [`paperless-ngx`](paperless-ngx/) | Paperless-ngx (PostgreSQL + Redis) | directories + PostgreSQL | 5 | [source](https://github.com/paperless-ngx/paperless-ngx) |
 | [`uptime-kuma`](uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 | [source](https://github.com/louislam/uptime-kuma) |
 | [`vaultwarden`](vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 | [source](https://github.com/dani-garcia/vaultwarden) |
 
-6 recipes.
+8 recipes.
 
 Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute

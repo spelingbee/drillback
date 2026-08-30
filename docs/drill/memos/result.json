@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "fn2iihd3",
+    "compose_project": "restored-fn2iihd3",
+    "started_at": "2026-08-30T11:39:02Z",
+    "finished_at": "2026-08-30T11:39:07Z",
+    "duration_ms": 5117,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-fn2iihd3"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "memos",
+    "title": "Memos (SQLite)",
+    "source": "path",
+    "digest": "sha256:a520d049eda37e4fba9125643863dcfad305a03e3dd90ef10735c4078926c205"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/memos/restic",
+    "snapshot": {
+      "id": "866a4cdf41c9269ff221120b8a5e62905ed3095648c6336b4bda049f2d250165",
+      "short_id": "866a4cdf",
+      "time": "2026-08-30T11:39:00.793895978Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/var/opt/memos"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/var/opt/memos",
+      "bytes": 197576,
+      "files": 3,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/var/opt/memos/memos_prod.db",
+      "bytes": 4096,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1909,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1081,
+      "services": [
+        "memos"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 9,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 521,
+      "probes": [
+        {
+          "name": "Memos answers /healthz",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 521
+        }
+      ],
+      "note": "Memos answers /healthz"
+    }
+  ],
+  "checks": [
+    {
+      "id": "healthz",
+      "title": "The server answers its health endpoint",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 567,
+      "expect": {
+        "status": 200
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 14
+      },
+      "url": "http://memos:5230/healthz"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 11,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "At least one account survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 12,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM user;"
+    },
+    {
+      "id": "memos-present",
+      "title": "The memos survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 10,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM memo;"
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 621,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"accessToken\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 613,
+        "matched": true
+      },
+      "url": "http://memos:5230/api/v1/auth/signin"
+    }
+  ],
+  "summary": {
+    "checks_total": 5,
+    "checks_passed": 5,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

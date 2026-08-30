@@ -296,8 +296,10 @@ rejects a recipe that breaks any of it.
 | recipe | application | state it restores | checks |
 |---|---|---|---|
 | [`gitea`](recipes/gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 |
+| [`memos`](recipes/memos/) | Memos (SQLite) | directories + SQLite | 5 |
 | [`n8n`](recipes/n8n/) | n8n (SQLite) | directories + SQLite | 6 |
 | [`nextcloud`](recipes/nextcloud/) | Nextcloud (PostgreSQL) | directories + PostgreSQL | 6 |
+| [`open-webui`](recipes/open-webui/) | Open WebUI (SQLite) | directories + SQLite | 5 |
 | [`paperless-ngx`](recipes/paperless-ngx/) | Paperless-ngx (PostgreSQL + Redis) | directories + PostgreSQL | 5 |
 | [`uptime-kuma`](recipes/uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 |
 | [`vaultwarden`](recipes/vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 |
