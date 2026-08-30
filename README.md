@@ -329,7 +329,16 @@ restored recipe test ./recipes/myapp        # this is exactly what CI runs
 
 `recipe init --compose` turns your volumes into inputs, recognises a PostgreSQL or
 SQLite service, takes the container side of your published port for the ready probe,
-and leaves a TODO everywhere the answer is yours.
+writes the `healthcheck` and `depends_on` that stop your application racing its own
+database, and leaves a TODO everywhere the answer is yours.
+
+*Ten minutes is a measured number, not a slogan.* Before the first public release a
+reviewer who had never seen this codebase wrote a recipe for an application that is not
+in the registry, using only these documents and the scaffold, and got it passing both
+stages in **13 minutes 26 seconds** - of which about seven were the scaffold's fault and
+have since been fixed. Their walk, with every wrong turn in it, is in
+[`docs/review/fresh-clone.md`](docs/review/fresh-clone.md). If yours takes much longer
+than ten minutes, that is a bug in this project and worth an issue.
 
 `recipe test` is the whole review process, mechanised:
 
