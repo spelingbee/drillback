@@ -15,6 +15,7 @@ Each directory has a README saying which of your directories each input is.
 | [`filebrowser`](filebrowser/) | File Browser (Bolt database) | directories | 4 | [source](https://github.com/filebrowser/filebrowser) |
 | [`gitea`](gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 | [source](https://github.com/go-gitea/gitea) |
 | [`gogs`](gogs/) | Gogs (SQLite) | directories + SQLite | 7 | [source](https://github.com/gogs/gogs) |
+| [`gotify`](gotify/) | Gotify (SQLite) | directories + SQLite | 6 | [source](https://github.com/gotify/server) |
 | [`listmonk`](listmonk/) | listmonk (PostgreSQL) | PostgreSQL + directories | 6 | [source](https://github.com/knadh/listmonk) |
 | [`memos`](memos/) | Memos (SQLite) | directories + SQLite | 5 | [source](https://github.com/usememos/memos) |
 | [`n8n`](n8n/) | n8n (SQLite) | directories + SQLite | 6 | [source](https://github.com/n8n-io/n8n) |
@@ -25,7 +26,7 @@ Each directory has a README saying which of your directories each input is.
 | [`uptime-kuma`](uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 | [source](https://github.com/louislam/uptime-kuma) |
 | [`vaultwarden`](vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 | [source](https://github.com/dani-garcia/vaultwarden) |
 
-12 recipes.
+13 recipes.
 
 Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute

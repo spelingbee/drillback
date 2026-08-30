@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "hxpk7y6s",
+    "compose_project": "restored-hxpk7y6s",
+    "started_at": "2026-08-30T12:52:33Z",
+    "finished_at": "2026-08-30T12:52:40Z",
+    "duration_ms": 6706,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-hxpk7y6s"
+  },
+  "verdict": "RESTORE_UNUSABLE",
+  "exit_code": 1,
+  "recipe": {
+    "name": "gotify",
+    "title": "Gotify (SQLite)",
+    "source": "path",
+    "digest": "sha256:a6178139e40f15f09f990778d558b0a3b398e845b1f2da27b28c515af297dbb6"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/gotify/restic-db-only",
+    "snapshot": {
+      "id": "670d88f9429adeb22c2f8f0eb4926cab249aaeb69d92b6f53eab636c51c6909a",
+      "short_id": "670d88f9",
+      "time": "2026-08-30T12:52:32.08402552Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/app/data"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/app/data",
+      "bytes": 69632,
+      "files": 1,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/app/data/gotify.db",
+      "bytes": 69632,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1737,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1092,
+      "services": [
+        "gotify"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 2,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 567,
+      "probes": [
+        {
+          "name": "Gotify reports itself healthy",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 567
+        }
+      ],
+      "note": "Gotify reports itself healthy"
+    }
+  ],
+  "checks": [
+    {
+      "id": "health",
+      "title": "The server reports itself healthy",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 556,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"health\"\\s*:\\s*\"green\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 37,
+        "matched": true
+      },
+      "url": "http://gotify:80/health"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 1,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "account-authenticates",
+      "title": "The restored account can authenticate",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 702,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"name\"\\s*:\\s*\"drilladmin\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 86,
+        "matched": true
+      },
+      "url": "http://gotify:80/current/user"
+    },
+    {
+      "id": "applications-restored",
+      "title": "The applications are in the restored instance",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 655,
+      "expect": {
+        "status": 200,
+        "body_matches": "drill-canary-app",
+        "json_path": "$",
+        "json_path_len_min": 1
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 268,
+        "matched": true,
+        "value": "an array of 1",
+        "count": 1
+      },
+      "url": "http://gotify:80/application"
+    },
+    {
+      "id": "messages-restored",
+      "title": "The message history is in the restored instance",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 653,
+      "expect": {
+        "status": 200,
+        "body_matches": "drill-canary-message",
+        "json_path": "$.messages",
+        "json_path_len_min": 1
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 199,
+        "matched": true,
+        "value": "an array of 1",
+        "count": 1
+      },
+      "url": "http://gotify:80/message"
+    },
+    {
+      "id": "application-icon-on-disk",
+      "title": "The uploaded application icon came back with its database row",
+      "kind": "file",
+      "status": "fail",
+      "duration_ms": 1,
+      "expect": {
+        "exists": true,
+        "glob": "*.png",
+        "glob_min_count": 1
+      },
+      "observed": {
+        "count": 0,
+        "entries": 0,
+        "exists": true,
+        "is_dir": true
+      },
+      "failures": [
+        {
+          "expect": "glob_min_count: 1 for *.png",
+          "got": "0 matches"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 5,
+    "checks_failed": 1,
+    "checks_skipped": 0
+  },
+  "logs": {
+    "gotify": [
+      "2026-08-30T12:52:36Z INF Gotify build_date=2026-08-27-16:47:47 version=3.1.0",
+      "2026-08-30T12:52:36Z INF Listen address=[::]:80 connection_type=\"plain connection\" network=tcp",
+      "2026-08-30T12:52:36Z INF HTTP duration=\"86.424µs\" ip=172.23.0.3 method=GET path=/health status=200",
+      "2026-08-30T12:52:37Z INF HTTP duration=\"68.432µs\" ip=172.23.0.3 method=GET path=/health status=200",
+      "2026-08-30T12:52:38Z INF HTTP duration=71.756023ms ip=172.23.0.3 method=GET path=/current/user status=200",
+      "2026-08-30T12:52:38Z INF HTTP duration=71.659638ms ip=172.23.0.3 method=GET path=/application status=200",
+      "2026-08-30T12:52:39Z INF HTTP duration=73.277075ms ip=172.23.0.3 method=GET path=/message status=200"
+    ]
+  }
+}

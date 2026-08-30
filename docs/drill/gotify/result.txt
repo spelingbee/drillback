@@ -1,0 +1,28 @@
+restored 0.1.0-dev · recipe gotify · run a7gg6pjm
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/gotify/restic-all
+  snapshot   8560d073  2026-08-30 12:52:18  host=drill  tags=[drill]
+  inputs     data  /app/data             68.1 KiB  2 files
+             db    /app/data/gotify.db   68.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.1s   1 service
+  load db    ok         0.00s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.52s   Gotify reports itself healthy
+
+  CHECKS
+  ✔  health                  The server reports itself healthy           0.59s
+  ✔  db-integrity            The SQLite database passes PRAGMA           0.00s
+                             integrity_check → ok
+  ✔  account-authenticates   The restored account can authenticate       0.65s
+  ✔  applications-restored   The applications are in the restored        0.67s
+                             instance → 1 item
+  ✔  messages-restored       The message history is in the restored      0.67s
+                             instance → 1 item
+  ✔  application-icon-on-disk  The uploaded application icon came back     0.00s
+                             with its database row → 1 match for
+                             *.png
+
+  PASS  6/6 checks  ·  total 6.3s  ·  teardown ok
+
+This backup boots.

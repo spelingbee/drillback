@@ -1,0 +1,30 @@
+restored 0.1.0-dev · recipe gotify · run hxpk7y6s
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/gotify/restic-db-only
+  snapshot   670d88f9  2026-08-30 12:52:32  host=drill  tags=[drill]
+  inputs     data  /app/data             68.0 KiB  1 file
+             db    /app/data/gotify.db   68.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.1s   1 service
+  load db    ok         0.00s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.57s   Gotify reports itself healthy
+
+  CHECKS
+  ✔  health                  The server reports itself healthy           0.56s
+  ✔  db-integrity            The SQLite database passes PRAGMA           0.00s
+                             integrity_check → ok
+  ✔  account-authenticates   The restored account can authenticate       0.70s
+  ✔  applications-restored   The applications are in the restored        0.66s
+                             instance → 1 item
+  ✔  messages-restored       The message history is in the restored      0.65s
+                             instance → 1 item
+  ✘  application-icon-on-disk  The uploaded application icon came back     0.00s
+                             with its database row
+                               expect  glob_min_count: 1 for *.png
+                               got     0 matches
+
+  RESTORE UNUSABLE  5/6 checks  ·  total 6.7s  ·  teardown ok
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

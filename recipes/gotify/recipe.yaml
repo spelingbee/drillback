@@ -1,0 +1,142 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: gotify
+  title: Gotify (SQLite)
+  description: >
+    Verifies that a Gotify backup restores: the server is healthy, the account can
+    authenticate, the applications and their message history are in the database, and
+    the application's uploaded icon is on disk beside the row that names it.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/gotify/server
+  tags: [notifications, sqlite]
+
+vars:
+  gotify_port: 80
+  drill_user: drilladmin
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The Gotify data directory
+    description: >
+      /app/data, which the installation page mounts. It holds gotify.db, the images/
+      directory where uploaded application icons go, and plugins/.
+    default_path: /app/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: gotify:/app/data
+
+  db:
+    kind: sqlite
+    title: The Gotify SQLite database
+    description: >
+      gotify.db, inside the data directory. The configuration reference names this file
+      as the default for GOTIFY_DATABASE_CONNECTION, and it is what a person means when
+      they say "the Gotify database".
+    default_path: /app/data/gotify.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: Gotify reports itself healthy
+    kind: http
+    url: http://gotify:{{ .vars.gotify_port }}/health
+    expect_status: 200
+    timeout: 180s
+    interval: 2s
+
+checks:
+  - id: health
+    title: The server reports itself healthy
+    kind: http
+    url: http://gotify:{{ .vars.gotify_port }}/health
+    expect:
+      status: 200
+      body_matches: '"health"\s*:\s*"green"'
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: account-authenticates
+    title: The restored account can authenticate
+    kind: http
+    url: http://gotify:{{ .vars.gotify_port }}/current/user
+    basic_auth: ["{{ .vars.drill_user }}", "{{ .vars.drill_password }}"]
+    expect:
+      status: 200
+      body_matches: '"name"\s*:\s*"drilladmin"'
+
+  - id: applications-restored
+    title: The applications are in the restored instance
+    kind: http
+    url: http://gotify:{{ .vars.gotify_port }}/application
+    basic_auth: ["{{ .vars.drill_user }}", "{{ .vars.drill_password }}"]
+    expect:
+      status: 200
+      json_path: "$"
+      json_path_len_min: 1
+      body_matches: "drill-canary-app"
+
+  - id: messages-restored
+    title: The message history is in the restored instance
+    kind: http
+    url: http://gotify:{{ .vars.gotify_port }}/message
+    basic_auth: ["{{ .vars.drill_user }}", "{{ .vars.drill_password }}"]
+    expect:
+      status: 200
+      json_path: "$.messages"
+      json_path_len_min: 1
+      body_matches: "drill-canary-message"
+
+  - id: application-icon-on-disk
+    title: The uploaded application icon came back with its database row
+    kind: file
+    service: gotify
+    # The pair that matters here. The `applications` row stores image/<name>.png; the
+    # file is in this directory. A backup of gotify.db alone leaves the row pointing at
+    # a file that is not there, and Gotify serves a broken image without complaining.
+    path: /app/data/images
+    expect:
+      exists: true
+      glob: "*.png"
+      glob_min_count: 1
+
+test:
+  seed:
+    - name: create an application with an icon, and send one message
+      kind: exec
+      service: seeder
+      timeout: 180s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://gotify:80
+          A='drilladmin:Drill-Password-1'
+          curl -sS -f -u "$A" -X POST "$B/application" \
+            -H 'content-type: application/json' \
+            -d '{"name":"drill-canary-app","description":"created by the restore drill"}' \
+            > /tmp/app.json
+          TOKEN=`sed -e 's/.*"token":"//' -e 's/".*//' /tmp/app.json`
+          ID=`sed -e 's/.*"id"://' -e 's/,.*//' /tmp/app.json`
+          test -n "$TOKEN"
+          curl -sS -f -u "$A" -o /dev/null -X POST "$B/application/$ID/image" \
+            -F 'file=@/seed/drill-canary.png;type=image/png'
+          curl -sS -f -o /dev/null -X POST "$B/message?token=$TOKEN" \
+            -H 'content-type: application/json' \
+            -d '{"title":"drill-canary-message","message":"this line proves the restore","priority":5}'
+          echo "seeded: one application with an icon, one message"
+  export: []

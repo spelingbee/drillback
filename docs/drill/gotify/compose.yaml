@@ -1,0 +1,17 @@
+# Gotify, deployed the way https://gotify.net/docs/install says to: the gotify/server
+# image with /app/data on persistent storage.
+#
+# Deviations, recorded in steps.md: no published port, and the two documented
+# GOTIFY_DEFAULTUSER_* variables are set so the first account has a known password
+# instead of admin/admin.
+services:
+  gotify:
+    image: gotify/server:3.1.0
+    environment:
+      GOTIFY_DEFAULTUSER_NAME: drilladmin
+      GOTIFY_DEFAULTUSER_PASS: Drill-Password-1
+    volumes:
+      - gotify-data:/app/data
+
+volumes:
+  gotify-data:

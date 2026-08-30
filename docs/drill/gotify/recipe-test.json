@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T12:50:01Z",
+  "finished_at": "2026-08-30T12:50:44Z",
+  "duration_ms": 42814,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "gotify",
+      "title": "Gotify (SQLite)",
+      "dir": "recipes\\gotify",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "3 of 6 checks failed against an empty stack: applications-restored, messages-restored, application-icon-on-disk",
+          "duration_ms": 5972,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 5968,
+              "note": "3 of 6 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\gotify --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 6 checks passed",
+          "duration_ms": 36415,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 1188,
+              "note": "2 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 545,
+              "note": "Gotify reports itself healthy"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 619,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 320,
+              "note": "2 files, 69702 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 5043,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 20814,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 7821,
+              "note": "6 of 6 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\gotify --stage b --keep"
+        }
+      ],
+      "duration_ms": 42812
+    }
+  ]
+}
