@@ -120,6 +120,17 @@ These are deliberate omissions, not oversights. Each is a "no" for v0.1 specific
 
 ## 2. CLI surface
 
+The blocks in this section are normative for the *surface*: which flags exist, their
+defaults, the exit codes, and the documented sections of each help text. They are not
+byte-exact renderings - cobra owns the parts a hand-written block cannot promise
+(alphabetical flag order, line wrapping, canonical duration forms like `1m0s`, the
+generated `completion` command, and the `Global Flags` section) - and chasing those
+bytes would mean hand-maintaining a mock of a generator's output, which is the exact
+mistake section 5.1's warning exists for. A flag present here and absent in the build,
+a differing default, or a missing documented section (see UX-11 in
+`docs/review/backlog.md` for the known one) is a bug in one of the two. ADR-069
+records the adjudication.
+
 ### 2.1 `restored --help`
 
 ```text
@@ -150,10 +161,12 @@ Flags:
   -v, --version            version for restored
 
 Exit codes:
-  0   all checks passed
-  1   restore unusable — one or more checks failed, or the app never became ready
-  2   tool or runtime error — docker missing, restic failed, recipe invalid, timeout
-      before any check could run
+  0    all checks passed
+  1    restore unusable - the drill finished and one or more checks failed, or the
+       application never became ready
+  2    tool or runtime error - docker missing, restic failed, recipe invalid, or the
+       run exceeded --timeout before it could reach a verdict
+  130  interrupted - the workspace and the compose project may still exist
 
 Docs: https://github.com/spelingbee/restored
 ```
@@ -489,7 +502,17 @@ targets:
 ```
 
 Precedence, lowest to highest: recipe defaults, `defaults:`, the target block, then
-command-line flags.
+command-line flags. A flag beats the config only when the user actually typed it: a
+flag left at its default is not an opinion (ADR-068).
+
+Two rules the file's author can rely on (ADR-067). Relative host-filesystem paths - a
+target's `recipe` directory, a `password_file`, a dir source's `path`, a `workspace` -
+resolve against the directory of the config file itself, never against the working
+directory, because the file is found by a search order and read from cron; a restic
+`repository` is left exactly as written, since it is a backend reference and not
+necessarily a path. And `--all` runs the enabled targets sequentially in the order the
+file declares them; a target with `enabled: false` is skipped by `--all` and still
+runnable with `--target`.
 
 A cron line that verifies everything nightly and lets the exit code do the alerting:
 
@@ -1777,8 +1800,13 @@ version, fields are only added, never removed or retyped. `verdict`, `exit_code`
 and they are frozen for v0.x.
 
 With `--all`, the document is instead `{"schema_version":1, "runs":[ … ]}` where each
-element is exactly the document above, plus a top-level `summary` and the worst
-`exit_code`.
+element is exactly the document above plus a `target` field naming the target that
+produced it - additive, which is what the stability contract permits, and without it
+two targets sharing a recipe are indistinguishable. The top-level `summary` counts
+targets rather than checks (`targets_total`, `targets_passed`, `targets_unusable`,
+`targets_errored`, `duration_ms`), and the top-level `exit_code` is the worst outcome
+across targets: 2 if any target hit a tool error, otherwise 1 if any restore was
+unusable, otherwise 0. See ADR-068.
 
 ### 5.3 Exit codes
 

@@ -34,6 +34,7 @@ What works, and is proved by a command below:
 |---|---|
 | `restored check --recipe <bundled\|dir> --source restic --from <repo>` | works, PASS and RESTORE UNUSABLE both reached against real stacks |
 | `restored check --source dir --from <tree>` | works |
+| **`restored check --target <name>` / `--all` / `--config`** | **works since session 7; `restored.yaml` with sources, targets, defaults and the precedence chain (ADR-067); `--all` runs in file order and exits with the worst outcome (ADR-068)** |
 | `restored recipe validate [--strict] [--json]` | works, schema + safety schema + the three Go rules |
 | `restored recipe show [--format] [--compose] [--inputs-only]` | works |
 | `restored recipe init` | works; the scaffolded recipe validates as it comes out |
@@ -58,12 +59,6 @@ directory whose name is not a legal recipe name.
 
 What does **not** work yet, deliberately:
 
-- **`restored.yaml`, `--target`, `--all`, `--config`** - `internal/config` is not
-  written and the flags are not registered, so an invocation using one fails loudly
-  rather than silently doing nothing (ADR-045). `restored check --help` therefore does
-  not match SPEC.md section 2. The one exception is `defaults.nudge`, which
-  `internal/nudge` reads through a deliberately narrow one-key reader so that a user
-  who has written `nudge: false` is believed today.
 - **`smoke.yml`**, the fresh-clone test of SPEC.md 11.3. The `unit` job proves
   `go test ./...` is green with no docker and no restic, which is most of what it was
   for; session 4's fresh-clone review walked the rest of it by hand.
@@ -1346,27 +1341,124 @@ $ git diff --stat -- docs/recipe-spec.md recipes/README.md README.md
 (nothing: the generated files are current)
 ```
 
+### Session 7 - 2026-08-30 - `internal/config`, and the rest of the CLI surface
+
+**Goal:** ADR-045's debt, twice deferred: `restored.yaml`, `--config`, `--target`,
+`--all`, the `--all` report shape, and then the `--help`-versus-SPEC-section-2 diff.
+
+**Done, in order:**
+
+1. **`internal/config`** (ADR-067). Strict decoding - an unknown key refuses, because
+   `enabld: false` silently running a disabled target is the config-file version of a
+   false PASS. `version: 1` required; a restic source needs `repository`, a dir source
+   needs `path`, and a field of the other kind is named in the error. `${NAME}` in a
+   source's `env` resolves from the process environment at run time and an unset
+   variable refuses loudly. Relative host paths resolve against the config file's
+   directory (rooted POSIX paths count as absolute even on Windows). The SPEC.md 2.9
+   example is the loader's test fixture, so the two cannot disagree. `internal/nudge`'s
+   one-key reader moved here as `config.NudgeSilenced`, behaviour unchanged, tests
+   ported; `nudge/config.go` is gone.
+2. **`check --config`, `--target` and `--all`** (ADR-068). `--target` is an ordinary
+   single run fed from the config; `--all` runs every enabled target in file order,
+   renders each report as it finishes, closes with a summary block, and exits with the
+   worst outcome. Every target resolves before any target runs. A flag beats the config
+   only when the user actually typed it (`Flags().Changed`). The multi-target JSON
+   document is SPEC.md 5.2's, each element the single-run document plus a `target`
+   field; `report.Multi` has golden renderings in colour, plain and ASCII. The nudge
+   never fires under `--all`. A source's password settings and env block travel to
+   restic as child-process environment (`runner.Options.SourceEnv`), never logged.
+3. **The `--help` diff of ADR-045**, adjudicated as ADR-069: SPEC section 2 is
+   normative for the surface (flags, defaults, exit codes), cobra owns the bytes; the
+   2.1 exit footer was synced from the build's real one (130 included); the missing
+   `Environment:` block in the real `check --help` stays UX-11, a contributor's.
+4. **UX-18, found the hard way.** `recipe test --keep` keeps *two* workspaces and two
+   compose projects - the harness's and its inner check's - and names only the
+   harness's. This session spent twenty minutes treating its own inner-check leftovers
+   (`restored-jg6vpitw`, still Up, teardown line absent - which `--keep` makes correct)
+   as a possible rogue process, coordinating with the drill session before the
+   timestamps closed the case; the drill session then reported the same two-workspace
+   surprise from its own n8n `--keep` run hours earlier. Recorded in
+   `docs/review/backlog.md` with the directory-shape tell that distinguishes the two.
+5. **GitHub, private.** `spelingbee/restored` created private and `origin` set; the
+   push is blocked on the gh token's missing `workflow` scope (it may not write
+   `.github/workflows/`), waiting on the human: `gh auth refresh -h github.com -s
+   workflow`. Creating a *private* repository is not a stop point; making it public
+   remains stop point 4, untouched.
+
+**Not done, deliberately:** README still says nothing about `restored.yaml` - the
+quick start stays `--recipe`, and the config's user documentation belongs with the
+`docs/security.md` pass. `recipes.yml` and `recipe-health.yml` are untouched.
+
+**Evidence.** The new surface against real stacks - a three-target config (restic
+source with `password_file`, dir source over a kept staging tree, and a deliberately
+broken target), run with `--all`:
+
+```text
+$ ./bin/restored check --all --config .../restored.yaml
+  target vault-restic  PASS                6.7s
+  target vault-dir     PASS                4.8s
+  target broken        ERROR              0.79s  · required input "data": no matching fi...
+
+  3 targets: 2 passed, 0 unusable, 1 errored, in 12.2s
+$ echo $?
+2
+$ ./bin/restored check --target vault-dir --config .../restored.yaml --json > target.json
+$ echo $?
+0
+$ python - # target.json
+single doc verdict: PASS | has runs key: False
+```
+
+The refusals:
+
+```text
+$ ./bin/restored check
+restored: --recipe is required (or --target <name> / --all, which read restored.yaml)
+$ ./bin/restored check --recipe gitea --all
+restored: --recipe, --target and --all are mutually exclusive
+$ ./bin/restored check --target gitea        # no restored.yaml anywhere
+restored: no restored.yaml found (searched: restored.yaml, C:\Users\kadyr\.config\restored\restored.yaml, \etc\restored\restored.yaml)
+(exit 2, all three)
+```
+
+The suites, race first (in the CI image, since this host has no C toolchain):
+
+```text
+$ docker run --rm -v "C:/My/Projects/Work/restored:/src" \
+    -v "C:/Users/kadyr/go/pkg/mod:/go/pkg/mod" -w /src golang:1.27 go test ./... -race
+ok  	github.com/spelingbee/restored/internal/config	1.163s
+... 13 packages, all ok ...
+RACE_EXIT=0
+
+$ go test -tags integration ./... -timeout 30m
+ok  	github.com/spelingbee/restored/internal/runner	271.191s
+... all ok ...
+INTEGRATION_EXIT=0
+
+$ gofmt -l .
+$ go vet ./... && go vet -tags integration ./...
+$ golangci-lint run && golangci-lint run --build-tags integration
+0 issues.
+0 issues.
+$ ./scripts/lint-english.sh
+lint-english: ok
+$ docker ps -aq --filter "label=com.restored.run" | wc -l
+0
+```
+
 ---
 
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
 
-### Session 7 - `internal/config`, and the rest of the CLI surface
+### `internal/config` - done
 
-(This was session 5's plan, and then session 6's. Session 5 did the restore drill and
-session 6 the first weekly maintainer run, each on a brief that arrived after this was
-written, and both left this untouched. It is still the next coding session.)
-
-`internal/config`: `restored.yaml`, sources, targets, the precedence chain, `--config`,
-`--target`, `--all`, and the `--all` report shape. Then diff `--help` against SPEC.md
-section 2 and fix whichever of the two is wrong (ADR-045).
-
-One thing to fold in rather than work around: `internal/nudge.Silenced` already reads
-`defaults.nudge` out of `restored.yaml`, through a deliberately narrow reader that looks
-at that one key and uses SPEC.md 2.9's search order. It exists so a user who wrote
-`nudge: false` is believed today. When `internal/config` lands it should take that over
-and `nudge/config.go` should go; the behaviour must not change under anyone.
+**Answered by session 7.** `restored.yaml`, sources, targets, the precedence chain,
+`--config`, `--target`, `--all` and the `--all` report shape all exist and are proven
+against real stacks; `nudge/config.go` is absorbed into `config.NudgeSilenced` with
+its behaviour unchanged; the `--help`-versus-SPEC-section-2 diff is adjudicated as
+ADR-069. See the session 7 log entry.
 
 ### The sixth recipe - done, and then some
 

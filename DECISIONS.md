@@ -913,7 +913,8 @@ the file in the workspace has lost the recipe's comments, being a re-marshalled 
 
 ## ADR-045: No `restored.yaml`, `--target` or `--all` in this build
 
-**Status:** accepted
+**Status:** accepted; discharged in session 7 - `internal/config` exists now (ADR-067,
+ADR-068, ADR-069)
 
 **Context.** SPEC.md section 2.9 specifies a config file with sources, targets and a
 precedence chain, and `check` takes `--target` and `--all`. None of it is needed for the
@@ -1705,3 +1706,91 @@ had no test that ran the tool on a terminal.** Everything - unit tests, golden f
 five independent reviewers - went through a pipe. The one output path a user always
 sees was the one path nothing exercised. `docs/demo/demo.tape` is now that test, and it
 is worth keeping green for that reason as much as for the GIF.
+
+---
+
+## ADR-067: `internal/config` reads restored.yaml strictly, and resolves paths against the file
+
+**Status:** accepted (session 7)
+
+**Context.** ADR-045 deferred `restored.yaml`, `--config`, `--target` and `--all`
+whole, so that no flag ever silently did nothing. This session pays that debt, and the
+open questions were posture ones: how strict to be, what a relative path means in a
+file that is discovered by a search order, and what happens when a source's `env`
+references a variable the process does not have.
+
+**Decision.** `internal/config` decodes with `KnownFields(true)`: an unknown key is a
+refusal, because `enabld: false` silently running a target the user turned off is the
+config-file version of the false PASS this project exists to remove. `version: 1` is
+required. A restic source requires `repository`, a dir source requires `path`, and a
+field belonging to the other kind is named in the error. `${NAME}` in a source's `env`
+resolves from the process environment at run time - never at load, so commands that
+merely read the config demand no credentials - and an unset variable refuses loudly,
+naming the source, the key and the variable. Relative host-filesystem paths (`recipe`,
+`password_file`, a dir source's `path`, `workspace`) resolve against the config file's
+directory; a restic `repository` is left exactly as written because it is a backend
+reference, not necessarily a path; rooted POSIX paths like `/etc/restored/nas.pass`
+count as absolute even on Windows, where `filepath.IsAbs` says otherwise. The package
+reads one file and shells out to nothing; a source's credentials travel to restic as
+child-process environment through `runner.Options.SourceEnv`, which is never logged.
+`internal/nudge`'s one-key reader moved here as `config.NudgeSilenced` with its soft
+semantics intact: a missing, unreadable or malformed file never turns the nudge into
+an error. The SPEC.md 2.9 example is the loader's test fixture, so the specification
+and the code cannot disagree about the format (the ADR-034 move, applied again).
+
+**Consequences.** A typo in restored.yaml is a loud exit 2 with the file and key
+named. A config written on the NAS and mounted elsewhere keeps meaning the same
+thing. The strictness is a one-way door worth holding: loosening it later breaks
+nobody, tightening it later breaks every file the looseness taught people to write.
+
+---
+
+## ADR-068: `--all` runs in file order, aggregates worst-first, and its document adds only names
+
+**Status:** accepted (session 7)
+
+**Context.** SPEC.md 2.9 and 5.2 specified `--all` in outline: sequential, worst exit
+code wins, `{"schema_version":1, "runs":[...]}` "plus a top-level summary". Three
+details were unspecified: the order, the shape of that summary, and how a consumer
+tells two targets sharing a recipe apart.
+
+**Decision.** File order, because "sequentially" in a user's head means "the order I
+wrote them". Every target resolves before any target runs, so a typo in the fifth
+refuses immediately rather than after four targets already ran. Each element of
+`runs[]` is exactly the single-run document plus a `target` field - additive, which is
+what the stability contract permits. The top-level summary counts targets
+(`targets_total`, `targets_passed`, `targets_unusable`, `targets_errored`,
+`duration_ms`): the per-run summaries already count checks, and the question a cron
+consumer asks of the aggregate is how many backups are proven. In the precedence
+chain, a flag beats the config only when the user actually typed it (`Changed()`), a
+flag left at its default is not an opinion. The nudge never fires under `--all`: an
+invitation is for a person at a terminal trying one recipe, not for a cron sweep.
+
+**Consequences.** `restored check --all` behaves predictably enough to put in a cron
+line next to an alerting rule, which is its whole job. The `target` field is frozen
+the day it ships, like every other field automation can see.
+
+---
+
+## ADR-069: SPEC section 2 is normative for the surface; cobra owns the bytes
+
+**Status:** accepted (session 7)
+
+**Context.** ADR-045 required diffing the real `--help` against SPEC.md section 2 once
+config landed, and fixing whichever was wrong. The diff splits three ways: substance
+(flags, defaults, exit codes), places where the build's text is better than the mock
+(the exit-code footer gained 130 and sharper wording in sessions 3-4), and cobra
+artifacts no hand-written block can promise (alphabetical flag order, wrapping,
+`1m0s`, the generated `completion` command, the `Global Flags` section).
+
+**Decision.** Section 2 stays normative for the surface only, and now says so: every
+flag, default and exit code in it must exist and match, byte-exactness is explicitly
+not promised, and the exit-code footer in 2.1 was updated from the build's real one.
+The missing `Environment:` block and the trimmed examples in the real `check --help`
+remain a code bug, already recorded as UX-11 and deliberately left as a contributor
+entry point. Hand-maintaining a byte-exact mock of a generator's output is the mistake
+the section 5.1 warning exists for, applied to help text.
+
+**Consequences.** The spec keeps its teeth where teeth matter - a missing flag is
+still a bug in one of the two - without a standing lie about bytes nobody controls.
+UX-11 keeps its finder.
