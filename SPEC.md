@@ -2053,6 +2053,17 @@ rules:
       restored. Many recipes set an INSTALL_LOCK-style variable to make this failure
       loud instead of quiet; if this recipe does not, that is worth an issue.
 
+  - id: compose/service-exited-at-boot
+    match: "(?i)(could not resolve host|name or service not known|no such host|temporary failure in name resolution)"
+    title: A service exited before the probe could reach it
+    text: >
+      Docker's embedded DNS resolves a service name only while a container for it
+      exists, so "could not resolve host" almost never means DNS is broken - it means
+      the container is gone. The usual cause is an application that treats a refused
+      first database connection as fatal.
+    commands:
+      - "restored recipe test ./recipes/<name> --stage b --keep --log-level debug"
+
   - id: docker/daemon-unreachable
     match: '(?i)(cannot connect to the docker daemon|docker daemon is not running|/var/run/docker\.sock.*permission denied)'
     title: Docker is not reachable from here
@@ -2074,7 +2085,7 @@ rules:
       tmpfs in RAM.
 ```
 
-That is 17 rules. `commands` are rendered with the same restricted template context as
+That is 18 rules. `commands` are rendered with the same restricted template context as
 recipes and are printed verbatim — `restored` never executes them.
 
 ---

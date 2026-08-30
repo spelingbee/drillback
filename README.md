@@ -11,6 +11,15 @@
 application with `docker compose`, and tells you whether the data actually came back.
 One command, about a minute, and an exit code a cron job can act on.
 
+![restored proving a Gitea backup, and then failing one](docs/demo/demo.gif)
+
+*A real recording, played at double speed. It stands up Gitea and PostgreSQL, seeds
+them, backs them up with restic, destroys the stack, and restores it - twice: once from
+a good backup, once from a backup whose database dump is empty. The two commands are
+typed by [`docs/demo/demo.tape`](docs/demo/demo.tape); everything underneath them is
+what the tool printed, unedited, and it is the same `scripts/demo.sh` you can run
+yourself.*
+
 > Pre-release, and not tagged. `restored check` works end to end against restic and
 > against an already-restored tree; `restored recipe test` runs the round trip that
 > proves a recipe both ways; five recipes ship. See [PROGRESS.md](PROGRESS.md) for what

@@ -79,6 +79,10 @@ var fixtures = map[string]struct{ match, nearMiss string }{
 		`<h1>Installation</h1> redirecting to /install?lang=en`,
 		`<h1>Dashboard</h1>`,
 	},
+	"compose/service-exited-at-boot": {
+		`curl: (6) Could not resolve host: miniflux`,
+		`dial tcp 172.24.0.2:5432: connect: connection refused`,
+	},
 	"docker/daemon-unreachable": {
 		`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`,
 		`docker: 'compose' is not a docker command`,

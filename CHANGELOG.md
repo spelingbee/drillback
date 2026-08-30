@@ -39,7 +39,7 @@ Compose stack, starts the application, and asserts that the data is actually the
   host namespaces, no published ports, no bind mount outside the run workspace, no
   Docker socket. The compose safety schema is an allow-list: a key restored has not
   considered is rejected by name rather than granted silently.
-- **A hint catalog** - 17 rules that turn a failure into a next step, extensible with
+- **A hint catalog** - 18 rules that turn a failure into a next step, extensible with
   `--hints FILE` and, deliberately, the easiest useful contribution to the project.
 - **A JSON report** at `schema_version 1`, from `--json` or `--report FILE`, with the
   repository string scrubbed of any password.
