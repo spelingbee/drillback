@@ -11,6 +11,9 @@
 # which needs vhs, ttyd, ffmpeg, a docker daemon and restic, and takes a few minutes
 # because it stands up two real application stacks and restores two real backups.
 #
+# The two acts are timed rather than watched for a verdict; the comments at each
+# Sleep say why, and what to do if a run outgrows its budget.
+#
 # Requirements this tape assumes, all of which render-demo.sh checks first:
 #   - the working directory is the repository root
 #   - bin/restored is built
@@ -52,12 +55,19 @@ Sleep 1500ms
 Type `./scripts/demo.sh; echo "exit=$?"`
 Enter
 
-# demo.sh stands up Gitea and PostgreSQL, seeds them, dumps and backs up with
-# restic, destroys the stack, and asks restored. Ten minutes is generous; the
-# @-timeout is a ceiling, not a delay - vhs continues as soon as the regex matches.
-Wait+Screen@10m /exit=[0-9]/
-
-Sleep 5s
+# A fixed budget rather than Wait+Screen. Wait is the obvious tool for this and it
+# does not work here: it reported `timeout waiting for "Screen exit=[0-9]"` with a
+# last-seen screen containing only the two lines that had been typed, having never
+# observed a single line of the run's output - while the recorded frames show that
+# output arriving normally. Rather than ship a tape that depends on behaviour I cannot
+# explain, both acts wait out a measured budget.
+#
+# demo.sh stands up Gitea and PostgreSQL, seeds them, dumps and backs up with restic,
+# destroys the stack, and asks restored. Measured at 49s on the machine that rendered
+# the committed GIF; 110 is that with room. If it ever runs longer, the GIF ends
+# mid-drill and the fix is to raise the number - which is visible immediately, because
+# the last thing on screen will not be a verdict.
+Sleep 110s
 
 Type "clear"
 Enter
@@ -70,6 +80,8 @@ Sleep 1500ms
 
 Type `./scripts/demo-broken.sh; echo "exit=$?"`
 Enter
-Wait+Screen@10m /exit=[0-9]/
 
-Sleep 6s
+# demo-broken.sh is the slower of the two: it stands the stack up twice, because the
+# restore it is asked to judge has to fail its checks rather than fail to start.
+# Measured at about two minutes.
+Sleep 170s
