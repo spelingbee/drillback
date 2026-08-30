@@ -1,0 +1,20 @@
+restored 0.1.0-dev · recipe trilium-documented-backup · run 5hwf3efl
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/trilium/restic-backup
+  snapshot   22f9f31b  2026-08-30 12:59:57  host=drill  tags=[drill]
+  inputs     backups  /home/node/trilium-data/backup    3.1 MiB  1 file
+
+  restore    ok          1.7s   1 input
+  compose    ok          2.0s   2 services
+  ready      ok          4.2s   Trilium answers its health check
+
+  CHECKS
+  ✔  health-check            The server answers its health check         0.60s
+  ✔  note-restored           The note that was backed up is in the       0.50s
+                             restored database
+  ✔  password-still-opens-it  The password the instance was set up with   0.59s
+                             still opens it
+
+  PASS  3/3 checks  ·  total 10.0s  ·  teardown ok
+
+This backup boots.

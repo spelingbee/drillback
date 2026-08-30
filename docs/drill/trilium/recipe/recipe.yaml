@@ -1,0 +1,79 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: trilium-documented-backup
+  title: Trilium, restored the way its backup page says to restore
+  description: >
+    The drill recipe for Trilium. Its input is the backup directory Trilium writes its
+    own daily, weekly, monthly and "Backup Now" copies into, and the restore is the
+    alternative procedure the backup page spells out: stop Trilium, delete document.db
+    and its -wal and -shm, copy the backup over it, make it writable, start again.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/TriliumNext/Trilium
+  tags: [notes, drill]
+
+vars:
+  trilium_port: 8080
+
+inputs:
+  backups:
+    kind: dir
+    title: The Trilium backup directory
+    description: >
+      /home/node/trilium-data/backup, holding backup-now.db and whichever of
+      backup-daily.db, backup-weekly.db and backup-monthly.db the instance has got round
+      to writing.
+    default_path: /home/node/trilium-data/backup
+    required: true
+    mount:
+      env: RESTORED_INPUT_backups
+      into: restore:/backup
+
+ready:
+  - name: Trilium answers its health check
+    kind: http
+    url: http://trilium:{{ .vars.trilium_port }}/api/health-check
+    expect_status: 200
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: health-check
+    title: The server answers its health check
+    kind: http
+    url: http://trilium:{{ .vars.trilium_port }}/api/health-check
+    expect:
+      status: 200
+
+  - id: note-restored
+    title: The note that was backed up is in the restored database
+    kind: exec
+    service: trilium
+    # node:sqlite is in the image's own Node, so this needs nothing installed. It is an
+    # exec check rather than a sql one because the database here is produced by the
+    # restore service, not restored as an input.
+    command:
+      - node
+      - -e
+      - |
+        const s = require('node:sqlite');
+        const db = new s.DatabaseSync('/home/node/trilium-data/document.db', { readOnly: true });
+        const n = db.prepare('select count(*) c from notes where title = ?').get('drill-canary-note').c;
+        console.log('drill-canary-note rows:', n);
+        if (n < 1) process.exit(1);
+    timeout: 120s
+    expect:
+      exit_code: 0
+      stdout_matches: "drill-canary-note rows: [1-9]"
+
+  - id: password-still-opens-it
+    title: The password the instance was set up with still opens it
+    kind: http
+    method: POST
+    url: http://trilium:{{ .vars.trilium_port }}/etapi/auth/login
+    json_body: '{"password":"Drill-Password-1"}'
+    timeout: 120s
+    expect:
+      status: 201
+      body_matches: '"authToken"'

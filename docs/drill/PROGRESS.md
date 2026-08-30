@@ -23,6 +23,7 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | 6 | navidrome | FAIL (documented restore) / PASS (a copy of /data) | `recipes/navidrome`, passes `recipe test` | "Restore complete" and an empty instance. |
 | 7 | listmonk | PARTIAL (the documented pg_dump) / PASS (dump plus uploads) | `recipes/listmonk`, passes `recipe test` | The media rows come back; the files do not. |
 | 8 | gotify | PASS (the data directory) / PARTIAL (gotify.db alone) | `recipes/gotify`, passes `recipe test` | Uploaded application icons are files, not rows. |
+| 9 | trilium | PASS (documented backup and documented restore) | `recipes/trilium`, passes `recipe test` | The first leg with nothing to report upstream. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next

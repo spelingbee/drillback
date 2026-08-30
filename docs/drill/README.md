@@ -32,6 +32,7 @@ reader:
 | [navidrome](navidrome/) | 23,213 | [Automated Backup](https://www.navidrome.org/docs/usage/admin/backup/) | 0.63.2 | **FAIL** | The best backup page in the drill, and its restore does not work: `navidrome backup restore` refuses to run without an existing database, and once given one it reports `Restore complete` and leaves the instance empty. A copy of /data restores everything. |
 | [listmonk](listmonk/) | 23,172 | [upgrade page warning](https://listmonk.app/docs/upgrade/) | v6.2.0 | **PARTIAL** | No backup page; the word appears twice, both times as "take a backup of the Postgres database". The dump restores everything in the database including the row naming each uploaded image - and the images themselves live in /listmonk/uploads, which nothing mentions. |
 | [gotify](gotify/) | 15,815 | [configuration reference](https://gotify.net/docs/config) | 3.1.0 | **PASS** / **PARTIAL** | No backup page. The data directory restores everything; gotify.db on its own restores the accounts, applications, tokens and messages, and leaves every uploaded application icon behind as a broken image. |
+| [trilium](trilium/) | 37,632 | [Backup.md](https://github.com/TriliumNext/Trilium/blob/main/docs/User%20Guide/User%20Guide/Installation%20%26%20Setup/Backup.md) | v0.105.0 | **PASS** | The first application here whose documented backup and documented restore both work as written - and whose restore procedure names document.db-wal and -shm, which is what two other applications in this drill lose data for want of. |
 
 Verdicts:
 

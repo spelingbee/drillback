@@ -1,0 +1,13 @@
+# Trilium, deployed the way its Docker installation page says to: the triliumnext/trilium
+# image with the data directory on a volume.
+#
+# Deviation, recorded in steps.md: no published port. The drill drives Trilium from a
+# curl container on this project's network.
+services:
+  trilium:
+    image: triliumnext/trilium:v0.105.0
+    volumes:
+      - trilium-data:/home/node/trilium-data
+
+volumes:
+  trilium-data:

@@ -1,0 +1,45 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  # A restic restore brings back the uids of the machine the backup came from, and a
+  # copy through a filesystem without uids brings back none. Either way the tree does
+  # not belong to uid 1000, which is who the image runs as. The chmod on document.db is
+  # the one Trilium's own restore procedure asks for.
+  prepare:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        chown -R 1000:1000 /home/node/trilium-data
+        [ -f /home/node/trilium-data/document.db ] && chmod 600 /home/node/trilium-data/document.db
+        exit 0
+    volumes:
+      - ${RESTORED_INPUT_data}:/home/node/trilium-data
+    networks: [restored]
+
+  trilium:
+    image: triliumnext/trilium:v0.105.0
+    depends_on:
+      prepare:
+        condition: service_completed_successfully
+    environment:
+      TRILIUM_PORT: "${RESTORED_VAR_trilium_port}"
+    volumes:
+      - ${RESTORED_INPUT_data}:/home/node/trilium-data
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

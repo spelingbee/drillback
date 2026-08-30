@@ -1,0 +1,24 @@
+restored 0.1.0-dev · recipe trilium · run bfzgsvax
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/trilium/restic-data
+  snapshot   3b5de513  2026-08-30 13:00:13  host=drill  tags=[drill]
+  inputs     data  /home/node/trilium-data               10.3 MiB  7 files
+             db    /home/node/trilium-data/document.db    3.1 MiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.9s   2 services
+  load db    ok         0.03s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok          4.1s   Trilium answers its health check
+
+  CHECKS
+  ✔  health-check            The server answers its health check         0.66s
+  ✔  db-integrity            The document database passes PRAGMA         0.05s
+                             integrity_check → ok
+  ✔  note-restored           The note that was backed up is in the       0.01s
+                             restored database → 1
+  ✔  password-still-opens-it  The password the instance was set up with   0.61s
+                             still opens it
+
+  PASS  4/4 checks  ·  total 9.6s  ·  teardown ok
+
+This backup boots.

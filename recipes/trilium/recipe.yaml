@@ -1,0 +1,128 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: trilium
+  title: Trilium Notes (SQLite)
+  description: >
+    Verifies that a Trilium backup restores: the server answers its health check, the
+    database passes an integrity check, the notes are in it, and the password that was
+    set on the instance still opens it.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/TriliumNext/Trilium
+  tags: [notes, sqlite]
+
+vars:
+  trilium_port: 8080
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The Trilium data directory
+    description: >
+      /home/node/trilium-data in the container. It holds document.db, config.ini,
+      session_secret.txt, the log directory, and the backup directory Trilium writes its
+      own daily, weekly and monthly copies into.
+    default_path: /home/node/trilium-data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: trilium:/home/node/trilium-data
+
+  db:
+    kind: sqlite
+    title: The Trilium document database
+    description: >
+      document.db, inside the data directory. Trilium keeps notes, attachments and
+      revisions in it - images included - so this one file is most of what a person
+      means by "my notes". It runs in WAL mode, which is why the restore procedure in
+      Trilium's own backup page tells you to delete -wal and -shm when replacing it.
+    default_path: /home/node/trilium-data/document.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: Trilium answers its health check
+    kind: http
+    url: http://trilium:{{ .vars.trilium_port }}/api/health-check
+    expect_status: 200
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: health-check
+    title: The server answers its health check
+    kind: http
+    url: http://trilium:{{ .vars.trilium_port }}/api/health-check
+    expect:
+      status: 200
+
+  - id: db-integrity
+    title: The document database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: note-restored
+    title: The note that was backed up is in the restored database
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM notes WHERE title = 'drill-canary-note';"
+    expect:
+      scalar_int_min: 1
+
+  - id: password-still-opens-it
+    title: The password the instance was set up with still opens it
+    kind: http
+    method: POST
+    url: http://trilium:{{ .vars.trilium_port }}/etapi/auth/login
+    # Trilium keeps the password verification hash in the options table inside
+    # document.db. A restore that brought back the notes and not the options gives an
+    # instance nobody can log into, and this is the check that says so.
+    json_body: '{"password":"{{ .vars.drill_password }}"}'
+    timeout: 120s
+    expect:
+      status: 201
+      body_matches: '"authToken"'
+
+test:
+  seed:
+    - name: initialise the database, set the password, create a note
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://trilium:8080
+          J=/tmp/jar
+          # A fresh Trilium has no schema at all: it serves a setup page and waits to be
+          # told whether this is a new document or a sync target. This is the "new
+          # document" button.
+          curl -sS -f -c $J -b $J -o /dev/null -X POST "$B/api/setup/new-document" \
+            -H 'content-type: application/json' -d '{}'
+          sleep 3
+          curl -sS -c $J -b $J -o /dev/null -X POST "$B/set-password" \
+            -H 'content-type: application/json' \
+            -d '{"password1":"Drill-Password-1","password2":"Drill-Password-1"}'
+          TOKEN=`curl -sS -f -X POST "$B/etapi/auth/login" \
+            -H 'content-type: application/json' \
+            -d '{"password":"Drill-Password-1"}' \
+            | sed -e 's/.*"authToken":"//' -e 's/".*//'`
+          test -n "$TOKEN"
+          curl -sS -f -o /dev/null -X POST "$B/etapi/create-note" \
+            -H "Authorization: $TOKEN" -H 'content-type: application/json' \
+            -d '{"parentNoteId":"root","title":"drill-canary-note","type":"text","content":"drill canary note: this line proves the restore"}'
+          # Trilium's own backup, the one its backup page is about.
+          curl -sS -f -o /dev/null -X PUT "$B/etapi/backup/now" -H "Authorization: $TOKEN"
+          echo "seeded: one note, and one backup-now.db beside the database"
+  export: []

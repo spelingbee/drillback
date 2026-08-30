@@ -1,0 +1,46 @@
+# The restore side of the drill, written from the "alternative way for restoring a
+# backup" in Trilium's own backup page:
+#
+#   - at this point stop/kill Trilium
+#   - delete document.db, document.db-wal and document.db-shm
+#   - copy and rename backup/backup-weekly.db to document.db
+#   - make sure that the file is writable, e.g. with chmod 600 document.db
+#   - start Trilium again
+#
+# The instance being restored onto is new, so there is nothing to delete; the rest is
+# followed exactly, including the chmod.
+services:
+  restore:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        rm -f /home/node/trilium-data/document.db /home/node/trilium-data/document.db-wal /home/node/trilium-data/document.db-shm
+        cp /backup/backup-now.db /home/node/trilium-data/document.db
+        chmod 600 /home/node/trilium-data/document.db
+        chown -R 1000:1000 /home/node/trilium-data
+        ls -la /home/node/trilium-data
+    volumes:
+      - ${RESTORED_INPUT_backups}:/backup:ro
+      - trilium-data:/home/node/trilium-data
+    networks: [restored]
+
+  trilium:
+    image: triliumnext/trilium:v0.105.0
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      TRILIUM_PORT: "${RESTORED_VAR_trilium_port}"
+    volumes:
+      - trilium-data:/home/node/trilium-data
+    networks: [restored]
+
+volumes:
+  trilium-data:
+
+networks:
+  restored:
+    internal: true
