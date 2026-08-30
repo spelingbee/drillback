@@ -1,0 +1,44 @@
+restored 0.1.0-dev · recipe beszel · run enupjcft
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/beszel/restic-db-only
+  snapshot   d7edeacb  2026-08-30 13:16:44  host=drill  tags=[drill]
+  inputs     data  /beszel_data            4.0 KiB  1 file
+             db    /beszel_data/data.db    4.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.2s   1 service
+  load db    ok         0.02s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.56s   Beszel serves its interface
+
+  CHECKS
+  ✔  serves-ui        The interface is served                            0.56s
+  ✔  db-integrity     The PocketBase database passes PRAGMA              0.01s
+                      integrity_check → ok
+  ✔  users-present    The accounts survived the restore → 1              0.01s
+  ✘  systems-present  The monitored systems survived the restore         0.01s
+                        query   SELECT count(*) FROM systems WHERE name = 'drill-canary-system';
+                        expect  scalar_int_min: 1
+                        got     0
+  ✔  signin-works     The restored account can still sign in             0.61s
+
+  RESTORE UNUSABLE  4/5 checks  ·  total 5.5s  ·  teardown ok
+
+  LIKELY CAUSE
+    The application's tables are there, but they are empty
+
+    Every table the checks read exists and holds nothing. Two causes produce
+    exactly this. Either the dump was taken from the wrong database, or with
+    `pg_dump --schema-only`, or narrowed with `--table`, so it carried a
+    schema and none of the rows. Or the dump carried nothing at all and the
+    application rebuilt an empty schema for itself on start, which is what
+    an application with automatic migrations does the moment it meets an
+    empty database. Compare the size of the dump with the size of the data
+    directory in the report above: a forge with repositories on disk and a
+    half-kilobyte dump is not a backup.
+
+      grep -c 'INSERT INTO' /beszel_data/data.db
+      ls -l /beszel_data/data.db
+                                                      (hint: db/tables-empty)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

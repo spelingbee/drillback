@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T13:14:20Z",
+  "finished_at": "2026-08-30T13:15:00Z",
+  "duration_ms": 39768,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "beszel",
+      "title": "Beszel (PocketBase / SQLite)",
+      "dir": "recipes\\beszel",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "1 of 5 checks failed against an empty stack: systems-present",
+          "duration_ms": 4700,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 4697,
+              "note": "1 of 5 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\beszel --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 5 checks passed",
+          "duration_ms": 34564,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 1224,
+              "note": "2 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 511,
+              "note": "Beszel serves its interface"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 510,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 417,
+              "note": "7 files, 815779 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 4955,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 20906,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 5990,
+              "note": "5 of 5 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\beszel --stage b --keep"
+        }
+      ],
+      "duration_ms": 39767
+    }
+  ]
+}

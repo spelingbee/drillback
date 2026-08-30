@@ -1,0 +1,21 @@
+# Beszel, deployed the way https://beszel.dev/guide/hub-installation says to: the
+# henrygd/beszel image with ./beszel_data mounted on /beszel_data.
+#
+# Deviation, recorded in steps.md: no published port, and APP_URL points at the service
+# name rather than localhost, because the drill drives it from a curl container on this
+# project's network.
+services:
+  beszel:
+    image: henrygd/beszel:0.18.8
+    environment:
+      APP_URL: http://beszel:8090
+      # Documented environment variables - "Create first user with this email" and
+      # "...with this password" - so the drill has an account it knows the password of
+      # instead of one created through the browser.
+      USER_EMAIL: drill@example.invalid
+      USER_PASSWORD: Drill-Password-1
+    volumes:
+      - beszel-data:/beszel_data
+
+volumes:
+  beszel-data:

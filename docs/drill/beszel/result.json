@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "xlkajhl2",
+    "compose_project": "restored-xlkajhl2",
+    "started_at": "2026-08-30T13:16:33Z",
+    "finished_at": "2026-08-30T13:16:38Z",
+    "duration_ms": 5134,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-xlkajhl2"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "beszel",
+    "title": "Beszel (PocketBase / SQLite)",
+    "source": "path",
+    "digest": "sha256:acb4d773b51eb21f500fdd06a4eda02bf92ad906050972c229c4ef63053b3c0a"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/beszel/restic-all",
+    "snapshot": {
+      "id": "7b642867361a938d672806a4f22b459ff76eaab576ae43f8a7a33ce821795ab4",
+      "short_id": "7b642867",
+      "time": "2026-08-30T13:16:32.437259862Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/beszel_data"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/beszel_data",
+      "bytes": 815779,
+      "files": 7,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/beszel_data/data.db",
+      "bytes": 4096,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1691,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1149,
+      "services": [
+        "beszel"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 16,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 545,
+      "probes": [
+        {
+          "name": "Beszel serves its interface",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 545
+        }
+      ],
+      "note": "Beszel serves its interface"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves-ui",
+      "title": "The interface is served",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 553,
+      "expect": {
+        "status": 200
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 1232
+      },
+      "url": "http://beszel:8090/"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The PocketBase database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 15,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "The accounts survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 16,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM users;"
+    },
+    {
+      "id": "systems-present",
+      "title": "The monitored systems survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 11,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM systems WHERE name = 'drill-canary-system';"
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 642,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"token\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 536,
+        "matched": true
+      },
+      "url": "http://beszel:8090/api/collections/users/auth-with-password"
+    }
+  ],
+  "summary": {
+    "checks_total": 5,
+    "checks_passed": 5,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

@@ -1,0 +1,128 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: beszel
+  title: Beszel (PocketBase / SQLite)
+  description: >
+    Verifies that a Beszel hub backup restores: the interface is served, the PocketBase
+    database passes an integrity check, the accounts and the monitored systems are in
+    it, and the account that was backed up can still sign in.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/henrygd/beszel
+  tags: [monitoring, pocketbase, sqlite]
+
+vars:
+  beszel_port: 8090
+  drill_email: drill@example.invalid
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The Beszel hub data directory
+    description: >
+      /beszel_data, the single volume the hub installation page mounts. It holds
+      PocketBase's data.db and auxiliary.db, and their -wal companions, which on a
+      running hub is where most of the rows actually are.
+    default_path: /beszel_data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: beszel:/beszel_data
+
+  db:
+    kind: sqlite
+    title: The PocketBase database
+    description: >
+      data.db, inside the data directory. Declared separately because on this
+      application the file is small and its -wal is not: a backup that took the .db and
+      left the -wal behind restores an empty hub that looks perfectly healthy.
+    default_path: /beszel_data/data.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: Beszel serves its interface
+    kind: http
+    url: http://beszel:{{ .vars.beszel_port }}/
+    expect_status: 200
+    timeout: 180s
+    interval: 2s
+
+checks:
+  - id: serves-ui
+    title: The interface is served
+    kind: http
+    url: http://beszel:{{ .vars.beszel_port }}/
+    expect:
+      status: 200
+
+  - id: db-integrity
+    title: The PocketBase database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: The accounts survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM users;"
+    expect:
+      scalar_int_min: 1
+
+  - id: systems-present
+    title: The monitored systems survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM systems WHERE name = 'drill-canary-system';"
+    expect:
+      scalar_int_min: 1
+
+  - id: signin-works
+    title: The restored account can still sign in
+    kind: http
+    method: POST
+    url: http://beszel:{{ .vars.beszel_port }}/api/collections/users/auth-with-password
+    json_body: '{"identity":"{{ .vars.drill_email }}","password":"{{ .vars.drill_password }}"}'
+    timeout: 120s
+    expect:
+      status: 200
+      body_matches: '"token"'
+
+test:
+  seed:
+    - name: sign in and add a monitored system
+      kind: exec
+      service: seeder
+      timeout: 180s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://beszel:8090
+          # USER_EMAIL and USER_PASSWORD in the compose file create this account when
+          # the hub first starts, which is what the documented environment variables are
+          # for. On a restored database the account comes from the backup instead.
+          curl -sS -f -X POST "$B/api/collections/users/auth-with-password" \
+            -H 'content-type: application/json' \
+            -d '{"identity":"drill@example.invalid","password":"Drill-Password-1"}' \
+            > /tmp/auth.json
+          TOKEN=`sed -e 's/.*"token":"//' -e 's/".*//' /tmp/auth.json`
+          UID_=`sed -e 's/.*"record":{//' -e 's/}.*//' /tmp/auth.json | tr ',' '\n' | sed -n 's/^"id":"\([^"]*\)".*/\1/p' | head -1`
+          test -n "$TOKEN"
+          test -n "$UID_"
+          curl -sS -f -o /dev/null -X POST "$B/api/collections/systems/records" \
+            -H "Authorization: $TOKEN" -H 'content-type: application/json' \
+            -d "{\"name\":\"drill-canary-system\",\"host\":\"192.0.2.10\",\"port\":\"45876\",\"status\":\"pending\",\"users\":[\"$UID_\"]}"
+          echo "seeded one monitored system for $UID_"
+  export: []

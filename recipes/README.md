@@ -12,6 +12,7 @@ Each directory has a README saying which of your directories each input is.
 
 | recipe | application | state it restores | checks | upstream |
 |---|---|---|---|---|
+| [`beszel`](beszel/) | Beszel (PocketBase / SQLite) | directories + SQLite | 5 | [source](https://github.com/henrygd/beszel) |
 | [`changedetection`](changedetection/) | changedetection.io (JSON datastore) | directories | 3 | [source](https://github.com/dgtlmoon/changedetection.io) |
 | [`filebrowser`](filebrowser/) | File Browser (Bolt database) | directories | 4 | [source](https://github.com/filebrowser/filebrowser) |
 | [`gitea`](gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 | [source](https://github.com/go-gitea/gitea) |
@@ -28,7 +29,7 @@ Each directory has a README saying which of your directories each input is.
 | [`uptime-kuma`](uptime-kuma/) | Uptime Kuma (SQLite) | directories + SQLite | 6 | [source](https://github.com/louislam/uptime-kuma) |
 | [`vaultwarden`](vaultwarden/) | Vaultwarden (SQLite) | directories + SQLite | 5 | [source](https://github.com/dani-garcia/vaultwarden) |
 
-15 recipes.
+16 recipes.
 
 Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute
