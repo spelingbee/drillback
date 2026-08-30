@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "kjjtyuhh",
+    "compose_project": "restored-kjjtyuhh",
+    "started_at": "2026-08-30T12:20:37Z",
+    "finished_at": "2026-08-30T12:20:44Z",
+    "duration_ms": 6115,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-kjjtyuhh"
+  },
+  "verdict": "RESTORE_UNUSABLE",
+  "exit_code": 1,
+  "recipe": {
+    "name": "filebrowser",
+    "title": "File Browser (Bolt database)",
+    "source": "path",
+    "digest": "sha256:cd5637c72d36e15e9de33dd15fadc00f320db43abb8a3aa1bd9a4d60158a1167"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/filebrowser/restic-no-db",
+    "snapshot": {
+      "id": "274850955af813bd990603557627eddbd971f1870a75fa72cf74b3ec2cbdbc61",
+      "short_id": "27485095",
+      "time": "2026-08-30T12:20:36.775102612Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/config",
+        "/database",
+        "/srv"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/srv",
+      "bytes": 47,
+      "files": 1,
+      "source": "recipe_default"
+    },
+    {
+      "name": "database",
+      "kind": "dir",
+      "backup_path": "/database",
+      "bytes": 0,
+      "files": 0,
+      "source": "recipe_default"
+    },
+    {
+      "name": "config",
+      "kind": "dir",
+      "backup_path": "/config",
+      "bytes": 130,
+      "files": 1,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1686,
+      "note": "3 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1181,
+      "services": [
+        "filebrowser"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 520,
+      "probes": [
+        {
+          "name": "File Browser is accepting connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 520
+        }
+      ],
+      "note": "File Browser is accepting connections"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves-ui",
+      "title": "The interface is served",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 568,
+      "expect": {
+        "status": 200
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 5735
+      },
+      "url": "http://filebrowser:80/"
+    },
+    {
+      "id": "canary-file-restored",
+      "title": "The file under the files root came back",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 433,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    },
+    {
+      "id": "share-in-database",
+      "title": "The share that pointed at that file is still in the database",
+      "kind": "exec",
+      "status": "fail",
+      "duration_ms": 448,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 1
+      },
+      "failures": [
+        {
+          "expect": "exit_code: 0",
+          "got": "exit_code: 1"
+        }
+      ]
+    },
+    {
+      "id": "settings-restored",
+      "title": "settings.json is there and names the database",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 419,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 4,
+    "checks_passed": 3,
+    "checks_failed": 1,
+    "checks_skipped": 0
+  },
+  "hint": {
+    "id": "restore/empty-input",
+    "matched_on": "warnings",
+    "title": "The path exists in the snapshot but contains nothing",
+    "text": "The backup ran, the directory was included, and it was empty when it ran. The classic cause is backing up a bind-mount path while the application actually stores its data in a *named volume* mounted over the top of it, so the host directory the backup reads is a hollow shell. `docker inspect \u003ccontainer\u003e --format '{{ .Mounts }}'` on the live system shows where the data really is.\n"
+  },
+  "warnings": [
+    {
+      "code": "empty_input",
+      "detail": "restored input \"database\" is empty"
+    }
+  ],
+  "logs": {
+    "filebrowser": [
+      "2026/08/30 12:20:40 Using config file: /config/settings.json",
+      "2026/08/30 12:20:40 WARNING: filebrowser.db can't be found. Initialing in /database/",
+      "2026/08/30 12:20:40 Using database: /database/filebrowser.db",
+      "2026/08/30 12:20:40 Performing quick setup",
+      "2026/08/30 12:20:40 User 'drilladmin' initialize wth user-provided password",
+      "2026/08/30 12:20:40 NOTICE: File Browser is being wound down.",
+      "2026/08/30 12:20:40 NOTICE: The project is archived on 2026-09-01, after which there will be no",
+      "2026/08/30 12:20:40 NOTICE: further releases and no security fixes. Known unfixed issues are at",
+      "2026/08/30 12:20:40 NOTICE: https://github.com/filebrowser/filebrowser/security/advisories",
+      "2026/08/30 12:20:40 Listening on [::]:80"
+    ]
+  }
+}

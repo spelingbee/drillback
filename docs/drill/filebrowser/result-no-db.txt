@@ -1,0 +1,39 @@
+restored 0.1.0-dev · recipe filebrowser · run kjjtyuhh
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/filebrowser/restic-no-db
+  snapshot   27485095  2026-08-30 12:20:36  host=drill  tags=[drill]
+  inputs     data      /srv            47 B  1 file
+             database  /database        0 B  0 files
+             config    /config        130 B  1 file
+
+  restore    ok          1.7s   3 inputs
+  compose    ok          1.2s   1 service
+  ready      ok         0.52s   File Browser is accepting connections
+
+  CHECKS
+  ✔  serves-ui             The interface is served                       0.57s
+  ✔  canary-file-restored  The file under the files root came back       0.43s
+  ✘  share-in-database     The share that pointed at that file is        0.45s
+                           still in the database
+                             expect  exit_code: 0
+                             got     exit_code: 1
+  ✔  settings-restored     settings.json is there and names the          0.42s
+                           database
+
+  RESTORE UNUSABLE  3/4 checks  ·  total 6.1s  ·  teardown ok
+
+  LIKELY CAUSE
+    The path exists in the snapshot but contains nothing
+
+    The backup ran, the directory was included, and it was empty when it
+    ran. The classic cause is backing up a bind-mount path while the
+    application actually stores its data in a *named volume* mounted over
+    the top of it, so the host directory the backup reads is a hollow shell.
+    `docker inspect <container> --format '{{ .Mounts }}'` on the live system
+    shows where the data really is.
+                                                  (hint: restore/empty-input)
+
+  warning: restored input "database" is empty (empty_input)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

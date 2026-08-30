@@ -1,0 +1,23 @@
+restored 0.1.0-dev · recipe filebrowser · run mqu7jq76
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/filebrowser/restic-all
+  snapshot   672325cf  2026-08-30 12:20:24  host=drill  tags=[drill]
+  inputs     data      /srv            47 B  1 file
+             database  /database   64.0 KiB  1 file
+             config    /config        130 B  1 file
+
+  restore    ok          1.7s   3 inputs
+  compose    ok          1.2s   1 service
+  ready      ok         0.55s   File Browser is accepting connections
+
+  CHECKS
+  ✔  serves-ui             The interface is served                       0.57s
+  ✔  canary-file-restored  The file under the files root came back       0.45s
+  ✔  share-in-database     The share that pointed at that file is        0.47s
+                           still in the database
+  ✔  settings-restored     settings.json is there and names the          0.41s
+                           database
+
+  PASS  4/4 checks  ·  total 5.8s  ·  teardown ok
+
+This backup boots.

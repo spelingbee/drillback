@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "mqu7jq76",
+    "compose_project": "restored-mqu7jq76",
+    "started_at": "2026-08-30T12:20:25Z",
+    "finished_at": "2026-08-30T12:20:31Z",
+    "duration_ms": 5841,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-mqu7jq76"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "filebrowser",
+    "title": "File Browser (Bolt database)",
+    "source": "path",
+    "digest": "sha256:cd5637c72d36e15e9de33dd15fadc00f320db43abb8a3aa1bd9a4d60158a1167"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/filebrowser/restic-all",
+    "snapshot": {
+      "id": "672325cfe86778526722c80b7307e1971c698275583b19c50f8dfe2897afa48b",
+      "short_id": "672325cf",
+      "time": "2026-08-30T12:20:24.258271939Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/config",
+        "/database",
+        "/srv"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/srv",
+      "bytes": 47,
+      "files": 1,
+      "source": "recipe_default"
+    },
+    {
+      "name": "database",
+      "kind": "dir",
+      "backup_path": "/database",
+      "bytes": 65536,
+      "files": 1,
+      "source": "recipe_default"
+    },
+    {
+      "name": "config",
+      "kind": "dir",
+      "backup_path": "/config",
+      "bytes": 130,
+      "files": 1,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1709,
+      "note": "3 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1193,
+      "services": [
+        "filebrowser"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 554,
+      "probes": [
+        {
+          "name": "File Browser is accepting connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 554
+        }
+      ],
+      "note": "File Browser is accepting connections"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves-ui",
+      "title": "The interface is served",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 570,
+      "expect": {
+        "status": 200
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 5735
+      },
+      "url": "http://filebrowser:80/"
+    },
+    {
+      "id": "canary-file-restored",
+      "title": "The file under the files root came back",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 448,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    },
+    {
+      "id": "share-in-database",
+      "title": "The share that pointed at that file is still in the database",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 472,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    },
+    {
+      "id": "settings-restored",
+      "title": "settings.json is there and names the database",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 406,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 4,
+    "checks_passed": 4,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

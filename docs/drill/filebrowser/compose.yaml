@@ -1,0 +1,17 @@
+# File Browser, deployed the way docs/installation.md in its own repository says to: the
+# bare Alpine image with the three documented volumes on /srv, /database and /config.
+#
+# Deviation, recorded in steps.md: no published port. The drill drives it from a curl
+# container on this project's network.
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:v2.63.23
+    volumes:
+      - filebrowser_data:/srv
+      - filebrowser_database:/database
+      - filebrowser_config:/config
+
+volumes:
+  filebrowser_data:
+  filebrowser_database:
+  filebrowser_config:

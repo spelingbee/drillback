@@ -1,0 +1,132 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: filebrowser
+  title: File Browser (Bolt database)
+  description: >
+    Verifies that a File Browser backup restores: the interface is served, the files
+    under the root are back, and the share that pointed at one of them is still in the
+    database - which is the pair that a backup of only one of the three documented
+    volumes breaks.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/filebrowser/filebrowser
+  tags: [files, bolt]
+
+vars:
+  fb_port: 80
+
+inputs:
+  data:
+    kind: dir
+    title: The files root
+    description: >
+      /srv, the first of the three volumes the installation page documents. This is
+      what people think of as their data, and it is the one they are most likely to
+      already have in a backup.
+    default_path: /srv
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: filebrowser:/srv
+
+  database:
+    kind: dir
+    title: The database directory
+    description: >
+      /database, holding filebrowser.db. The installation page calls it "the database,
+      in which the configuration and the users are stored" - it also holds the shares.
+      It is a Bolt database, not SQLite, so there is no integrity check to run against
+      it here; the checks ask the running application instead.
+    default_path: /database
+    required: true
+    mount:
+      env: RESTORED_INPUT_database
+      into: filebrowser:/database
+
+  config:
+    kind: dir
+    title: The configuration directory
+    description: >
+      /config, holding settings.json - where the database path, the port and the files
+      root are recorded. File Browser writes a default one if it is missing, so a backup
+      without it usually still starts; it is declared because the documentation lists it
+      as one of the three volumes.
+    default_path: /config
+    required: true
+    mount:
+      env: RESTORED_INPUT_config
+      into: filebrowser:/config
+
+ready:
+  # TCP, not HTTP: the point is that the server is accepting connections, and the
+  # round-trip harness has to reach an instance that has just bootstrapped itself.
+  - name: File Browser is accepting connections
+    kind: tcp
+    service: filebrowser
+    port: 80
+    timeout: 180s
+    interval: 2s
+
+checks:
+  - id: serves-ui
+    title: The interface is served
+    kind: http
+    url: http://filebrowser:{{ .vars.fb_port }}/
+    expect:
+      status: 200
+
+  - id: canary-file-restored
+    title: The file under the files root came back
+    kind: exec
+    service: filebrowser
+    command: ["sh", "-c", "test -s /srv/drill-canary.txt"]
+    expect:
+      exit_code: 0
+
+  - id: share-in-database
+    title: The share that pointed at that file is still in the database
+    kind: exec
+    service: filebrowser
+    # A share links a row in the Bolt database to a path under /srv. Grepping the
+    # database file for the shared path is crude, and it is the cheapest thing that
+    # tells /database apart from a database File Browser bootstrapped for itself
+    # thirty seconds ago - which is exactly what a backup of /srv alone leaves you with.
+    command: ["sh", "-c", "grep -qa drill-canary.txt /database/filebrowser.db"]
+    expect:
+      exit_code: 0
+
+  - id: settings-restored
+    title: settings.json is there and names the database
+    kind: exec
+    service: filebrowser
+    command: ["sh", "-c", "grep -q database /config/settings.json"]
+    expect:
+      exit_code: 0
+
+test:
+  seed:
+    - name: upload a file and share it
+      kind: exec
+      service: seeder
+      timeout: 180s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://filebrowser:80
+          # The compose file pins the quick-setup credentials, so this password is the
+          # one the instance bootstrapped with rather than the random one the logs print.
+          TOKEN=`curl -sS -f -X POST "$B/api/login" -H 'content-type: application/json' \
+            -d '{"username":"drilladmin","password":"Drill-Password-1","recaptcha":""}'`
+          test -n "$TOKEN"
+          curl -sS -f -o /dev/null -X POST "$B/api/resources/drill-canary.txt?override=true" \
+            -H "X-Auth: $TOKEN" \
+            --data-binary 'drill canary file: this line proves the restore'
+          curl -sS -f -X POST "$B/api/share/drill-canary.txt" \
+            -H "X-Auth: $TOKEN" -H 'content-type: application/json' \
+            -d '{"password":"","expires":"","unit":"hours"}'
+          echo
+          echo "seeded one file and one share"
+  export: []

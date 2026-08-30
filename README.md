@@ -295,6 +295,7 @@ rejects a recipe that breaks any of it.
 
 | recipe | application | state it restores | checks |
 |---|---|---|---|
+| [`filebrowser`](recipes/filebrowser/) | File Browser (Bolt database) | directories | 4 |
 | [`gitea`](recipes/gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 |
 | [`gogs`](recipes/gogs/) | Gogs (SQLite) | directories + SQLite | 7 |
 | [`memos`](recipes/memos/) | Memos (SQLite) | directories + SQLite | 5 |

@@ -1,0 +1,32 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:v2.63.23
+    environment:
+      # File Browser's quick setup: on a database it has just created, it makes this
+      # user instead of an `admin` with a password only the console log ever sees. On a
+      # restored database quick setup does not run at all, so these are ignored - which
+      # is why no check here signs in: it would pass against an empty stack.
+      # The hash is bcrypt of "Drill-Password-1", from `filebrowser hash`.
+      FB_USERNAME: drilladmin
+      FB_PASSWORD: "$$2a$$10$$VodjMDFxRiHq8kQyWWQPm.MPQSkVEVjNH31ieOhFmssJbHEQpdghC"
+    volumes:
+      - ${RESTORED_INPUT_data}:/srv
+      - ${RESTORED_INPUT_database}:/database
+      - ${RESTORED_INPUT_config}:/config
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true
