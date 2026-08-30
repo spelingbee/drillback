@@ -1,0 +1,19 @@
+restored 0.1.0-dev · recipe changedetection · run lkyexma6
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/changedetection/restic-datastore
+  snapshot   8c0a0659  2026-08-30 13:10:18  host=drill  tags=[drill]
+  inputs     datastore  /datastore  258.7 KiB  22 files
+
+  restore    ok          1.7s   1 input
+  compose    ok          1.3s   2 services
+  ready      ok          4.3s   changedetection.io serves its watch list
+
+  CHECKS
+  ✔  watch-list-renders      The watch list is served                    0.55s
+  ✔  watch-restored          The watch that was backed up is in the      0.59s
+                             list
+  ✔  history-snapshot-on-disk  The watch's change history is on disk       0.47s
+
+  PASS  3/3 checks  ·  total 9.4s  ·  teardown ok
+
+This backup boots.

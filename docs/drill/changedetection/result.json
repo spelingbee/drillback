@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "okoep2a5",
+    "compose_project": "restored-okoep2a5",
+    "started_at": "2026-08-30T13:09:52Z",
+    "finished_at": "2026-08-30T13:10:12Z",
+    "duration_ms": 20057,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-okoep2a5"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "changedetection-documented-zip",
+    "title": "changedetection.io, restored from the zip its backup button writes",
+    "source": "path",
+    "digest": "sha256:1f9d51fd89970a3346ae62b0d75a9808f3522e002f292d828d5002ade3e4ea7d"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/changedetection/restic-zip",
+    "snapshot": {
+      "id": "dcc3f21a3bc0296341f1bc9ea88f8e4868abc4ead601929df5ed0615fe385550",
+      "short_id": "dcc3f21a",
+      "time": "2026-08-30T13:09:51.041503951Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/srv/changedetection-backups"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "backups",
+      "kind": "dir",
+      "backup_path": "/srv/changedetection-backups",
+      "bytes": 119838,
+      "files": 1,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1665,
+      "note": "1 input"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 12020,
+      "services": [
+        "restore",
+        "changedetection"
+      ],
+      "note": "2 services"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 4258,
+      "probes": [
+        {
+          "name": "changedetection.io serves its watch list",
+          "status": "ok",
+          "attempts": 2,
+          "duration_ms": 4258,
+          "error": "curl: (7) Failed to connect to changedetection port 5000 after 0 ms: Could not connect to server"
+        }
+      ],
+      "note": "changedetection.io serves its watch list"
+    }
+  ],
+  "checks": [
+    {
+      "id": "watch-list-renders",
+      "title": "The watch list is served",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 585,
+      "expect": {
+        "status": 200,
+        "body_matches": "(?i)change ?detection"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 64194,
+        "matched": true
+      },
+      "url": "http://changedetection:5000/"
+    },
+    {
+      "id": "watch-restored",
+      "title": "The watch that was backed up is in the list",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 598,
+      "expect": {
+        "status": 200,
+        "body_matches": "drill-canary-watch"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 64194,
+        "matched": true
+      },
+      "url": "http://changedetection:5000/"
+    },
+    {
+      "id": "history-snapshot-on-disk",
+      "title": "The watch's change history is on disk",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 439,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "history.txt"
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 3,
+    "checks_passed": 3,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

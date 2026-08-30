@@ -1,0 +1,65 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: changedetection-documented-zip
+  title: changedetection.io, restored from the zip its backup button writes
+  description: >
+    The drill recipe. Its input is the directory holding the
+    changedetection-backup-<timestamp>.zip that the Backups page produces, and the
+    restore is the one on the project's "Restoring backup files" wiki page: unzip the
+    archive into /datastore with the instance stopped, then start it again.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/dgtlmoon/changedetection.io
+  tags: [monitoring, drill]
+
+vars:
+  cd_port: 5000
+
+inputs:
+  backups:
+    kind: dir
+    title: The directory holding the downloaded backup zip
+    description: >
+      One changedetection-backup-<timestamp>.zip, which is what the Backups page writes
+      and offers for download.
+    default_path: /srv/changedetection-backups
+    required: true
+    mount:
+      env: RESTORED_INPUT_backups
+      into: restore:/backups
+
+ready:
+  - name: changedetection.io serves its watch list
+    kind: http
+    url: http://changedetection:{{ .vars.cd_port }}/
+    expect_status: 200
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: watch-list-renders
+    title: The watch list is served
+    kind: http
+    url: http://changedetection:{{ .vars.cd_port }}/
+    expect:
+      status: 200
+      body_matches: "(?i)change ?detection"
+
+  - id: watch-restored
+    title: The watch that was backed up is in the list
+    kind: http
+    url: http://changedetection:{{ .vars.cd_port }}/
+    expect:
+      status: 200
+      body_matches: "drill-canary-watch"
+
+  - id: history-snapshot-on-disk
+    title: The watch's change history is on disk
+    kind: exec
+    service: changedetection
+    command: ["sh", "-c", "ls /datastore/*/history.txt"]
+    timeout: 120s
+    expect:
+      exit_code: 0
+      stdout_matches: "history.txt"

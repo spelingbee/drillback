@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T13:06:48Z",
+  "finished_at": "2026-08-30T13:08:22Z",
+  "duration_ms": 94551,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "changedetection",
+      "title": "changedetection.io (JSON datastore)",
+      "dir": "recipes\\changedetection",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "2 of 3 checks failed against an empty stack: watch-restored, history-snapshot-on-disk",
+          "duration_ms": 29168,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 29165,
+              "note": "2 of 3 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\changedetection --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 3 checks passed",
+          "duration_ms": 64873,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 1337,
+              "note": "3 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 4223,
+              "note": "changedetection.io serves its watch list"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 3026,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 438,
+              "note": "11 files, 18831 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 4997,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 20747,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 30049,
+              "note": "3 of 3 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\changedetection --stage b --keep"
+        }
+      ],
+      "duration_ms": 94549
+    }
+  ]
+}

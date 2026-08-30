@@ -24,6 +24,7 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | 7 | listmonk | PARTIAL (the documented pg_dump) / PASS (dump plus uploads) | `recipes/listmonk`, passes `recipe test` | The media rows come back; the files do not. |
 | 8 | gotify | PASS (the data directory) / PARTIAL (gotify.db alone) | `recipes/gotify`, passes `recipe test` | Uploaded application icons are files, not rows. |
 | 9 | trilium | PASS (documented backup and documented restore) | `recipes/trilium`, passes `recipe test` | The first leg with nothing to report upstream. |
+| 10 | changedetection.io | PASS (the documented zip and the documented restore) | `recipes/changedetection`, passes `recipe test` | Second leg with nothing to report. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next

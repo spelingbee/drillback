@@ -1,0 +1,19 @@
+restored 0.1.0-dev · recipe changedetection-documented-zip · run okoep2a5
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/changedetection/restic-zip
+  snapshot   dcc3f21a  2026-08-30 13:09:51  host=drill  tags=[drill]
+  inputs     backups  /srv/changedetection-backups  117.0 KiB  1 file
+
+  restore    ok          1.7s   1 input
+  compose    ok         12.0s   2 services
+  ready      ok          4.3s   changedetection.io serves its watch list
+
+  CHECKS
+  ✔  watch-list-renders      The watch list is served                    0.58s
+  ✔  watch-restored          The watch that was backed up is in the      0.60s
+                             list
+  ✔  history-snapshot-on-disk  The watch's change history is on disk       0.44s
+
+  PASS  3/3 checks  ·  total 20.1s  ·  teardown ok
+
+This backup boots.

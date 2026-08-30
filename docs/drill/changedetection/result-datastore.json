@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "lkyexma6",
+    "compose_project": "restored-lkyexma6",
+    "started_at": "2026-08-30T13:10:19Z",
+    "finished_at": "2026-08-30T13:10:28Z",
+    "duration_ms": 9352,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-lkyexma6"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "changedetection",
+    "title": "changedetection.io (JSON datastore)",
+    "source": "path",
+    "digest": "sha256:98c6141d3857a335d82758f88cd2b07abfb6607516820e6eef1084d4461ab819"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/changedetection/restic-datastore",
+    "snapshot": {
+      "id": "8c0a06597886afad4ed39de6a8eee62cf24a2e9540d5ca3456ab61331358d5cc",
+      "short_id": "8c0a0659",
+      "time": "2026-08-30T13:10:18.017440232Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/datastore"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "datastore",
+      "kind": "dir",
+      "backup_path": "/datastore",
+      "bytes": 264941,
+      "files": 22,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1684,
+      "note": "1 input"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1277,
+      "services": [
+        "changedetection",
+        "page"
+      ],
+      "note": "2 services"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 4289,
+      "probes": [
+        {
+          "name": "changedetection.io serves its watch list",
+          "status": "ok",
+          "attempts": 2,
+          "duration_ms": 4289,
+          "error": "curl: (7) Failed to connect to changedetection port 5000 after 0 ms: Could not connect to server"
+        }
+      ],
+      "note": "changedetection.io serves its watch list"
+    }
+  ],
+  "checks": [
+    {
+      "id": "watch-list-renders",
+      "title": "The watch list is served",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 551,
+      "expect": {
+        "status": 200,
+        "body_matches": "(?i)change ?detection"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 64200,
+        "matched": true
+      },
+      "url": "http://changedetection:5000/"
+    },
+    {
+      "id": "watch-restored",
+      "title": "The watch that was backed up is in the list",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 586,
+      "expect": {
+        "status": 200,
+        "body_matches": "drill-canary-watch"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 64194,
+        "matched": true
+      },
+      "url": "http://changedetection:5000/"
+    },
+    {
+      "id": "history-snapshot-on-disk",
+      "title": "The watch's change history is on disk",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 473,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "history.txt"
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 3,
+    "checks_passed": 3,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

@@ -1,0 +1,105 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: changedetection
+  title: changedetection.io (JSON datastore)
+  description: >
+    Verifies that a changedetection.io backup restores: the interface is served, the
+    watches are listed with their titles, and the change history snapshots are on disk -
+    which is the part of a watch that cannot be recreated by checking the page again.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/dgtlmoon/changedetection.io
+  tags: [monitoring, json]
+
+vars:
+  cd_port: 5000
+
+inputs:
+  datastore:
+    kind: dir
+    title: The changedetection.io datastore
+    description: >
+      /datastore, the single volume the README mounts. It holds changedetection.json
+      with every watch's configuration, secret.txt, and one directory per watch holding
+      that watch's history: the text snapshots, the compressed HTML, and history.txt.
+    default_path: /datastore
+    required: true
+    mount:
+      env: RESTORED_INPUT_datastore
+      into: changedetection:/datastore
+
+ready:
+  - name: changedetection.io serves its watch list
+    kind: http
+    url: http://changedetection:{{ .vars.cd_port }}/
+    expect_status: 200
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: watch-list-renders
+    title: The watch list is served
+    kind: http
+    url: http://changedetection:{{ .vars.cd_port }}/
+    expect:
+      status: 200
+      body_matches: "(?i)change ?detection"
+
+  - id: watch-restored
+    title: The watch that was backed up is in the list
+    kind: http
+    url: http://changedetection:{{ .vars.cd_port }}/
+    expect:
+      status: 200
+      body_matches: "drill-canary-watch"
+
+  - id: history-snapshot-on-disk
+    title: The watch's change history is on disk
+    kind: exec
+    service: changedetection
+    # A watch without its history is a watch that has never seen the page: the next
+    # check reports the whole page as new. The snapshots are files under the watch's own
+    # directory, and nothing in changedetection.json refers to them by name.
+    command: ["sh", "-c", "ls /datastore/*/history.txt"]
+    timeout: 120s
+    expect:
+      exit_code: 0
+      stdout_matches: "history.txt"
+
+test:
+  seed:
+    - name: add a watch and check it once, so it has history
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://changedetection:5000
+          # The API key is generated on first start and lives in the datastore. Reading
+          # it from the settings page is what the interface does too.
+          KEY=`curl -sS -f "$B/settings" | sed -n 's/.*name="application-api_access_token" *value="\([^"]*\)".*/\1/p' | head -1`
+          if [ -z "$KEY" ]; then
+            KEY=`curl -sS -f "$B/settings" | grep -oE '[0-9a-f]{32}' | head -1`
+          fi
+          test -n "$KEY"
+          UUID=`curl -sS -f -X POST "$B/api/v1/watch" -H "x-api-key: $KEY" \
+            -H 'content-type: application/json' \
+            -d '{"url":"http://page/","title":"drill-canary-watch"}' \
+            | sed -e 's/.*"uuid": *"//' -e 's/".*//'`
+          test -n "$UUID"
+          curl -sS -f -o /dev/null -H "x-api-key: $KEY" "$B/api/v1/watch/$UUID?recheck=1"
+          i=0
+          while [ $i -lt 60 ]; do
+            if curl -sS -f -H "x-api-key: $KEY" "$B/api/v1/watch/$UUID/history" | grep -q datastore; then
+              break
+            fi
+            i=`expr $i + 1`
+            sleep 2
+          done
+          curl -sS -f -H "x-api-key: $KEY" "$B/api/v1/watch/$UUID/history" | grep -q datastore
+          echo "seeded one watch with one history snapshot"
+  export: []

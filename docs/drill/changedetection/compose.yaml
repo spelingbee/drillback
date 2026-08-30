@@ -1,0 +1,29 @@
+# changedetection.io, deployed the way its README says to: the dgtlmoon image with a
+# volume on /datastore.
+#
+# Deviations, recorded in steps.md: no published port, and a tiny nginx beside it
+# serving one page for the watch to point at, so the drill does not depend on a website
+# somewhere else being up and unchanged. Nothing about changedetection.io is changed.
+services:
+  changedetection:
+    image: dgtlmoon/changedetection.io:0.55.8
+    environment:
+      BASE_URL: http://changedetection:5000
+      # Needed only because the page being watched is the container next door.
+      # changedetection.io refuses private addresses unless this is set, and it names
+      # the variable in the error it raises.
+      ALLOW_IANA_RESTRICTED_ADDRESSES: "true"
+    volumes:
+      - changedetection-data:/datastore
+
+  page:
+    image: nginx:1.27-alpine
+    command:
+      - sh
+      - -c
+      - |
+        printf '%s' '<html><body><h1>drill canary page</h1><p>this line proves the restore</p></body></html>'           > /usr/share/nginx/html/index.html
+        exec nginx -g 'daemon off;' 
+
+volumes:
+  changedetection-data:

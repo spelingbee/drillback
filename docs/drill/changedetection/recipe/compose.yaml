@@ -1,0 +1,44 @@
+# The restore side of the drill, from the project's "Restoring backup files" wiki page:
+#
+#   docker kill changedetection
+#   docker run -v changedetectionio_changedetection-data:/datastore -v <the-zip>:/backup.zip \
+#     python:3.8-slim bash -c "apt-get update && apt-get install unzip -y; unzip -o /backup.zip -d /datastore"
+#   docker restart changedetection
+#
+# One substitution, and it is only a substitution: this network has no route out, so
+# unzip comes from the alpine image rather than from apt-get. It is the same unzip of
+# the same archive into the same place, with the instance not yet running.
+services:
+  restore:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache unzip >/dev/null 2>&1 || true
+        unzip -o /backups/$(cd /backups && ls -1 changedetection-backup-*.zip | tail -1) -d /datastore
+        ls -la /datastore
+    volumes:
+      - ${RESTORED_INPUT_backups}:/backups:ro
+      - changedetection-data:/datastore
+    networks: [restored]
+
+  changedetection:
+    image: dgtlmoon/changedetection.io:0.55.8
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      BASE_URL: http://changedetection:${RESTORED_VAR_cd_port}
+      ALLOW_IANA_RESTRICTED_ADDRESSES: "true"
+    volumes:
+      - changedetection-data:/datastore
+    networks: [restored]
+
+volumes:
+  changedetection-data:
+
+networks:
+  restored:
+    internal: true
