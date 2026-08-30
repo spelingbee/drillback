@@ -136,3 +136,21 @@ drill_api() {
 
 # drill_json <file> <python expression over the parsed document `d`>
 drill_json() { python -c "import json,sys;d=json.load(open(sys.argv[1]));print($2)" "$1"; }
+
+# drill_check <recipe dir> <restic repo> <report.json> <report.txt>
+#
+# Runs the verdict and prints the exit code without ending the script: a FAIL is a
+# result to record, not a reason to stop, and there is usually a second reading to test
+# after the first one has failed.
+drill_check() {
+  export RESTIC_PASSWORD=$DRILL_REPO_PASSWORD
+  unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE || true
+  set +e
+  "$REPO_ROOT/bin/restored.exe" check \
+    --recipe "$(docker_path "$1")" \
+    --source restic --from "$(docker_path "$2")" \
+    --report "$(docker_path "$3")" 2>&1 | tee "$4"
+  local code=${PIPESTATUS[0]}
+  set -e
+  echo "-- restored check exit: $code"
+}

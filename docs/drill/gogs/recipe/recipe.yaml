@@ -1,0 +1,74 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: gogs-documented-archive
+  title: Gogs, restored from the archive `gogs backup` writes
+  description: >
+    The drill recipe for Gogs. Its input is the zip archive that `gogs backup` produces -
+    the command the CLI reference documents, and the one the official image's own cron
+    job runs. The restore step is the other documented command, `gogs restore --from`,
+    run in the official image against the volume layout that image documents.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/gogs/gogs
+  tags: [git, forge, drill]
+
+vars:
+  gogs_port: 3000
+
+inputs:
+  archive:
+    kind: dir
+    title: The directory `gogs backup --target` wrote
+    description: >
+      One gogs-backup-<timestamp>.zip. /backup is where the official image's built-in
+      scheduled backup puts it (docker/runtime/backup-init.sh), so it is the path a
+      person's snapshot is most likely to carry.
+    default_path: /backup
+    required: true
+    mount:
+      env: RESTORED_INPUT_archive
+      into: restore:/backup
+
+ready:
+  - name: Gogs is accepting connections
+    kind: tcp
+    service: gogs
+    port: 3000
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: not-the-installer
+    title: The restored instance is installed, not asking to be set up
+    kind: http
+    url: http://gogs:{{ .vars.gogs_port }}/install
+    expect:
+      status: 404
+
+  - id: repository-on-disk
+    title: The bare repository is on disk
+    # An exec check, not a file check: /data here is a compose volume that the restore
+    # service writes, not one of this recipe's inputs, and a file check can only look
+    # inside an input.
+    kind: exec
+    service: gogs
+    command: ["sh", "-c", "ls -l /data/git/gogs-repositories/drilladmin/drill-canary-repo.git/HEAD"]
+    expect:
+      exit_code: 0
+
+  - id: repository-browsable
+    title: Gogs serves the repository page
+    kind: http
+    url: http://gogs:{{ .vars.gogs_port }}/drilladmin/drill-canary-repo
+    expect:
+      status: 200
+      body_matches: "drill-canary-repo"
+
+  - id: avatar-file-present
+    title: The uploaded avatar came back
+    kind: exec
+    service: gogs
+    command: ["sh", "-c", "test -s /data/gogs/data/avatars/1"]
+    expect:
+      exit_code: 0

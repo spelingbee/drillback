@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "4jwu543y",
+    "compose_project": "restored-4jwu543y",
+    "started_at": "2026-08-30T12:01:55Z",
+    "finished_at": "2026-08-30T12:02:02Z",
+    "duration_ms": 7336,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-4jwu543y"
+  },
+  "verdict": "RESTORE_UNUSABLE",
+  "exit_code": 1,
+  "recipe": {
+    "name": "gogs-documented-archive",
+    "title": "Gogs, restored from the archive `gogs backup` writes",
+    "source": "path",
+    "digest": "sha256:54bcf3e57502c54f91e8f4b4d3e18069d450fc9ada63ffd3a384726cc3ec90f8"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/gogs/restic-archive",
+    "snapshot": {
+      "id": "af75e387bc67fe20444cb5f94c9e80c7fcd345280aa5dfca1077dc742cdb67fb",
+      "short_id": "af75e387",
+      "time": "2026-08-30T12:01:48.436591211Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/backup"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "archive",
+      "kind": "dir",
+      "backup_path": "/backup",
+      "bytes": 23058,
+      "files": 1,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1659,
+      "note": "1 input"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1918,
+      "services": [
+        "restore",
+        "gogs"
+      ],
+      "note": "2 services"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 544,
+      "probes": [
+        {
+          "name": "Gogs is accepting connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 544
+        }
+      ],
+      "note": "Gogs is accepting connections"
+    }
+  ],
+  "checks": [
+    {
+      "id": "not-the-installer",
+      "title": "The restored instance is installed, not asking to be set up",
+      "kind": "http",
+      "status": "fail",
+      "duration_ms": 553,
+      "expect": {
+        "status": 404
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 18058
+      },
+      "url": "http://gogs:3000/install",
+      "failures": [
+        {
+          "expect": "status: 404",
+          "got": "status: 200"
+        }
+      ]
+    },
+    {
+      "id": "repository-on-disk",
+      "title": "The bare repository is on disk",
+      "kind": "exec",
+      "status": "fail",
+      "duration_ms": 426,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 1
+      },
+      "failures": [
+        {
+          "expect": "exit_code: 0",
+          "got": "exit_code: 1"
+        }
+      ]
+    },
+    {
+      "id": "repository-browsable",
+      "title": "Gogs serves the repository page",
+      "kind": "http",
+      "status": "fail",
+      "duration_ms": 535,
+      "expect": {
+        "status": 200,
+        "body_matches": "drill-canary-repo"
+      },
+      "observed": {
+        "status": 302,
+        "body_bytes": 31
+      },
+      "url": "http://gogs:3000/drilladmin/drill-canary-repo",
+      "failures": [
+        {
+          "expect": "status: 200",
+          "got": "status: 302"
+        },
+        {
+          "expect": "body_matches: drill-canary-repo",
+          "got": "\u003ca href=\"/install\"\u003eFound\u003c/a\u003e."
+        }
+      ]
+    },
+    {
+      "id": "avatar-file-present",
+      "title": "The uploaded avatar came back",
+      "kind": "exec",
+      "status": "fail",
+      "duration_ms": 465,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 1
+      },
+      "failures": [
+        {
+          "expect": "exit_code: 0",
+          "got": "exit_code: 1"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks_total": 4,
+    "checks_passed": 0,
+    "checks_failed": 4,
+    "checks_skipped": 0
+  },
+  "hint": {
+    "id": "app/still-in-setup",
+    "matched_on": "checks[0].observed.body",
+    "title": "The application booted into its first-run setup wizard",
+    "text": "The app started with an empty configuration, which means the config file, not just the data, is missing from the backup. Everything looks healthy and nothing is restored. Many recipes set an INSTALL_LOCK-style variable to make this failure loud instead of quiet; if this recipe does not, that is worth an issue.\n"
+  },
+  "logs": {
+    "gogs": [
+      "usermod: no changes",
+      "init:socat  | Will not try to create socat links as requested",
+      "Aug 30 12:01:58 syslogd started: BusyBox v1.37.0",
+      "2026/08/30 12:01:58 [ WARN] Custom config \"/data/gogs/conf/app.ini\" not found. Ignore this warning if you're running for the first time",
+      "2026/08/30 12:01:58 [TRACE] Log mode: Console (Trace)",
+      "2026/08/30 12:01:58 [ INFO] Gogs 0.14.3",
+      "2026/08/30 12:01:58 [TRACE] Work directory: /app/gogs",
+      "2026/08/30 12:01:58 [TRACE] Custom path: /data/gogs",
+      "2026/08/30 12:01:58 [TRACE] Custom config: /data/gogs/conf/app.ini",
+      "2026/08/30 12:01:58 [TRACE] Log path: /app/gogs/log",
+      "2026/08/30 12:01:58 [TRACE] Build time: 2026-06-07 08:52:01 UTC",
+      "2026/08/30 12:01:58 [TRACE] Build commit: 3ba8aca90e17e5410b7e8b227c9f29256ac3e875",
+      "2026/08/30 12:01:58 [ INFO] Run mode: Development",
+      "2026/08/30 12:01:59 [ INFO] Available on http://localhost:3000/",
+      "unknown key type dsa\r",
+      "Unable to load host key: /data/ssh/ssh_host_dsa_key\r",
+      "Aug 30 12:01:59 sshd[33]: Server listening on :: port 22.",
+      "Aug 30 12:01:59 sshd[33]: Server listening on 0.0.0.0 port 22.",
+      "2026/08/30 12:02:00 [TRACE] Session ID: 7ebd8ccbac6c6037",
+      "2026/08/30 12:02:00 [TRACE] CSRF Token: pz-4qvZrilD_nG3gNgTsSO1bEeM6MTc4ODA5MTMyMDM0NzUzNjg3MQ",
+      "2026/08/30 12:02:00 [TRACE] Template: install",
+      "2026/08/30 12:02:01 [TRACE] Session ID: 519ca854454fc824",
+      "2026/08/30 12:02:01 [TRACE] CSRF Token: 6S1ve4ycluJEWTHZaodjrZu3W2I6MTc4ODA5MTMyMTMyMTM3ODI4NQ"
+    ],
+    "restore": [
+      "+ mkdir -p /data/gogs/conf /data/gogs/data /data/gogs/log /data/git",
+      "+ chown -R git:git /data",
+      "+ cd /app/gogs",
+      "+ cd /backup",
+      "+ head -1",
+      "+ ls gogs-backup-20260830120140.zip",
+      "+ gosu git ./gogs restore '--from=/backup/gogs-backup-20260830120140.zip'",
+      "2026/08/30 12:01:58 [ INFO] Restoring backup from: /backup/gogs-backup-20260830120140.zip",
+      "2026/08/30 12:01:58 [FATAL] [gogs.io/gogs/gogs.go:36 main()] Failed to start application: set engine: connect to database: create directories: mkdir /app/gogs/data: permission denied",
+      "DRILL: gogs restore exited non-zero, see the error above",
+      "+ echo 'DRILL: gogs restore exited non-zero, see the error above'",
+      "+ ls -la /data /data/gogs",
+      "/data:",
+      "+ exit 0",
+      "total 16",
+      "drwxr-xr-x    4 git      git           4096 Aug 30 12:01 .",
+      "drwxr-xr-x    1 root     root          4096 Aug 30 12:01 ..",
+      "drwxr-xr-x    3 git      git           4096 Aug 30 12:01 git",
+      "drwxr-xr-x    5 git      git           4096 Aug 30 12:01 gogs",
+      "",
+      "/data/gogs:",
+      "total 20",
+      "drwxr-xr-x    5 git      git           4096 Aug 30 12:01 .",
+      "drwxr-xr-x    4 git      git           4096 Aug 30 12:01 ..",
+      "drwxr-xr-x    2 git      git           4096 Aug 30 12:01 conf",
+      "drwxr-xr-x    2 git      git           4096 Aug 30 12:01 data",
+      "drwxr-xr-x    2 git      git           4096 Aug 30 12:01 log"
+    ]
+  }
+}

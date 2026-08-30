@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T11:57:04Z",
+  "finished_at": "2026-08-30T11:57:44Z",
+  "duration_ms": 40792,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "gogs",
+      "title": "Gogs (SQLite)",
+      "dir": "recipes\\gogs",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "6 of 7 checks failed against an empty stack: not-the-installer, users-present, repositories-in-db, repository-on-disk, repository-browsable, avatar-file-present",
+          "duration_ms": 3795,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 3791,
+              "note": "6 of 7 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\gogs --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 7 checks passed",
+          "duration_ms": 36661,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 1007,
+              "note": "2 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 499,
+              "note": "Gogs is accepting connections"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 2529,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 639,
+              "note": "40 files, 415263 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 4585,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 20699,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 6625,
+              "note": "7 of 7 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\gogs --stage b --keep"
+        }
+      ],
+      "duration_ms": 40791
+    }
+  ]
+}

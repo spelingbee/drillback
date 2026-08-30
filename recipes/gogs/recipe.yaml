@@ -1,0 +1,180 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: gogs
+  title: Gogs (SQLite)
+  description: >
+    Verifies that a Gogs backup restores: the service comes up already installed, the
+    accounts are in the database, the repository is on disk and browsable, and the
+    uploaded avatar - a file that lives outside both the database and the repositories -
+    came back with them.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/gogs/gogs
+  tags: [git, forge, sqlite]
+
+vars:
+  gogs_port: 3000
+
+inputs:
+  data:
+    kind: dir
+    title: The Gogs data volume
+    description: >
+      /data, which is the single volume the official image documents. It holds three
+      things a restore needs and that live in three different places: the configuration
+      at gogs/conf/app.ini, the SQLite database at gogs/data/gogs.db, and the bare
+      repositories under git/gogs-repositories - plus avatars and attachments under
+      gogs/data.
+    default_path: /data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: gogs:/data
+
+  db:
+    kind: sqlite
+    title: The Gogs SQLite database
+    description: >
+      gogs/data/gogs.db, inside the volume. Declared separately so that a backup that
+      captured the repositories and missed the database is reported as that, rather
+      than as a forge that has forgotten who owns what.
+    default_path: /data/gogs/data/gogs.db
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  # A TCP probe, not an HTTP one, and deliberately. An installed Gogs answers / with
+  # 200; a Gogs that has never been installed answers 302 to /install. The round-trip
+  # harness has to reach a not-yet-installed instance in order to install it, so the
+  # readiness question here is only "is the server accepting connections".
+  - name: Gogs is accepting connections
+    kind: tcp
+    service: gogs
+    port: 3000
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: not-the-installer
+    title: The restored instance is installed, not asking to be set up
+    kind: http
+    url: http://gogs:{{ .vars.gogs_port }}/install
+    # An installed Gogs has no /install route at all. A Gogs that came up over an empty
+    # volume serves the setup form here, which is the single clearest signal that a
+    # restore put nothing back.
+    expect:
+      status: 404
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: The accounts survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM user;"
+    expect:
+      scalar_int_min: 1
+
+  - id: repositories-in-db
+    title: The repositories are in the database
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM repository;"
+    expect:
+      scalar_int_min: 1
+
+  - id: repository-on-disk
+    title: The bare repository is on disk, not just in the database
+    kind: file
+    service: gogs
+    path: /data/git/gogs-repositories/drilladmin/drill-canary-repo.git/HEAD
+    expect:
+      exists: true
+      size_min: 1
+
+  - id: repository-browsable
+    title: Gogs serves the repository page
+    kind: http
+    url: http://gogs:{{ .vars.gogs_port }}/drilladmin/drill-canary-repo
+    expect:
+      status: 200
+      body_matches: "drill-canary-repo"
+
+  - id: avatar-file-present
+    title: The uploaded avatar came back with the database row that points at it
+    kind: file
+    service: gogs
+    # Avatars, attachments and LFS objects live under gogs/data - not in the database
+    # and not in the repositories. A backup of "the database and the repos" leaves the
+    # rows behind and the files gone, and this check is what says so.
+    path: /data/gogs/data/avatars/1
+    expect:
+      exists: true
+      size_min: 1
+
+test:
+  seed:
+    - name: install Gogs, create a repository, upload an avatar
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://gogs:3000
+          J=/tmp/jar
+
+          # 1. The installer. Gogs serves it until app.ini exists, and it is the only
+          #    way to create the first account.
+          curl -sS -c $J -b $J -o /tmp/install.html "$B/install"
+          CSRF=`sed -n 's/.*_csrf" value="\([^"]*\)".*/\1/p' /tmp/install.html | head -1`
+          curl -sS -c $J -b $J -o /dev/null -X POST "$B/install" \
+            -d "_csrf=$CSRF" \
+            -d 'db_type=SQLite3' -d 'db_host=127.0.0.1:3306' -d 'db_user=gogs' \
+            -d 'db_passwd=' -d 'db_name=gogs' -d 'ssl_mode=disable' \
+            -d 'db_path=data/gogs.db' -d 'app_name=Gogs' \
+            -d 'repo_root_path=/data/git/gogs-repositories' -d 'run_user=git' \
+            -d 'domain=gogs' -d 'ssh_port=22' -d 'http_port=3000' \
+            -d 'app_url=http://gogs:3000/' -d 'log_root_path=/app/gogs/log' \
+            -d 'smtp_host=' -d 'admin_name=drilladmin' \
+            -d 'admin_passwd=Drill-Password-1' -d 'admin_confirm_passwd=Drill-Password-1' \
+            -d 'admin_email=drill@example.invalid'
+
+          # 2. Sign in. The installer leaves the browser signed in, but the jar is
+          #    cheaper to re-establish than to reason about.
+          curl -sS -c $J -b $J -o /dev/null -X POST "$B/user/login" \
+            -d 'user_name=drilladmin' -d 'password=Drill-Password-1'
+
+          # 3. A repository with a commit in it, so there is something on disk.
+          curl -sS -c $J -b $J -o /tmp/create.html "$B/repo/create"
+          CSRF=`sed -n 's/.*_csrf" value="\([^"]*\)".*/\1/p' /tmp/create.html | head -1`
+          curl -sS -c $J -b $J -o /dev/null -X POST "$B/repo/create" \
+            -d "_csrf=$CSRF" -d 'user_id=1' -d 'repo_name=drill-canary-repo' \
+            -d 'description=created by the restore drill' \
+            -d 'gitignores=' -d 'license=' -d 'readme=Default' -d 'auto_init=on'
+
+          # 4. An avatar: one file that is neither in the database nor in a repository.
+          curl -sS -c $J -b $J -o /tmp/avatar.html "$B/user/settings/avatar"
+          CSRF=`sed -n 's/.*_csrf" value="\([^"]*\)".*/\1/p' /tmp/avatar.html | head -1`
+          curl -sS -c $J -b $J -o /dev/null -X POST "$B/user/settings/avatar" \
+            -F "_csrf=$CSRF" -F 'enable_custom_avatar=on' \
+            -F 'avatar=@/seed/avatar.png;type=image/png'
+
+          # 5. Prove it, so a silent 200 on a form cannot pass for seeding.
+          curl -sS -f -o /dev/null "$B/drilladmin/drill-canary-repo"
+          echo "seeded: installed, one repository, one avatar"
+  export: []

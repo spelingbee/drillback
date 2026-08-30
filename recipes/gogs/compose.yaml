@@ -1,0 +1,35 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+#
+# No `prepare` service, unusually: the image's own entrypoint chowns /data to the git
+# user when it does not already belong to it, so a restic restore's root-owned tree is
+# handed over without help.
+services:
+  gogs:
+    image: gogs/gogs:0.14.3
+    environment:
+      # Neither the SSH server nor the cron backup has anything to do here, and both
+      # cost start-up time on a network with no route out.
+      SOCAT_LINK: "false"
+      RUN_CROND: "false"
+    volumes:
+      - ${RESTORED_INPUT_data}:/data
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile. Gogs has no
+  # CLI that can install an instance or create a repository, so the seeding drives the
+  # same forms a person would.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    volumes:
+      - ${RESTORED_TEST_ASSETS}:/seed:ro
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

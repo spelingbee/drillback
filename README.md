@@ -296,6 +296,7 @@ rejects a recipe that breaks any of it.
 | recipe | application | state it restores | checks |
 |---|---|---|---|
 | [`gitea`](recipes/gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 |
+| [`gogs`](recipes/gogs/) | Gogs (SQLite) | directories + SQLite | 7 |
 | [`memos`](recipes/memos/) | Memos (SQLite) | directories + SQLite | 5 |
 | [`n8n`](recipes/n8n/) | n8n (SQLite) | directories + SQLite | 6 |
 | [`nextcloud`](recipes/nextcloud/) | Nextcloud (PostgreSQL) | directories + PostgreSQL | 6 |

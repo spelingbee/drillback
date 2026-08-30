@@ -1,0 +1,45 @@
+# The restore side of the drill: `gogs restore --from <archive>`, which is the command
+# the Gogs CLI reference documents, run in the official image against the volume layout
+# that image documents.
+#
+# Nothing here works around anything. The command is run as the image runs Gogs - as the
+# git user, from /app/gogs, with GOGS_CUSTOM=/data/gogs in the environment - and its
+# failure is left visible in this service's log. `|| true` is only there so the drill
+# can go on to ask what state the instance was left in; see result.md.
+services:
+  restore:
+    image: gogs/gogs:0.14.3
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -x
+        mkdir -p /data/gogs/conf /data/gogs/data /data/gogs/log /data/git
+        chown -R git:git /data
+        cd /app/gogs
+        gosu git ./gogs restore --from=/backup/$(cd /backup && ls *.zip | head -1) || \
+          echo "DRILL: gogs restore exited non-zero, see the error above"
+        ls -la /data /data/gogs 2>&1
+        exit 0
+    volumes:
+      - ${RESTORED_INPUT_archive}:/backup:ro
+      - gogs-data:/data
+    networks: [restored]
+
+  gogs:
+    image: gogs/gogs:0.14.3
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      SOCAT_LINK: "false"
+      RUN_CROND: "false"
+    volumes:
+      - gogs-data:/data
+    networks: [restored]
+
+volumes:
+  gogs-data:
+
+networks:
+  restored:
+    internal: true

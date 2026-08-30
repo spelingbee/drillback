@@ -1,0 +1,29 @@
+restored 0.1.0-dev · recipe gogs · run r7hhehw3
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/gogs/restic-data
+  snapshot   6d28bad4  2026-08-30 12:01:54  host=drill  tags=[drill]
+  inputs     data  /data                    405.5 KiB  40 files
+             db    /data/gogs/data/gogs.db  376.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.1s   1 service
+  load db    ok         0.00s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.54s   Gogs is accepting connections
+
+  CHECKS
+  ✔  not-the-installer     The restored instance is installed, not       0.56s
+                           asking to be set up
+  ✔  db-integrity          The SQLite database passes PRAGMA             0.00s
+                           integrity_check → ok
+  ✔  users-present         The accounts survived the restore → 1         0.00s
+  ✔  repositories-in-db    The repositories are in the database → 1      0.00s
+  ✔  repository-on-disk    The bare repository is on disk, not just in   0.00s
+                           the database → 23 bytes
+  ✔  repository-browsable  Gogs serves the repository page               0.95s
+  ✔  avatar-file-present   The uploaded avatar came back with the        0.00s
+                           database row that points at it → 997
+                           bytes
+
+  PASS  7/7 checks  ·  total 5.4s  ·  teardown ok
+
+This backup boots.

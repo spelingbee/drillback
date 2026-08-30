@@ -72,17 +72,10 @@ drill_restic "$BACKUP/export:/home/node/backups/latest"
 REPO="$WORK/restic-dotn8n"; mkdir -p "$REPO"
 drill_restic "$BACKUP/dotn8n:/home/node/.n8n"
 
-export RESTIC_PASSWORD=$DRILL_REPO_PASSWORD
-unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE
-
 echo "== restore, reading A: what the documented backup gives back =="
-"$REPO_ROOT/bin/restored.exe" check --recipe "$(docker_path "$APP_DIR/recipe")" \
-  --source restic --from "$(docker_path "$WORK/restic-export")" \
-  --report "$(docker_path "$APP_DIR/result-export.json")" 2>&1 | tee "$APP_DIR/result-export.txt"
-echo "-- reading A exit: ${PIPESTATUS[0]}"
+drill_check "$APP_DIR/recipe" "$WORK/restic-export" \
+  "$APP_DIR/result-export.json" "$APP_DIR/result-export.txt"
 
 echo "== restore, reading B: what the data directory gives back =="
-"$REPO_ROOT/bin/restored.exe" check --recipe "$(docker_path "$REPO_ROOT/recipes/n8n")" \
-  --source restic --from "$(docker_path "$WORK/restic-dotn8n")" \
-  --report "$(docker_path "$APP_DIR/result-dotn8n.json")" 2>&1 | tee "$APP_DIR/result-dotn8n.txt"
-echo "-- reading B exit: ${PIPESTATUS[0]}"
+drill_check "$REPO_ROOT/recipes/n8n" "$WORK/restic-dotn8n" \
+  "$APP_DIR/result-dotn8n.json" "$APP_DIR/result-dotn8n.txt"

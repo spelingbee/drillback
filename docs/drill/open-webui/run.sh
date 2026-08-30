@@ -51,9 +51,5 @@ drill_down
 drill_restic "$BACKUP/data:/opt/open-webui"
 
 echo "== restore =="
-export RESTIC_PASSWORD=$DRILL_REPO_PASSWORD
-unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE
-"$REPO_ROOT/bin/restored.exe" check --recipe "$(docker_path "$REPO_ROOT/recipes/open-webui")" \
-  --source restic --from "$(docker_path "$REPO")" \
-  --report "$(docker_path "$APP_DIR/result.json")" 2>&1 | tee "$APP_DIR/result.txt"
-echo "-- exit: ${PIPESTATUS[0]}"
+drill_check "$REPO_ROOT/recipes/open-webui" "$REPO" \
+  "$APP_DIR/result.json" "$APP_DIR/result.txt"

@@ -1,0 +1,13 @@
+# Gogs, deployed the way https://gogs.io/getting-started/installation and the image's
+# own docker/README.md say to: the gogs/gogs image with /data on persistent storage.
+#
+# Deviation, recorded in steps.md: no published ports. The drill drives Gogs from a curl
+# container on this project's network, and never uses SSH. Nothing else is changed.
+services:
+  gogs:
+    image: gogs/gogs:0.14.3
+    volumes:
+      - gogs-data:/data
+
+volumes:
+  gogs-data:

@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "r7hhehw3",
+    "compose_project": "restored-r7hhehw3",
+    "started_at": "2026-08-30T12:02:03Z",
+    "finished_at": "2026-08-30T12:02:09Z",
+    "duration_ms": 5432,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-r7hhehw3"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "gogs",
+    "title": "Gogs (SQLite)",
+    "source": "path",
+    "digest": "sha256:e24c17ead0fe91bcdd687b3cec586c8b2317d982d1829d28aeeb2fbcd20105c1"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/gogs/restic-data",
+    "snapshot": {
+      "id": "6d28bad4ee3816a6d0f7ed1b62abfe683623b22a00c6cb45fb74fd2a67534ae3",
+      "short_id": "6d28bad4",
+      "time": "2026-08-30T12:01:54.108796937Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/data"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/data",
+      "bytes": 415244,
+      "files": 40,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/data/gogs/data/gogs.db",
+      "bytes": 385024,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1719,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1149,
+      "services": [
+        "gogs"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 2,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 543,
+      "probes": [
+        {
+          "name": "Gogs is accepting connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 543
+        }
+      ],
+      "note": "Gogs is accepting connections"
+    }
+  ],
+  "checks": [
+    {
+      "id": "not-the-installer",
+      "title": "The restored instance is installed, not asking to be set up",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 563,
+      "expect": {
+        "status": 404
+      },
+      "observed": {
+        "status": 404,
+        "body_bytes": 6270
+      },
+      "url": "http://gogs:3000/install"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 2,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "The accounts survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 1,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM user;"
+    },
+    {
+      "id": "repositories-in-db",
+      "title": "The repositories are in the database",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 1,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM repository;"
+    },
+    {
+      "id": "repository-on-disk",
+      "title": "The bare repository is on disk, not just in the database",
+      "kind": "file",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "size_min": 1
+      },
+      "observed": {
+        "bytes": 23,
+        "exists": true,
+        "is_dir": false
+      }
+    },
+    {
+      "id": "repository-browsable",
+      "title": "Gogs serves the repository page",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 953,
+      "expect": {
+        "status": 200,
+        "body_matches": "drill-canary-repo"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 16589,
+        "matched": true
+      },
+      "url": "http://gogs:3000/drilladmin/drill-canary-repo"
+    },
+    {
+      "id": "avatar-file-present",
+      "title": "The uploaded avatar came back with the database row that points at it",
+      "kind": "file",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "size_min": 1
+      },
+      "observed": {
+        "bytes": 997,
+        "exists": true,
+        "is_dir": false
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 7,
+    "checks_passed": 7,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

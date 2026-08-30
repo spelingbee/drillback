@@ -26,6 +26,7 @@ reader:
 |---|---|---|---|---|---|
 | [n8n](n8n/) | 202,807 | [CLI page](https://docs.n8n.io/deploy/host-n8n/configure-n8n/use-the-command-line) | 2.36.8 | **PARTIAL** | The only thing the docs call a backup - `export:workflow/credentials --backup` - has no users in it and no encryption key, so the restored instance asks you to create an owner and cannot decrypt a credential. Backing up `.n8n` instead: PASS. |
 | [memos](memos/) | 62,640 | [Docker Compose](https://usememos.com/docs/deploy/docker-compose) | 0.30.0 | **PASS** / **FAIL** | Copying the data directory restores everything. Copying the file the docs call "the database" restores an empty Memos: memos_prod.db was 4 KiB and its -wal was 160 KiB. |
+| [gogs](gogs/) | 47,784 | [CLI reference](https://gogs.io/advancing/cli-reference) | 0.14.3 | **FAIL** / **PASS** | `gogs backup` writes a complete archive and `gogs restore --from` cannot put it back inside the official image: it resolves the database path against its working directory, and moves unpacked files with `rename` across a volume boundary. Copying /data instead: PASS. |
 
 Verdicts:
 

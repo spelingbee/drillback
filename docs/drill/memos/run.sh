@@ -42,12 +42,8 @@ drill_down
 drill_restic "$BACKUP/data:/var/opt/memos"
 
 echo "== restore =="
-export RESTIC_PASSWORD=$DRILL_REPO_PASSWORD
-unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE
-"$REPO_ROOT/bin/restored.exe" check --recipe "$(docker_path "$REPO_ROOT/recipes/memos")" \
-  --source restic --from "$(docker_path "$REPO")" \
-  --report "$(docker_path "$APP_DIR/result.json")" 2>&1 | tee "$APP_DIR/result.txt"
-echo "-- exit: ${PIPESTATUS[0]}"
+drill_check "$REPO_ROOT/recipes/memos" "$REPO" \
+  "$APP_DIR/result.json" "$APP_DIR/result.txt"
 
 # --------------------------------------------------------------------- reading B
 # "back up both the database and any local assets" can be read as "back up the
@@ -60,7 +56,5 @@ cp "$BACKUP/data/memos_prod.db" "$BACKUP/db-only/"
 ls -la "$BACKUP/db-only"
 REPO="$WORK/restic-db-only"; mkdir -p "$REPO"
 drill_restic "$BACKUP/db-only:/var/opt/memos"
-"$REPO_ROOT/bin/restored.exe" check --recipe "$(docker_path "$REPO_ROOT/recipes/memos")" \
-  --source restic --from "$(docker_path "$REPO")" \
-  --report "$(docker_path "$APP_DIR/result-db-only.json")" 2>&1 | tee "$APP_DIR/result-db-only.txt"
-echo "-- reading B exit: ${PIPESTATUS[0]}"
+drill_check "$REPO_ROOT/recipes/memos" "$REPO" \
+  "$APP_DIR/result-db-only.json" "$APP_DIR/result-db-only.txt"

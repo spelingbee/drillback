@@ -1,0 +1,41 @@
+restored 0.1.0-dev · recipe gogs-documented-archive · run 4jwu543y
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/gogs/restic-archive
+  snapshot   af75e387  2026-08-30 12:01:48  host=drill  tags=[drill]
+  inputs     archive  /backup   22.5 KiB  1 file
+
+  restore    ok          1.7s   1 input
+  compose    ok          1.9s   2 services
+  ready      ok         0.54s   Gogs is accepting connections
+
+  CHECKS
+  ✘  not-the-installer     The restored instance is installed, not       0.55s
+                           asking to be set up
+                             expect  status: 404
+                             got     status: 200
+  ✘  repository-on-disk    The bare repository is on disk                0.43s
+                             expect  exit_code: 0
+                             got     exit_code: 1
+  ✘  repository-browsable  Gogs serves the repository page               0.54s
+                             expect  status: 200
+                             got     status: 302
+                             expect  body_matches: drill-canary-repo
+                             got     <a href="/install">Found</a>.
+  ✘  avatar-file-present   The uploaded avatar came back                 0.47s
+                             expect  exit_code: 0
+                             got     exit_code: 1
+
+  RESTORE UNUSABLE  0/4 checks  ·  total 7.3s  ·  teardown ok
+
+  LIKELY CAUSE
+    The application booted into its first-run setup wizard
+
+    The app started with an empty configuration, which means the config
+    file, not just the data, is missing from the backup. Everything looks
+    healthy and nothing is restored. Many recipes set an INSTALL_LOCK-style
+    variable to make this failure loud instead of quiet; if this recipe does
+    not, that is worth an issue.
+                                                   (hint: app/still-in-setup)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.
