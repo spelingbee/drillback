@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -276,6 +277,12 @@ func composeFromDetected(name string, d *detected) string {
 # literal, because restored defines only ${RESTORED_VAR_*}, ${RESTORED_INPUT_*},
 # ${RESTORED_TEST_ASSETS}, ${RESTORED_EXPORT} and ${RESTORED_RUN_ID}.
 #
+# Two things were ADDED, and you probably need them. The harness starts every service
+# at once, so an application that treats a refused first database connection as fatal
+# exits before the database is listening - and then the ready probe spends its whole
+# budget failing to resolve a container that is no longer there. So: a healthcheck on
+# the database, and a depends_on condition on the application. Keep both.
+#
 # Do not add ports:, privileged:, network_mode:, pid:, ipc:, or a bind mount to any
 # path outside the workspace. ` + "`restored recipe validate`" + ` rejects all of them.
 services:
@@ -287,6 +294,7 @@ services:
 		fmt.Fprintf(&b, "    image: %s\n", pinned(d.imageOf(svc)))
 		writeServiceEnv(&b, d, svc)
 		writeServiceVolumes(&b, d, svc)
+		writeServiceOrdering(&b, d, svc)
 		b.WriteString("    networks: [restored]\n\n")
 	}
 
@@ -329,6 +337,13 @@ func writeServiceEnv(b *strings.Builder, d *detected, svc string) {
 			fmt.Fprintf(b, "      # TODO: this was %s in your compose file.\n",
 				strings.ReplaceAll(env[k], "$", ""))
 		}
+		// A connection string still pointing at the credentials this file has just
+		// stopped using is a stack that cannot come up. See FC-04.
+		if rewritten, ok := rewriteDBURL(value, d.DB); ok {
+			b.WriteString("      # Repointed at the throwaway credentials this recipe mints, which are not\n" +
+				"      # the ones your compose file used.\n")
+			value = rewritten
+		}
 		fmt.Fprintf(b, "      %s: %s\n", k, quoteYAML(value))
 	}
 }
@@ -370,6 +385,13 @@ func pinned(image string) string {
 	}
 	if !strings.Contains(image, ":") && !strings.Contains(image, "@") {
 		return image + ":TODO   # TODO: pin a tag; an untagged image is not reproducible"
+	}
+	// `:latest` is rejected by the safety schema, and most real compose files use it,
+	// so passing it through made the scaffold emit a recipe that failed the very next
+	// command the scaffold told the contributor to run. See MNT-10 and FC-07.
+	if strings.HasSuffix(image, ":latest") {
+		return strings.TrimSuffix(image, ":latest") +
+			":TODO   # TODO: your compose file said :latest. Pin the version you actually run"
 	}
 	return image
 }
@@ -517,4 +539,72 @@ func wrapComment(s string, w int) []string {
 		line += " " + word
 	}
 	return append(lines, line)
+}
+
+// writeServiceOrdering emits the healthcheck on the database and the depends_on edge
+// on the application.
+//
+// The harness starts every service at once. An application that treats a refused
+// first database connection as fatal - which is most of them - exits before the
+// database is listening, and because the container is then gone, Docker's embedded
+// DNS has nothing to resolve and the ready probe reports "Could not resolve host" for
+// the whole of its budget. The real cause, `connection refused`, appears only under
+// --log-level debug.
+//
+// The scaffold used to drop both keys when it found them in the contributor's file,
+// which cost the session 4 fresh-clone reviewer two blind three-minute runs. They are
+// synthesised rather than copied, because a contributor's own healthcheck usually
+// references credentials this file has just stopped using.
+// See docs/review/fresh-clone.md FC-03.
+func writeServiceOrdering(b *strings.Builder, d *detected, svc string) {
+	if d.DB == nil || d.DB.Kind != "postgres-dump" || d.DB.Service == "" {
+		return
+	}
+	if svc == d.DB.Service {
+		b.WriteString(`    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${RESTORED_VAR_db_user} -d ${RESTORED_VAR_db_name}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+`)
+		return
+	}
+	if svc == d.AppService {
+		fmt.Fprintf(b, `    depends_on:
+      %s:
+        condition: service_healthy
+`, d.DB.Service)
+	}
+}
+
+// rewriteDBURL points a connection string at the credentials this file actually uses.
+//
+// The scaffold rewrites the database service's own POSTGRES_* variables to
+// ${RESTORED_VAR_*} and used to leave the application's DATABASE_URL frozen at
+// whatever the contributor's file said - so the two halves of the generated file
+// disagreed about the password and the stack could not come up. That was not a
+// decision the scaffold flagged as a TODO; it was one it silently got wrong.
+//
+// The rewrite is deliberately narrow: only a URL whose host is the database service,
+// and only its user, password and database name. See docs/review/fresh-clone.md FC-04.
+func rewriteDBURL(value string, db *detectedDB) (string, bool) {
+	if db == nil || db.Kind != "postgres-dump" || db.Service == "" {
+		return value, false
+	}
+	u, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return value, false
+	}
+	if u.Hostname() != db.Service {
+		return value, false
+	}
+	if u.User == nil {
+		return value, false
+	}
+	rewritten := fmt.Sprintf("%s://${RESTORED_VAR_db_user}:${RESTORED_VAR_db_password}@%s/${RESTORED_VAR_db_name}",
+		u.Scheme, u.Host)
+	if u.RawQuery != "" {
+		rewritten += "?" + u.RawQuery
+	}
+	return rewritten, rewritten != value
 }

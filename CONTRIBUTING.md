@@ -109,10 +109,22 @@ Then open `recipes/myapp/compose.yaml`. The rules, all mechanically enforced:
 - every bind mount's source is a `${RESTORED_*}` placeholder, so it resolves inside the
   run workspace and nowhere else;
 - the network is `internal: true`;
-- every image carries a tag, and a digest is better.
+- every image carries a real tag - not `latest`, which moves, and a digest is better;
+- every compose key you use is one restored knows about. The safety schema is an
+  allow-list, so a key nobody has considered is rejected by name rather than granted
+  silently (ADR-057). If your application genuinely needs one that is not there, open
+  an issue - that is a one-line change with a reason attached, not a wall.
 
 These are the reason it is safe to run somebody else's backup, so there is no exception
 process. If a recipe seems to need one, that is a finding worth an issue.
+
+Two keys you probably **do** need, and which `recipe init --compose` now writes for
+you: `healthcheck` on your database and `depends_on: {db: {condition: service_healthy}}`
+on your application. The harness starts every service at once, so an application that
+treats a refused first database connection as fatal exits before the database is
+listening - and because the container is then gone, the ready probe spends its whole
+budget reporting `Could not resolve host` instead of the `connection refused` that
+actually happened.
 
 ### 3. Run what CI runs (2 minutes, or twenty)
 

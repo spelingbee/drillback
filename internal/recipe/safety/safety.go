@@ -93,6 +93,13 @@ func ValidateSchema(raw []byte) error {
 	if err := checkForbiddenKeys(doc); err != nil {
 		return err
 	}
+	// Before the schema, because JSON Schema expresses the tag rule as a `not` and
+	// reports it as `services.app.image: 'not' failed`, which tells a contributor
+	// nothing at all. The most common way to hit it is copying a compose file that
+	// says :latest. See docs/review/maintainer.md MNT-10.
+	if err := checkImages(doc); err != nil {
+		return err
+	}
 	norm, err := recipe.Normalise(doc)
 	if err != nil {
 		return fmt.Errorf("compose.yaml: %w", err)
@@ -336,4 +343,37 @@ func sortedNames(m map[string]any) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// checkImages reports the two image mistakes the schema catches but cannot explain.
+func checkImages(doc any) error {
+	root, ok := doc.(map[string]any)
+	if !ok {
+		return nil
+	}
+	services, ok := root["services"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	for _, name := range sortedNames(services) {
+		body, ok := services[name].(map[string]any)
+		if !ok {
+			continue
+		}
+		image, ok := body["image"].(string)
+		if !ok || image == "" {
+			continue
+		}
+		switch {
+		case strings.HasSuffix(image, ":latest"):
+			return fmt.Errorf("compose.yaml: service %q uses image %q. "+
+				"`latest` moves, so a recipe pinned to it stops testing the same thing "+
+				"from one week to the next, and a failure cannot be told apart from an "+
+				"upstream change. Pin the version you actually run", name, image)
+		case !strings.Contains(image, ":") && !strings.Contains(image, "@"):
+			return fmt.Errorf("compose.yaml: service %q uses image %q with no tag, "+
+				"which means `latest`. Pin the version you actually run", name, image)
+		}
+	}
+	return nil
 }
