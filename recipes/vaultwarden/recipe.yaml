@@ -1,0 +1,124 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: vaultwarden
+  title: Vaultwarden (SQLite)
+  description: >
+    Verifies that a Vaultwarden backup restores: the web vault is served, the SQLite
+    database passes an integrity check, and the accounts that were in it are still
+    there. A password manager whose backup does not restore is the worst case this
+    tool exists for.
+  maintainers: ["@example-handle"]
+  upstream: https://github.com/dani-garcia/vaultwarden
+  tags: [passwords, sqlite]
+
+vars:
+  vw_port: 80
+
+inputs:
+  data:
+    kind: dir
+    title: Vaultwarden data directory
+    description: >
+      The whole /data directory: db.sqlite3 and its -wal companion, attachments/,
+      sends/, icon_cache/, and rsa_key.pem. On a default docker compose install this
+      is the host side of /data, often ./vw-data next to the compose file.
+    default_path: /srv/vaultwarden/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: vaultwarden:/data
+
+  db:
+    kind: sqlite
+    title: The Vaultwarden SQLite database
+    description: >
+      db.sqlite3, which lives inside the data directory. It is declared separately so
+      the SQL checks have something to point at, and so that a database backed up
+      without its -wal companion is reported as a restore failure rather than as an
+      account that has quietly lost its most recent changes.
+    default_path: /srv/vaultwarden/data/db.sqlite3
+    within: data           # this file is inside the `data` input; not restored twice
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  # /alive is Vaultwarden's own liveness endpoint and returns a timestamp. It is
+  # served before the web vault's assets are, so it is the cheapest thing to wait for.
+  - name: vaultwarden answers on the internal network
+    kind: http
+    url: http://vaultwarden:{{ .vars.vw_port }}/alive
+    expect_status: 200
+    timeout: 180s
+    interval: 3s
+
+checks:
+  - id: web-vault-renders
+    title: The web vault is served
+    kind: http
+    url: http://vaultwarden:{{ .vars.vw_port }}/
+    expect:
+      status: 200
+      body_matches: "(?i)vaultwarden"
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: accounts-present
+    title: At least one account survived the restore
+    # This is the check that makes the recipe worth anything. A Vaultwarden that
+    # starts against an empty database serves the same web vault and answers /alive
+    # exactly the same way; the difference is here.
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM users;"
+    expect:
+      scalar_int_min: 1
+
+  - id: account-keys-present
+    title: Every account still has the key that decrypts its vault
+    # An account row without akey and private_key is an account nobody can log in to.
+    # It is the shape a partial restore takes, and it is invisible from the web vault.
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM users WHERE akey IS NULL OR akey = '' OR private_key IS NULL;"
+    expect:
+      scalar_equals: "0"
+
+  - id: rsa-key-on-disk
+    title: The signing key is in the restored data directory
+    # rsa_key.pem signs the tokens every client holds. A backup that took the database
+    # and not the data directory restores every vault and logs nobody in.
+    kind: file
+    service: vaultwarden
+    path: /data/rsa_key.pem
+    expect:
+      exists: true
+      # size_min, not not_empty: not_empty counts directory entries and is always
+      # unmet for a regular file. See docs/recipe-spec.md.
+      size_min: 1
+
+test:
+  seed:
+    # Registration is Vaultwarden's own front door: this is the request the web vault
+    # makes when somebody creates an account. The key material is nonsense, because
+    # the server stores it and never inspects it - which is the point of the design.
+    - name: register an account through the API
+      kind: http
+      method: POST
+      url: http://vaultwarden:{{ .vars.vw_port }}/api/accounts/register
+      json_body: '{"email":"drill@example.invalid","name":"drilluser","masterPasswordHash":"drillhashdrillhashdrillhashdrillhash=","masterPasswordHint":null,"key":"2.AAAAAAAAAAAAAAAAAAAAAA==|BBBBBBBBBBBBBBBBBBBBBB==|CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=","kdf":0,"kdfIterations":600000,"keys":{"publicKey":"MIIBIjAN","encryptedPrivateKey":"2.AAAAAAAAAAAAAAAAAAAAAA==|BBBBBBBBBBBBBBBBBBBBBB==|CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC="}}'
+      expect_status: 200
+      timeout: 120s
+
+  export: []   # everything lives inside the `data` dir input, exported automatically

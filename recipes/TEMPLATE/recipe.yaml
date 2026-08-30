@@ -1,0 +1,222 @@
+# Copy this directory, rename it, and fill it in:
+#
+#     cp -r recipes/TEMPLATE recipes/myapp
+#     $EDITOR recipes/myapp/recipe.yaml recipes/myapp/compose.yaml
+#     restored recipe validate ./recipes/myapp --strict
+#     restored recipe test ./recipes/myapp          # this is what CI runs
+#
+# If you already have a docker-compose.yml for the application, start from it instead
+# and let restored do the first draft:
+#
+#     restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+#
+# Everything below marked TODO is yours to decide. Everything not marked TODO is
+# working as written and can usually be left alone.
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  # TODO: lower-case, hyphens, and the same as the directory name.
+  name: template
+  # TODO: what a human calls it, plus the database in brackets. This is the heading
+  # the report prints.
+  title: Template (SQLite)
+  # TODO: one sentence saying what a PASS from this recipe actually proves. Not "tests
+  # the backup" - name the things the checks look at.
+  description: >
+    Verifies that a Template backup restores: the application serves its own pages and
+    the rows that only a real installation has are still in the database.
+  # TODO: your GitHub handle, so a maintainer knows who to ask when the recipe breaks.
+  # restored does not guess it and never reads your git config.
+  maintainers: ["@your-handle"]
+  # TODO: the upstream project.
+  upstream: https://github.com/example/template
+  # TODO: a few words a search would use.
+  tags: [example, sqlite]
+
+# vars are the knobs a user can turn with --set. Keep the list short: every variable
+# is a thing somebody has to understand before they can run the recipe.
+vars:
+  app_port: 8080
+
+# inputs are the LOGICAL parts of a backup, named by what they are rather than by
+# where they live. The user owns the paths; the recipe owns the names. Somebody whose
+# backup is laid out differently runs
+#
+#     restored check --recipe ./recipes/myapp --input data=/their/path
+#
+# and nothing else has to change.
+inputs:
+  data:
+    # dir | sqlite | postgres-dump
+    kind: dir
+    title: The application data directory
+    # TODO: say what is in it and where a default docker compose install keeps it.
+    # This description is what somebody reads when they are trying to work out which
+    # of their directories this is.
+    description: >
+      Everything the application writes: uploads, attachments, and the database if it
+      keeps one on disk. On a default docker compose install this is the host side of
+      /data.
+    # TODO: where it usually lives in a backup. A guess is fine - it is a default, not
+    # a requirement, and `restored recipe show --inputs-only` prints it for the user.
+    default_path: /srv/template/data
+    required: true
+    mount:
+      # The environment variable compose.yaml refers to. It is always
+      # RESTORED_INPUT_<input name>.
+      env: RESTORED_INPUT_data
+      # service:path - which service sees this input, and where. `file` checks and the
+      # harness's automatic export both read it.
+      into: app:/data
+
+  db:
+    kind: sqlite
+    title: The application database
+    description: >
+      The .db file itself. Declaring it separately from the directory it lives in
+      gives the SQL checks something to point at, and turns "the database was backed
+      up as a zero-byte file" from a mystery into a reported failure.
+    default_path: /srv/template/data/app.db
+    # `within` says this file lives inside another input, so the same bytes are not
+    # restored twice, and so that --input data=/elsewhere moves both.
+    within: data
+    required: true
+    load:
+      # SQLite needs no loading; restored runs PRAGMA integrity_check on it.
+      integrity_check: true
+
+  # A postgres-dump input looks like this instead. Delete whichever you do not need -
+  # a recipe with an input nothing uses will not validate.
+  #
+  # db:
+  #   kind: postgres-dump
+  #   title: The application database dump
+  #   description: >
+  #     Plain SQL from pg_dump, or a custom-format dump from pg_dump -Fc. The format
+  #     is detected from the file's magic bytes, not from its extension.
+  #   default_path: /srv/template/db.sql
+  #   required: true
+  #   load:
+  #     service: db
+  #     database: "{{ .vars.db_name }}"
+  #     user: "{{ .vars.db_user }}"
+  #     timeout: 5m
+
+# ready probes are retried until they succeed. They answer one question - has the
+# application come up at all - and nothing else. Keep them cheap: a probe that reads
+# the database is a check wearing the wrong hat, and it turns a data problem into
+# "the app never started".
+ready:
+  - name: the application answers on the internal network
+    kind: http
+    # TODO: the cheapest endpoint that proves the application is serving rather than
+    # merely listening. A health endpoint is ideal; a login page will do.
+    url: http://app:{{ .vars.app_port }}/
+    expect_status: 200
+    timeout: 180s
+    interval: 3s
+
+# checks run once, in order, and every one of them runs even after an earlier one has
+# failed, so the report shows every way the restore fell short rather than the first.
+#
+# AT LEAST ONE of them must FAIL against an empty application. That is not a style
+# rule: `restored recipe test` starts your stack with empty inputs and rejects the
+# recipe if everything passes, because a recipe whose checks pass against an empty
+# database manufactures confidence, which is worse than having no recipe at all.
+checks:
+  - id: app-answers
+    title: The application serves its home page
+    kind: http
+    url: http://app:{{ .vars.app_port }}/
+    expect:
+      status: 200
+      body_matches: "(?i)template"
+
+  - id: db-integrity
+    title: The database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  # TODO: THIS is the check that makes the recipe worth anything.
+  #
+  # Pick something only a real installation has: a user account, a document, a
+  # repository, a monitor. Ask yourself "would this still pass if the backup were
+  # empty?" - and if the answer is yes, it is not this check yet.
+  #
+  # Beware of rows the application creates for itself on a fresh install. Paperless
+  # makes two user accounts before anybody signs up, so `count(*) FROM auth_user`
+  # passes against nothing; that recipe excludes them by name, and says so.
+  - id: rows-present
+    title: At least one real record survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM todo_replace_this_table;"
+    expect:
+      scalar_int_min: 1
+
+  # A `file` check looks at what a service sees, without entering the container.
+  # Note: `not_empty` counts directory entries, so it means something only for a
+  # directory. For a file, use `size_min: 1`.
+  - id: data-dir-present
+    title: The data directory came back with something in it
+    kind: file
+    service: app
+    path: /data
+    expect:
+      exists: true
+      is_dir: true
+      not_empty: true
+
+# test drives the round-trip harness, which is what proves the two halves of the claim
+# a recipe makes. `restored recipe test`:
+#
+#   stage A  starts your stack with EMPTY inputs and requires that a check FAILS
+#   stage B  starts a fresh stack, runs seed, runs export, backs the result up into a
+#            throwaway restic repository, tears everything down, and then runs an
+#            ordinary `restored check` against that repository, which must PASS
+#
+# Stage B ends by running the command a user runs. There is no test-only path.
+test:
+  seed:
+    # TODO: create data the way a user would. Prefer the application's own API or CLI
+    # over writing to its database: a recipe that seeds through the front door proves
+    # the restore end to end, and keeps working when the schema moves.
+    #
+    # Where that is not practical - a setup wizard driven over a websocket, say -
+    # seeding the database directly is accepted, but SAY SO in a comment on the step.
+    # The harness proves the restore path; the comment records honestly which part of
+    # the application's own path it does not exercise.
+    - name: create an account through the API
+      kind: http
+      method: POST
+      url: http://app:{{ .vars.app_port }}/api/register
+      json_body: '{"username":"drilluser","password":"drill-pass-123"}'
+      expect_status: 201
+      timeout: 120s
+
+  export:
+    # Every `dir` input is exported automatically: the harness copies it back out of
+    # the container named by its mount.into. Only an input the application has to
+    # serialise for itself needs a step here.
+    #
+    # $RESTORED_EXPORT is mounted at /export in every service, and only by the
+    # harness. It does not exist during `restored check`. A step with `produces: db`
+    # must leave its artifact at $RESTORED_EXPORT/<basename of the db input's
+    # default_path>.
+    []
+    #
+    # - name: dump the database into the staging tree
+    #   kind: exec
+    #   service: db
+    #   command:
+    #     - sh
+    #     - -c
+    #     - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+    #   timeout: 5m
+    #   produces: db

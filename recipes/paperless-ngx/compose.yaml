@@ -1,0 +1,72 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`
+# plus any --set overrides.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+#
+# The service names are the ones the upstream compose file uses, so somebody reading
+# their own docker-compose.yml next to this one recognises what maps to what.
+services:
+  broker:
+    image: redis:7.4-alpine
+    # Redis holds the task queue and nothing that survives a restart, so it gets no
+    # volume and nothing here is restored into it.
+    networks: [restored]
+
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: ${RESTORED_VAR_db_name}
+      POSTGRES_USER: ${RESTORED_VAR_db_user}
+      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+    # Speed only. This database is thrown away; durability is not a goal. These are
+    # postmaster settings, so they go on the server's own command line.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [restored]
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.13.5
+    depends_on:
+      db:
+        condition: service_started
+      broker:
+        condition: service_started
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBNAME: ${RESTORED_VAR_db_name}
+      PAPERLESS_DBUSER: ${RESTORED_VAR_db_user}
+      PAPERLESS_DBPASS: ${RESTORED_VAR_db_password}
+      PAPERLESS_PORT: "${RESTORED_VAR_app_port}"
+      PAPERLESS_URL: http://webserver:${RESTORED_VAR_app_port}
+      # Not a secret. This instance exists for about two minutes on an internal
+      # network with no published ports, and is destroyed with `compose down -v`.
+      PAPERLESS_SECRET_KEY: restored-throwaway-secret-key
+      PAPERLESS_TIME_ZONE: UTC
+      PAPERLESS_OCR_LANGUAGE: eng
+      # Deliberately NOT set: PAPERLESS_ADMIN_USER and PAPERLESS_ADMIN_PASSWORD.
+      # Paperless creates that account on every start when they are present, so an
+      # empty stack would arrive with a user in it and `users-present` below would
+      # pass against a restore of nothing. The harness creates the account through
+      # paperless's own CLI instead, which is what a real operator does.
+    volumes:
+      - ${RESTORED_INPUT_data}:/usr/src/paperless/data
+      - ${RESTORED_INPUT_media}:/usr/src/paperless/media
+    networks: [restored]
+
+volumes:
+  db-data:
+
+networks:
+  restored:
+    internal: true

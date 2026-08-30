@@ -20,22 +20,46 @@ const emptyDump = "-- intentionally empty\n"
 // The shapes matter. A missing file is a restore failure and ends the run before any
 // check gets to speak; an empty one is a restore that worked and returned nothing,
 // which is exactly the thing stage A has to distinguish a real restore from.
+// Empty inputs are created world-writable, and that is deliberate. An application in
+// a container runs as whatever uid its image chose - Gitea is 1000, Nextcloud is 33,
+// Paperless is 1000 - and none of them is the uid running restored. On Linux a bind
+// mount carries the host's permissions straight through, so a 0755 directory owned by
+// the caller is a directory the application cannot write, and stage B never gets a
+// stack that starts. On Windows the mode is ignored.
+//
+// The exposure this buys is bounded by the workspace, which is created 0700 by
+// internal/workspace: no other local user can traverse into it to reach these files,
+// and the whole tree is destroyed when the run ends. See DECISIONS.md ADR-054.
+const (
+	emptyDirMode  = 0o777
+	emptyFileMode = 0o666
+)
+
 func writeEmpty(kind, p string) error {
 	if kind == "dir" {
-		if err := os.MkdirAll(p, 0o755); err != nil {
+		if err := os.MkdirAll(p, emptyDirMode); err != nil {
 			return fmt.Errorf("creating the empty %s input at %s: %w", kind, p, err)
+		}
+		// MkdirAll applies the process umask, which is 022 on most machines and
+		// would quietly turn 0777 into 0755. Chmod does not.
+		if err := os.Chmod(p, emptyDirMode); err != nil {
+			return fmt.Errorf("opening the empty %s input at %s: %w", kind, p, err)
 		}
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(p), emptyDirMode); err != nil {
 		return fmt.Errorf("creating the empty %s input at %s: %w", kind, p, err)
 	}
+	_ = os.Chmod(filepath.Dir(p), emptyDirMode)
 	body := ""
 	if kind == "postgres-dump" {
 		body = emptyDump
 	}
-	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte(body), emptyFileMode); err != nil {
 		return fmt.Errorf("creating the empty %s input at %s: %w", kind, p, err)
+	}
+	if err := os.Chmod(p, emptyFileMode); err != nil {
+		return fmt.Errorf("opening the empty %s input at %s: %w", kind, p, err)
 	}
 	return nil
 }

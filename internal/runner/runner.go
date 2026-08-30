@@ -624,6 +624,11 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 		if err != nil {
 			return desc, warnings, err
 		}
+		// The uid a backup records is the original host's, and the application is
+		// about to start as whatever uid its image chose. See workspace.Relax.
+		if err := ws.Relax(in.LocalPath); err != nil {
+			return desc, warnings, err
+		}
 		for _, w := range ws2 {
 			warnings = append(warnings, report.Warning{Code: w.Code, Detail: w.Detail})
 		}

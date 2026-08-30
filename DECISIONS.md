@@ -1112,3 +1112,61 @@ an application will initialise itself. The two stages no longer share one
 "empty inputs" routine, and the difference is the load-bearing part, so it is stated in
 `internal/harness/empty.go` and pinned by
 `TestEmptyInputsLeavesTheApplicationSomethingToCreate`. SPEC.md 7.3 was corrected.
+
+---
+
+## ADR-054: Empty inputs are created world-writable
+
+**Status:** accepted
+
+**Context.** An application in a container runs as whatever uid its image chose:
+Nextcloud is 33, Gitea and Paperless are 1000, the sqlite3 image is 100. None of them
+is the uid running `restored`. On Linux a bind mount carries the host's permissions
+straight through, so a 0755 directory owned by the caller is a directory the
+application cannot write, and stage B never gets a stack that starts. Windows ignores
+the mode, which is why this was invisible on the development machine and would have
+been a CI-only failure.
+
+**Decision.** The harness creates empty input directories 0777 and empty input files
+0666, with an explicit `chmod` after `MkdirAll` because the process umask would
+otherwise turn 0777 into 0755.
+
+To make that safe, `internal/workspace` now creates the workspace root **0700** rather
+than 0755. The temporary directory is world-traversable; the workspace is not.
+
+**Consequences.** No other local user can reach the permissive files, because they
+cannot get through the directory holding them, and the whole tree is destroyed when
+the run ends. The alternative was to guess each image's uid, which is not knowable -
+the Nextcloud image's `Config.User` is empty, because apache starts as root and drops
+privileges later.
+
+---
+
+## ADR-055: A restored tree is opened up before the application sees it
+
+**Status:** accepted
+**Extends:** SPEC.md section 4.3, restore-stage sanitisation
+
+**Context.** A backup records the ownership of the machine it was taken from, and
+restic restores it faithfully. That ownership means nothing in a restore drill: the
+application is about to start in a fresh container as the uid its own image chose.
+Measured: a restored Nextcloud data directory arrives as `drwxrwx--- root root`,
+www-data cannot write it, and Nextcloud answers 503 "your data directory is not
+writable". Gitea and Paperless have the same shape with different uids.
+
+Reporting that as an unusable restore would be a false alarm, which is precisely the
+failure this tool exists to remove. It is a fact about uid mapping, not about the
+backup.
+
+**Decision.** After sanitisation, `restored` opens the modes of every restored input:
+directories 0777, files 0666. Ownership is left alone, because the uid to chown *to* is
+not knowable from outside the container.
+
+**Consequences.** Most applications now start against a restored tree without the
+recipe having to do anything. An application that refuses a permissive mode - Nextcloud
+rejects a world-readable data directory outright - declares a preparation service in
+its own compose file, which is `recipes/nextcloud`'s `prepare`. That is the same
+`chown -R www-data:www-data` its documentation asks an operator for, so the recipe is
+teaching the real procedure rather than working around the tool.
+
+Safe for the same reason as ADR-054: the workspace root is 0700 and lives for one run.

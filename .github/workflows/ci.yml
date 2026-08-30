@@ -1,9 +1,10 @@
-# The lint and unit jobs, and nothing else yet. The integration, recipes, smoke and
-# release workflows are specified in SPEC.md section 11 and are not wired up: see
-# PROGRESS.md for what is next.
+# Lint, unit, integration, and the two generated files.
 #
 # Third-party actions are pinned by commit SHA, never by tag, because a tag is a
 # mutable pointer into somebody else's repository.
+#
+# A pull request that touches only recipes/<name>/** does NOT need this workflow to be
+# green: recipes.yml is the one that judges a recipe. See CONTRIBUTING.md.
 name: ci
 
 on:
@@ -48,6 +49,30 @@ jobs:
       - name: english only
         run: ./scripts/lint-english.sh
 
+  # docs/recipe-spec.md comes from the JSON Schema and recipes/README.md comes from the
+  # registry. Both are checked in so they are readable on GitHub, which means both can
+  # go stale; this is the thing that stops them.
+  generated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: regenerate and diff
+        run: |
+          go run ./tools/gen recipe-spec   > docs/recipe-spec.md
+          go run ./tools/gen recipes-index > recipes/README.md
+          if ! git diff --exit-code -- docs/recipe-spec.md recipes/README.md; then
+            echo
+            echo "The generated files are out of date. Run:"
+            echo "    make docs recipes-index"
+            exit 1
+          fi
+
   unit:
     strategy:
       fail-fast: false
@@ -74,3 +99,51 @@ jobs:
           ./restored version
           ./restored recipe validate ./recipes/gitea ./recipes/uptime-kuma --strict
         shell: bash
+
+  # ubuntu-latest runners have docker, so the integration suite runs for real. It
+  # stands up Gitea, PostgreSQL and Uptime Kuma several times, which is most of the
+  # runtime.
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: install restic
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
+
+      - name: versions
+        run: |
+          docker version --format '{{.Server.Version}}'
+          docker compose version
+          restic version
+
+      # Pulling these once, before the suite, keeps a slow registry out of the
+      # per-test budgets and makes a pull failure legible as a pull failure.
+      - name: pull the images the suite uses
+        run: |
+          for image in \
+            curlimages/curl:8.16.0 \
+            gitea/gitea:1.22.6 \
+            postgres:16.4-alpine \
+            louislam/uptime-kuma:1.23.16-alpine \
+            keinos/sqlite3:3.46.0 \
+            restic/restic:0.19.1 \
+            nginx:1.27-alpine
+          do
+            docker pull -q "$image"
+          done
+
+      - name: go test -tags integration
+        run: go test -tags integration ./... -timeout 35m
+
+      - name: nothing was left behind
+        if: always()
+        run: |
+          leftover=$(docker ps -aq --filter "label=com.restored.run" | wc -l)
+          echo "containers labelled com.restored.run: $leftover"
+          test "$leftover" -eq 0

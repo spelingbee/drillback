@@ -8,7 +8,12 @@ VERSION ?= 0.1.0-dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
-.PHONY: build test test-integration lint fmt demo demo-broken demo-kuma capture-demo clean
+# Every recipe except TEMPLATE, which is the skeleton a contributor copies rather than
+# a recipe. Its directory name is upper-case for exactly this reason.
+RECIPES := $(shell ls -d recipes/*/ 2>/dev/null | grep -v TEMPLATE | sed 's#/$$##')
+
+.PHONY: build test test-integration lint fmt demo demo-broken demo-kuma capture-demo \
+        docs recipes-index recipe-test check-generated clean
 
 build:
 	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/restored
@@ -23,6 +28,7 @@ lint:
 	gofmt -l .
 	$(GO) vet ./...
 	golangci-lint run
+	./scripts/lint-english.sh
 
 fmt:
 	gofmt -w .
@@ -40,6 +46,22 @@ demo-kuma: build
 
 capture-demo: build
 	./scripts/capture-demo.sh
+
+# The two files derived from something else. Both are checked in, and CI fails on a
+# diff, so they cannot drift from the schema and the registry they come from.
+docs:
+	$(GO) run ./tools/gen recipe-spec > docs/recipe-spec.md
+
+recipes-index:
+	$(GO) run ./tools/gen recipes-index > recipes/README.md
+
+check-generated: docs recipes-index
+	git diff --exit-code -- docs/recipe-spec.md recipes/README.md
+
+# The round trip, against every bundled recipe. This is what recipes.yml runs, one
+# recipe per matrix job; here they run in sequence.
+recipe-test: build
+	$(BIN) recipe test $(RECIPES)
 
 clean:
 	rm -rf bin

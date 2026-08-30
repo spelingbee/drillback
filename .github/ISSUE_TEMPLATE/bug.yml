@@ -1,0 +1,60 @@
+name: Bug
+description: restored did something wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If a *recipe* stopped working, use **Recipe broken** instead. This one is for
+        the tool.
+
+        The most valuable bug report against this project is a **false verdict**:
+        `restored` said RESTORE UNUSABLE about a backup that was fine, or said PASS
+        about one that was not. Both destroy the only thing the tool sells, so say so
+        in the title if that is what happened.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: The command, and the tail of its real output
+      description: >
+        Paste it rather than describing it. `--log-level debug` adds every docker and
+        restic command it ran; `--json` gives the machine-readable report. Neither ever
+        contains a repository password — but check before pasting, because your paths
+        and your snapshot ids are in there.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: restored version
+      description: The output of `restored version`.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Linux, macOS, Windows, Other]
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Docker, compose and restic versions
+      description: "`docker version --format '{{.Server.Version}}'`, `docker compose version`, `restic version`."
+      render: text
+    validations:
+      required: false

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -76,13 +77,20 @@ func BundledNames() []string {
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() {
+		// recipes/TEMPLATE is the skeleton a contributor copies, not a recipe: it
+		// ships in the binary so `restored recipe init` and CONTRIBUTING.md can point
+		// at the same file, but it names no application and must never appear in the
+		// registry. A directory whose name is not a legal recipe name is not one.
+		if e.IsDir() && bundledName.MatchString(e.Name()) {
 			names = append(names, e.Name())
 		}
 	}
 	sort.Strings(names)
 	return names
 }
+
+// bundledName is metadata.name's pattern from schema/recipe.schema.json.
+var bundledName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
 
 // ReadFile returns a file from the recipe directory, from disk or from the bundle.
 func (r *Recipe) ReadFile(name string) ([]byte, error) {

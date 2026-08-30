@@ -1,0 +1,67 @@
+name: Recipe broken
+description: An existing recipe stopped working
+title: "recipe <name> failing"
+labels: ["recipe-broken", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A recipe usually breaks because the application upstream changed — a new image
+        tag, a renamed table, a moved endpoint — rather than because `restored` did.
+        The fix is often one line, which makes this a good first contribution.
+
+        The weekly `recipe-health` workflow opens these automatically. If you are
+        filing one by hand, the two things that matter are the exact command and the
+        real output.
+
+  - type: input
+    id: recipe
+    attributes:
+      label: Recipe
+      placeholder: nextcloud
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where does it fail?
+      options:
+        - "stage A (negative): every check passed against an empty stack"
+        - "stage B (positive): the round trip did not restore"
+        - "restored check against my own backup"
+        - "Somewhere else"
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: The command, and the tail of its real output
+      description: >
+        Not a summary. Paste what the terminal printed. `--log-level debug` adds every
+        docker command it ran.
+      render: text
+      placeholder: |
+        $ restored recipe test ./recipes/nextcloud
+        ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: restored version
+      description: The output of `restored version`.
+      placeholder: restored 0.1.0-dev
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Docker, compose and restic versions
+      description: "`docker version --format '{{.Server.Version}}'`, `docker compose version`, `restic version`."
+      render: text
+    validations:
+      required: false

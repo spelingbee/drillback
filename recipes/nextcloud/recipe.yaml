@@ -1,0 +1,200 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: nextcloud
+  title: Nextcloud (PostgreSQL)
+  description: >
+    Verifies that a Nextcloud backup restores: the instance reports itself installed
+    rather than offering the setup wizard, config.php came back with the salt and the
+    secret that make the data readable, the accounts are still in the database, and
+    the data directory is not empty.
+  maintainers: ["@example-handle"]
+  upstream: https://github.com/nextcloud/server
+  tags: [files, groupware, postgres]
+
+vars:
+  nc_port: 80
+  db_name: nextcloud
+  db_user: nextcloud
+  # Not a secret. This database exists for about three minutes on an internal network
+  # with no published ports, and is destroyed with `compose down -v`.
+  db_password: restored-throwaway
+
+inputs:
+  data:
+    kind: dir
+    title: Nextcloud data directory
+    description: >
+      /var/www/html/data: every user's files, plus appdata_<instanceid> with the
+      previews and the generated theme. On a default docker compose install this is
+      inside the `nextcloud` volume; on a hand-rolled install it is often /srv/nextcloud/data.
+    default_path: /srv/nextcloud/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: nextcloud:/var/www/html/data
+
+  config:
+    kind: dir
+    title: Nextcloud config directory
+    description: >
+      /var/www/html/config, which holds config.php. This is the input people leave out
+      of their backup, and it is the one that makes the rest of it useless: `secret`
+      and `passwordsalt` in that file are what decrypt stored credentials, and
+      `instanceid` is what names the appdata directory. A restore without it is a
+      fresh installation wearing somebody else's files.
+    default_path: /srv/nextcloud/config
+    required: true
+    mount:
+      env: RESTORED_INPUT_config
+      into: nextcloud:/var/www/html/config
+
+  db:
+    kind: postgres-dump
+    title: Nextcloud database dump
+    description: >
+      Plain SQL from `pg_dump`, or a custom-format dump from `pg_dump -Fc`. The format
+      is detected from the file's magic bytes, not from its extension.
+    default_path: /srv/nextcloud/db.sql
+    required: true
+    load:
+      service: db
+      database: "{{ .vars.db_name }}"
+      user: "{{ .vars.db_user }}"
+      timeout: 5m
+
+ready:
+  - name: postgres accepts connections
+    kind: exec
+    service: db
+    command: ["pg_isready", "-U", "{{ .vars.db_user }}", "-d", "{{ .vars.db_name }}"]
+    timeout: 90s
+    interval: 2s
+
+  # /status.php answers 200 whether or not the instance is installed, which is exactly
+  # what a ready probe needs: it says "apache is serving" without also asserting the
+  # thing the checks are here to assert.
+  - name: nextcloud serves status.php
+    kind: http
+    url: http://nextcloud:{{ .vars.nc_port }}/status.php
+    expect_status: 200
+    timeout: 300s
+    interval: 5s
+
+checks:
+  - id: instance-installed
+    title: The instance reports itself installed, not waiting for the setup wizard
+    # The most useful check in this recipe, and the one that catches the most common
+    # bad Nextcloud backup: the database came back and config.php did not, so the
+    # instance offers a setup wizard and cheerfully installs itself over the top.
+    kind: http
+    url: http://nextcloud:{{ .vars.nc_port }}/status.php
+    expect:
+      status: 200
+      body_matches: '"installed":true'
+
+  - id: login-page-renders
+    title: The login page renders
+    # /index.php/login, not /login: the pretty URL depends on Apache rewrite rules
+    # that `occ maintenance:update:htaccess` writes, and a restored instance has
+    # whichever .htaccess its backup carried. The front controller always works.
+    kind: http
+    url: http://nextcloud:{{ .vars.nc_port }}/index.php/login
+    expect:
+      status: 200
+      body_matches: "(?i)nextcloud"
+
+  - id: config-php-present
+    title: config.php came back with the data
+    kind: file
+    service: nextcloud
+    path: /var/www/html/config/config.php
+    expect:
+      exists: true
+      size_min: 1
+
+  - id: users-present
+    title: At least one account survived the restore
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM oc_users;"
+    expect:
+      scalar_int_min: 1
+
+  - id: storages-present
+    title: The file cache still knows where the files are
+    # oc_storages maps a storage id to the numeric id every row in oc_filecache
+    # refers to. A database restored without it lists files nothing can open.
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM oc_storages;"
+    expect:
+      scalar_int_min: 1
+
+  - id: data-dir-not-empty
+    title: The data directory came back with something in it
+    kind: file
+    service: nextcloud
+    path: /var/www/html/data
+    expect:
+      exists: true
+      is_dir: true
+      not_empty: true
+
+test:
+  seed:
+    # Nextcloud's own installer, which is the command its documentation gives for an
+    # unattended install. It writes config.php, creates the schema, and creates the
+    # admin account and that account's files - so one step produces something in all
+    # three inputs.
+    - name: install nextcloud through occ
+      kind: exec
+      service: nextcloud
+      user: www-data
+      command:
+        - php
+        - occ
+        - maintenance:install
+        - --database=pgsql
+        - --database-host=db
+        - --database-name={{ .vars.db_name }}
+        - --database-user={{ .vars.db_user }}
+        - --database-pass={{ .vars.db_password }}
+        - --admin-user=drilluser
+        - --admin-pass=drill-pass-123
+        - --data-dir=/var/www/html/data
+      timeout: 300s
+    #
+    # Nothing here rewrites config.php afterwards. The `prepare` service in
+    # compose.yaml lays a config/*.config.php overlay over whatever was restored, on
+    # every run, so the same thing that makes this seeded instance reachable also
+    # makes a stranger's restored one reachable.
+
+  export:
+    # `data` and `config` are dir inputs and are exported automatically, by copying
+    # them back out of the nextcloud container. Only the database needs a step.
+    - name: dump the database into the staging tree
+      kind: exec
+      service: db
+      # $RESTORED_EXPORT is mounted into every service by the harness, and only by the
+      # harness. It does not exist during `restored check`.
+      #
+      # --no-owner --no-acl is load-bearing here. Nextcloud's installer notices that
+      # it was given a superuser and creates a dedicated role, oc_<admin user>, which
+      # then owns every table. A plain dump carries ALTER ... OWNER TO oc_drilluser
+      # into a database where that role does not exist, and psql stops. Your own
+      # backup has the same shape; if you restore it and see
+      # `role "oc_..." does not exist`, restored's hint says what to re-dump with.
+      command:
+        - sh
+        - -c
+        - 'pg_dump --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+      timeout: 5m
+      produces: db

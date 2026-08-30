@@ -1,0 +1,114 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`
+# plus any --set overrides.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+#
+# Note what is NOT mounted: /var/www/html itself. The application code comes from the
+# image, and the image's entrypoint puts it there on every start. Only the two
+# directories that hold something irreplaceable are restored - which is also the right
+# shape for a backup, and about a gigabyte smaller than the usual one.
+services:
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: ${RESTORED_VAR_db_name}
+      POSTGRES_USER: ${RESTORED_VAR_db_user}
+      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+    # Speed only. This database is thrown away; durability is not a goal. These are
+    # postmaster settings, so they go on the server's own command line.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [restored]
+
+  # Everything a person does by hand after restoring a Nextcloud somewhere new. It
+  # runs on every check, exits, and nextcloud waits for it.
+  #
+  # 1. Ownership. A backup records the uids of the machine it came from and restic
+  #    restores them faithfully; neither uid means anything inside a fresh container.
+  #    Nextcloud will not write a data directory that belongs to somebody else, and
+  #    refuses outright to run against one other people can read - so the tree is
+  #    handed to uid 33 with mode 0770, which is the `chown -R www-data:www-data`
+  #    Nextcloud's own restore documentation asks for.
+  #
+  # 2. A config overlay. Nextcloud merges config/*.config.php over config.php, so this
+  #    is the supported way to say "this copy is reachable at a different name and
+  #    talks to a different database" without editing the file that was restored.
+  #    Your config.php names your domain and, very likely, a database role called
+  #    oc_<something> that this throwaway PostgreSQL has never heard of. Both would
+  #    otherwise be reported as an unusable restore, and neither is one.
+  prepare:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        # Only over a config directory that already holds a config.php. The Nextcloud
+        # entrypoint populates config/ from the image only when it finds it EMPTY, so
+        # writing the overlay into an empty one stops the instance ever being set up:
+        # it answers 500 with "configuration was not read or initialized correctly",
+        # which is a long way from the mistake that caused it.
+        if [ -f /config/config.php ]; then
+        cat > /config/zz-restored.config.php <<'PHP'
+        <?php
+        $$CONFIG = array(
+          'trusted_domains' => array('nextcloud'),
+          'dbtype' => 'pgsql',
+          'dbhost' => 'db',
+          'dbport' => '',
+          'dbname' => '${RESTORED_VAR_db_name}',
+          'dbuser' => '${RESTORED_VAR_db_user}',
+          'dbpassword' => '${RESTORED_VAR_db_password}',
+        );
+        PHP
+        fi
+        chown -R 33:33 /data /config
+        chmod -R u=rwX,g=rwX,o= /data /config
+    volumes:
+      - ${RESTORED_INPUT_data}:/data
+      - ${RESTORED_INPUT_config}:/config
+    networks: [restored]
+
+  nextcloud:
+    image: nextcloud:30.0.4-apache
+    depends_on:
+      db:
+        condition: service_started
+      prepare:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${RESTORED_VAR_db_name}
+      POSTGRES_USER: ${RESTORED_VAR_db_user}
+      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+      # Without this, an installed instance answers every request with "Access
+      # through untrusted domain" and the checks read a 400 instead of a page.
+      NEXTCLOUD_TRUSTED_DOMAINS: nextcloud
+      # Deliberately NOT set: NEXTCLOUD_ADMIN_USER and NEXTCLOUD_ADMIN_PASSWORD.
+      # With them the entrypoint installs Nextcloud on every start, so the empty
+      # stack stage A uses would arrive installed, with an admin account, and the
+      # checks below would pass against a restore of nothing. The harness runs
+      # `occ maintenance:install` as a seed step instead, which is the command a real
+      # operator runs once.
+      PHP_MEMORY_LIMIT: 512M
+    volumes:
+      - ${RESTORED_INPUT_data}:/var/www/html/data
+      - ${RESTORED_INPUT_config}:/var/www/html/config
+    networks: [restored]
+
+volumes:
+  db-data:
+
+networks:
+  restored:
+    internal: true

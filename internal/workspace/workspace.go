@@ -43,8 +43,16 @@ func NewWithID(parent, id string) (*Workspace, error) {
 		return nil, fmt.Errorf("resolving workspace parent %q: %w", parent, err)
 	}
 	root := filepath.Join(abs, "restored-"+id)
-	if err := os.MkdirAll(root, 0o755); err != nil {
+	// 0700, not 0755. The workspace holds a restored copy of somebody's backup, in a
+	// directory that is usually world-traversable, and the harness deliberately makes
+	// the input trees inside it world-writable so that a container running as its own
+	// uid can start (DECISIONS.md ADR-054). Both of those are only safe because
+	// nobody else can get through this directory to reach them.
+	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, fmt.Errorf("creating workspace %q: %w", root, err)
+	}
+	if err := os.Chmod(root, 0o700); err != nil {
+		return nil, fmt.Errorf("securing workspace %q: %w", root, err)
 	}
 	ws := &Workspace{RunID: id, Root: root}
 	for _, d := range []string{ws.InputsDir(), ws.RestoreDir(), ws.LogsDir(),

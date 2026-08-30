@@ -1,0 +1,194 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: paperless-ngx
+  title: Paperless-ngx (PostgreSQL + Redis)
+  description: >
+    Verifies that a Paperless-ngx backup restores: the application serves its login
+    page, the accounts that could open the archive are still in the database, and the
+    media directory holding the original documents came back with it.
+  maintainers: ["@example-handle"]
+  upstream: https://github.com/paperless-ngx/paperless-ngx
+  tags: [documents, archive, postgres]
+
+vars:
+  app_port: 8000
+  db_name: paperless
+  db_user: paperless
+  # Not a secret. This database exists for about two minutes on an internal network
+  # with no published ports, and is destroyed with `compose down -v`.
+  db_password: restored-throwaway
+
+inputs:
+  data:
+    kind: dir
+    title: Paperless data directory
+    description: >
+      /usr/src/paperless/data: the search index, the trained classifier, and the
+      per-installation state. Paperless can rebuild the index, but a restore that
+      leaves it behind is a restore that starts with an empty search box.
+    default_path: /srv/paperless/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: webserver:/usr/src/paperless/data
+
+  media:
+    kind: dir
+    title: Paperless media directory
+    description: >
+      /usr/src/paperless/media: the original documents, their archived PDF/A copies,
+      and their thumbnails. This is the irreplaceable half of a Paperless backup - the
+      database only says where these files are.
+    default_path: /srv/paperless/media
+    required: true
+    mount:
+      env: RESTORED_INPUT_media
+      into: webserver:/usr/src/paperless/media
+
+  db:
+    kind: postgres-dump
+    title: Paperless database dump
+    description: >
+      Plain SQL from `pg_dump`, or a custom-format dump from `pg_dump -Fc`. The format
+      is detected from the file's magic bytes, not from its extension. If you use
+      `document_exporter` instead of pg_dump, this recipe is not the right shape for
+      your backup; see the README.
+    default_path: /srv/paperless/db.sql
+    required: true
+    load:
+      service: db
+      database: "{{ .vars.db_name }}"
+      user: "{{ .vars.db_user }}"
+      timeout: 5m
+
+ready:
+  - name: postgres accepts connections
+    kind: exec
+    service: db
+    command: ["pg_isready", "-U", "{{ .vars.db_user }}", "-d", "{{ .vars.db_name }}"]
+    timeout: 90s
+    interval: 2s
+
+  # The login page is the cheapest page that proves Django is serving rather than
+  # merely listening: it renders a template, which means the migrations ran and the
+  # static files are in place.
+  - name: paperless serves its login page
+    kind: http
+    url: http://webserver:{{ .vars.app_port }}/accounts/login/
+    expect_status: 200
+    timeout: 300s
+    interval: 5s
+
+checks:
+  - id: login-page-renders
+    title: The login page renders
+    kind: http
+    url: http://webserver:{{ .vars.app_port }}/accounts/login/
+    expect:
+      status: 200
+      body_matches: "(?i)paperless"
+
+  - id: users-present
+    title: At least one real account can still open the archive
+    # This is the check that makes the recipe worth anything. Paperless starts and
+    # serves the same login page against an empty database; the difference is whether
+    # anybody can get past it.
+    #
+    # `consumer` and `AnonymousUser` are excluded because Paperless creates both of
+    # them on a fresh install, so counting them would make this check pass against a
+    # restore of nothing. That was measured, not assumed: stage A on an empty stack
+    # leaves exactly those two rows in auth_user.
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM auth_user WHERE is_active AND username NOT IN ('consumer', 'AnonymousUser');"
+    expect:
+      scalar_int_min: 1
+
+  - id: superuser-present
+    title: At least one account still has administrative rights
+    # An archive nobody can administer is an archive that cannot be repaired. This is
+    # also the check that catches a dump taken from the wrong database.
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM auth_user WHERE is_superuser;"
+    expect:
+      scalar_int_min: 1
+
+  - id: media-dir-present
+    title: The media directory survived the restore
+    kind: file
+    service: webserver
+    path: /usr/src/paperless/media
+    expect:
+      exists: true
+      is_dir: true
+      not_empty: true
+
+  - id: documents-consistent
+    title: Every document row still names a file that could be on disk
+    # A row whose filename column is empty is a document Paperless will never serve
+    # again. It is the shape a half-restored database takes, and nothing on the
+    # dashboard shows it.
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM documents_document WHERE filename IS NULL OR filename = '';"
+    expect:
+      scalar_equals: "0"
+
+test:
+  seed:
+    # Paperless's own CLI, which is the command its documentation tells an operator to
+    # run after a fresh install. Deliberately not PAPERLESS_ADMIN_USER: that would
+    # create the account on every start, including the empty one stage A uses, and
+    # `users-present` would then pass against a restore of nothing.
+    - name: create a superuser through the paperless CLI
+      kind: exec
+      service: webserver
+      command:
+        - sh
+        - -c
+        - >
+          DJANGO_SUPERUSER_PASSWORD=drill-pass-123
+          python3 manage.py createsuperuser --noinput
+          --username drilluser --email drill@example.invalid
+      timeout: 300s
+
+    # Documented approximation, as SPEC.md section 7.4 requires. A real document
+    # reaches Paperless as a multipart upload or through the consumption directory,
+    # and the harness's step vocabulary has neither. So the round trip proves the
+    # database and the media directory come back; it does not drive a PDF through
+    # consumption. See docs/roadmap.md.
+    - name: create a tag through the REST API
+      kind: http
+      method: POST
+      url: http://webserver:{{ .vars.app_port }}/api/tags/
+      basic_auth: ["drilluser", "drill-pass-123"]
+      json_body: '{"name":"restored-drill","matching_algorithm":6}'
+      expect_status: 201
+      timeout: 120s
+
+  export:
+    # `data` and `media` are dir inputs: the harness exports them automatically by
+    # copying them back out of the webserver container. Only the database needs a step.
+    - name: dump the database into the staging tree
+      kind: exec
+      service: db
+      # $RESTORED_EXPORT is mounted into every service by the harness, and only by the
+      # harness. It does not exist during `restored check`.
+      command:
+        - sh
+        - -c
+        - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+      timeout: 5m
+      produces: db

@@ -1,0 +1,30 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`
+# plus any --set overrides.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.32.7-alpine
+    environment:
+      ROCKET_PORT: "${RESTORED_VAR_vw_port}"
+      DOMAIN: "http://vaultwarden:${RESTORED_VAR_vw_port}"
+      # The harness registers an account through the front door, so signups have to
+      # be open. The network is internal and no port is published, so the only thing
+      # that can reach this instance is the run itself.
+      SIGNUPS_ALLOWED: "true"
+      # Vaultwarden fetches website icons over the internet. The network is internal,
+      # so every fetch would hang until it timed out.
+      DISABLE_ICON_DOWNLOAD: "true"
+      # No SMTP_HOST here, not even an empty one: Vaultwarden treats an empty value as
+      # a value and refuses to start with "Both SMTP_HOST and SMTP_FROM need to be
+      # set". Absent means "no mail", which is what a restore drill wants.
+      ROCKET_ADDRESS: "0.0.0.0"
+    volumes:
+      - ${RESTORED_INPUT_data}:/data
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

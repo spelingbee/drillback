@@ -1,0 +1,56 @@
+name: Feature
+description: Something restored should be able to do and cannot
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing: [DECISIONS.md](https://github.com/spelingbee/restored/blob/main/DECISIONS.md)
+        records the decisions already made and why, and
+        [docs/roadmap.md](https://github.com/spelingbee/restored/blob/main/docs/roadmap.md)
+        records what is already wanted. If your idea is in either, adding your case to
+        the existing thread is worth more than a new issue.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What can you not do today?
+      description: >
+        Describe the situation, not the feature. "I run X and I cannot write a recipe
+        for it because Y" tells us more than "add support for Y".
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: What would it look like?
+      description: A flag, a recipe field, a new check kind, a new source. A sketch is fine.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part is this about?
+      options:
+        - A source (borg, kopia, a tarball, ...)
+        - A check kind, or an expect key
+        - A notifier
+        - Recipe format
+        - CLI or reporting
+        - Something else
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: metric
+    attributes:
+      label: Does it make a recipe cheaper to contribute?
+      description: >
+        The only number this project optimises for is the count of different people
+        with a merged pull request. Where two designs are equally good, the one that
+        makes contributing easier wins — so it is worth saying if yours does.
+      options:
+        - label: Yes, and I have said how above
+        - label: No, it is useful for another reason

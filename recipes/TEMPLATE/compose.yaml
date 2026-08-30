@@ -1,0 +1,64 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`
+# plus any --set overrides.
+#
+# The rules, all of which `restored recipe validate` enforces:
+#
+#   - no `ports:`. Nothing is published. Checks run from a helper container attached
+#     to the run's internal network, which is how restored reaches an application it
+#     has deliberately not exposed.
+#   - no `privileged:`, `network_mode:`, `pid:`, `ipc:`, `userns_mode:`, `devices:`,
+#     `cgroup_parent:`, `build:`, `extends:` or `external_links:`.
+#   - every bind mount's source is a ${RESTORED_*} placeholder, so it resolves inside
+#     the run workspace and nowhere else.
+#   - the network is `internal: true`.
+#   - every image carries a tag. `--strict` fails without one, and an untagged image
+#     means the recipe stops reproducing the moment upstream moves.
+#
+# These are not style preferences. A restore drill runs somebody else's backup, which
+# is data of unknown provenance, and the isolation is the reason that is safe.
+services:
+  app:
+    # TODO: the application's image, pinned. A digest is better than a tag.
+    image: example/template:1.0.0
+    environment:
+      # TODO: whatever the application needs in order to start without its usual
+      # host: a port, a base URL, "do not phone home", "do not send mail".
+      APP_PORT: "${RESTORED_VAR_app_port}"
+      # The network is internal. Anything the application would fetch from the
+      # internet on startup will hang until it times out, so turn it off here.
+      APP_OFFLINE: "true"
+    volumes:
+      - ${RESTORED_INPUT_data}:/data
+    networks: [restored]
+
+  # A service with `profiles: [test]` exists during `restored recipe test` and never
+  # during `restored check`. Use one when seeding needs a tool the application's own
+  # image does not carry - a sqlite3 binary, a curl, a psql.
+  #
+  # ${RESTORED_TEST_ASSETS} is this recipe's own test/ directory, copied into the
+  # workspace. ${RESTORED_EXPORT} is where an export step leaves what it produced;
+  # inside a container it is also the environment variable $RESTORED_EXPORT, and it
+  # is mounted at /export in every service by the harness.
+  #
+  # seeder:
+  #   image: keinos/sqlite3:3.46.0
+  #   profiles: [test]
+  #   volumes:
+  #     - ${RESTORED_INPUT_data}:/data
+  #     - ${RESTORED_TEST_ASSETS}:/seed:ro
+  #   command: ["sleep", "infinity"]
+  #   networks: [restored]
+
+  # A PostgreSQL application needs a `db` service whose own data directory is a
+  # throwaway named volume, NOT an input: the restore arrives as a dump and is loaded
+  # into a database this run created. Copy that shape from a recipe that has it -
+  # recipes/paperless-ngx/compose.yaml is the smallest one - rather than from a
+  # comment here. A commented-out placeholder is still a placeholder as far as
+  # `restored recipe validate` is concerned: it scans the whole file, comments
+  # included, because an undefined ${...} expanding to nothing is how a bind mount
+  # becomes "/".
+
+networks:
+  restored:
+    internal: true

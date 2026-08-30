@@ -1,0 +1,88 @@
+name: Recipe request
+description: Ask for a recipe for an application that does not have one yet
+title: "Recipe: <app>"
+labels: ["recipe", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A recipe is two YAML files and no Go. If you run this application yourself,
+        you are already the best-placed person to write one — the
+        [10-minute guide](https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes)
+        starts from the `docker-compose.yml` you already have.
+
+        If you are asking rather than writing, that is fine too. What makes a request
+        actionable is the compose file and the answer to the last question.
+
+  - type: input
+    id: app
+    attributes:
+      label: Application
+      placeholder: Immich
+    validations:
+      required: true
+
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream project
+      placeholder: https://github.com/immich-app/immich
+    validations:
+      required: true
+
+  - type: textarea
+    id: compose
+    attributes:
+      label: The compose file you run
+      description: >
+        Paste it, with your secrets removed. This is the single most useful thing in
+        the issue: `restored recipe init --compose` turns it straight into a draft.
+      render: yaml
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: database
+    attributes:
+      label: What does it keep its state in?
+      options:
+        - label: PostgreSQL
+        - label: SQLite
+        - label: MySQL or MariaDB (restored has no source for these yet)
+        - label: Files on disk only
+        - label: Something else, described below
+
+  - type: textarea
+    id: data-sensitive
+    attributes:
+      label: What would prove the restore worked?
+      description: >
+        The hard part of a recipe, and the part only somebody who uses the application
+        can answer. Name something a real installation has and a fresh one does not —
+        a row in a particular table, a file in a particular directory, an API listing
+        that comes back empty on day one. "The home page loads" is not it: that works
+        against an empty database, which is exactly the failure this tool exists to
+        catch.
+      placeholder: >
+        A row in the `asset` table. A fresh Immich has none, and the /api/assets
+        listing is empty until you upload something.
+    validations:
+      required: true
+
+  - type: textarea
+    id: gotchas
+    attributes:
+      label: Anything you know goes wrong when restoring this
+      description: >
+        A directory people forget, a config file that holds the encryption key, a
+        database dump that needs particular flags. Optional, and worth a lot.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Would you like to write it?
+      options:
+        - label: Yes, point me at the guide and I will open a pull request
+        - label: I would rather somebody else did
