@@ -1,0 +1,44 @@
+# FreshRSS, deployed the way its Docker documentation says to: the freshrss/freshrss
+# image with the data and extensions directories on volumes.
+#
+# Deviations, recorded in steps.md: no published port, an nginx beside it serving one
+# RSS feed so the drill does not depend on somebody else's site, and the documented
+# FRESHRSS_INSTALL / FRESHRSS_USER variables so the instance installs itself with an
+# account whose password the drill knows.
+services:
+  freshrss:
+    image: freshrss/freshrss:1.29.1
+    environment:
+      TZ: Etc/UTC
+      CRON_MIN: ""
+      FRESHRSS_INSTALL: "--api-enabled --default-user drilladmin --language en --base-url http://freshrss --db-type sqlite"
+      FRESHRSS_USER: "--user drilladmin --password Drill-Password-1 --api-password Drill-Password-1 --language en"
+    volumes:
+      - freshrss-data:/var/www/FreshRSS/data
+      - freshrss-extensions:/var/www/FreshRSS/extensions
+
+  feed:
+    image: nginx:1.27-alpine
+    command:
+      - sh
+      - -c
+      - |
+        cat > /usr/share/nginx/html/feed.xml <<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0"><channel>
+          <title>drill-canary-feed</title>
+          <link>http://feed/</link>
+          <description>a feed that exists only for the restore drill</description>
+          <item>
+            <title>drill canary entry</title>
+            <link>http://feed/entry-1</link>
+            <guid>http://feed/entry-1</guid>
+            <description>this line proves the restore</description>
+          </item>
+        </channel></rss>
+        XML
+        exec nginx -g 'daemon off;'
+
+volumes:
+  freshrss-data:
+  freshrss-extensions:

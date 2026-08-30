@@ -1,0 +1,70 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  # FreshRSS runs as www-data and keeps its data directory group-writable. A restored
+  # tree carries the uids of the machine it came from, or none at all, so the group has
+  # to be handed back before Apache starts.
+  prepare:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        chown -R 33:33 /var/www/FreshRSS/data /var/www/FreshRSS/extensions
+        chmod -R u=rwX,g=rwX,o= /var/www/FreshRSS/data
+        exit 0
+    volumes:
+      - ${RESTORED_INPUT_data}:/var/www/FreshRSS/data
+      - ${RESTORED_INPUT_extensions}:/var/www/FreshRSS/extensions
+    networks: [restored]
+
+  freshrss:
+    image: freshrss/freshrss:1.29.1
+    depends_on:
+      prepare:
+        condition: service_completed_successfully
+    environment:
+      TZ: Etc/UTC
+      # No cron in a throwaway stack: a restore check must read what came back, not what
+      # a feed refresh made of it thirty seconds later.
+      CRON_MIN: ""
+      # Deliberately NOT set on a restore: FRESHRSS_INSTALL and FRESHRSS_USER. With them
+      # the image installs itself over an empty volume, and the checks below would be
+      # measuring a fresh install. `recipe test` seeds through the CLI instead.
+    volumes:
+      - ${RESTORED_INPUT_data}:/var/www/FreshRSS/data
+      - ${RESTORED_INPUT_extensions}:/var/www/FreshRSS/extensions
+    networks: [restored]
+
+  # The feed under subscription. It exists so that a restore check does not depend on
+  # somebody else's website, and because this stack has no route out.
+  feed:
+    image: nginx:1.27-alpine
+    command:
+      - sh
+      - -c
+      - |
+        cat > /usr/share/nginx/html/feed.xml <<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0"><channel>
+          <title>drill-canary-feed</title>
+          <link>http://feed/</link>
+          <description>a feed that exists only for the restore drill</description>
+          <item>
+            <title>drill canary entry</title>
+            <link>http://feed/entry-1</link>
+            <guid>http://feed/entry-1</guid>
+            <description>this line proves the restore</description>
+          </item>
+        </channel></rss>
+        XML
+        exec nginx -g 'daemon off;'
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

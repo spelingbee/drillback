@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "jv7ir32b",
+    "compose_project": "restored-jv7ir32b",
+    "started_at": "2026-08-30T13:28:57Z",
+    "finished_at": "2026-08-30T13:29:02Z",
+    "duration_ms": 5391,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-jv7ir32b"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "freshrss",
+    "title": "FreshRSS (SQLite)",
+    "source": "path",
+    "digest": "sha256:4a4903572c397f0b6c7eca40a8a0bf90481422133d5487c07e3f00252828533a"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/freshrss/restic-no-cache",
+    "snapshot": {
+      "id": "79fcefe1b6ad0c121ccfa1f46b39945fae0a226bf86d64ebd7dd1d043066c570",
+      "short_id": "79fcefe1",
+      "time": "2026-08-30T13:28:56.165364452Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/var/www/FreshRSS/data",
+        "/var/www/FreshRSS/extensions"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/var/www/FreshRSS/data",
+      "bytes": 536983,
+      "files": 37,
+      "source": "recipe_default"
+    },
+    {
+      "name": "extensions",
+      "kind": "dir",
+      "backup_path": "/var/www/FreshRSS/extensions",
+      "bytes": 573,
+      "files": 4,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/var/www/FreshRSS/data/users/drilladmin/db.sqlite",
+      "bytes": 520192,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1714,
+      "note": "3 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 2012,
+      "services": [
+        "feed",
+        "prepare",
+        "freshrss"
+      ],
+      "note": "3 services"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 1,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 580,
+      "probes": [
+        {
+          "name": "FreshRSS serves its interface",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 580
+        }
+      ],
+      "note": "FreshRSS serves its interface"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves-ui",
+      "title": "The interface is served",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 590,
+      "expect": {
+        "status": 200,
+        "body_matches": "(?i)freshrss"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 6827,
+        "matched": true
+      },
+      "url": "http://freshrss/i/"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The user database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 2,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "feeds-present",
+      "title": "The feed that was backed up survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM feed WHERE name = 'drill-canary-feed';"
+    },
+    {
+      "id": "entries-present",
+      "title": "The articles survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "11",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM entry;"
+    },
+    {
+      "id": "user-config-present",
+      "title": "The user's own configuration came back",
+      "kind": "file",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "size_min": 1
+      },
+      "observed": {
+        "bytes": 3582,
+        "exists": true,
+        "is_dir": false
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 5,
+    "checks_passed": 5,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

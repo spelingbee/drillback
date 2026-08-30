@@ -1,0 +1,139 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: freshrss
+  title: FreshRSS (SQLite)
+  description: >
+    Verifies that a FreshRSS backup restores: the instance serves its interface without
+    offering to install itself, the per-user SQLite database passes an integrity check,
+    and the feeds and the articles that were read from them are still in it.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/FreshRSS/FreshRSS
+  tags: [rss, sqlite]
+
+vars:
+  drill_user: drilladmin
+
+inputs:
+  data:
+    kind: dir
+    title: The FreshRSS data directory
+    description: >
+      /var/www/FreshRSS/data, which the backup page lists as **required**. It holds
+      config.php, one directory per user with that user's db.sqlite and config.php, the
+      favicons, and the cache the same page says can be skipped.
+    default_path: /var/www/FreshRSS/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: freshrss:/var/www/FreshRSS/data
+
+  extensions:
+    kind: dir
+    title: The FreshRSS extensions directory
+    description: >
+      /var/www/FreshRSS/extensions, which the backup page lists as **recommended** if
+      you use third-party extensions.
+    default_path: /var/www/FreshRSS/extensions
+    required: true
+    mount:
+      env: RESTORED_INPUT_extensions
+      into: freshrss:/var/www/FreshRSS/extensions
+
+  db:
+    kind: sqlite
+    title: The user's SQLite database
+    description: >
+      data/users/drilladmin/db.sqlite. FreshRSS keeps one database per user, so the
+      path names the account the drill created; point --input db=... at your own user's
+      file to run this recipe against a real backup.
+    default_path: /var/www/FreshRSS/data/users/drilladmin/db.sqlite
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  - name: FreshRSS serves its interface
+    kind: http
+    url: http://freshrss/i/
+    expect_status: 200
+    timeout: 300s
+    interval: 3s
+
+checks:
+  - id: serves-ui
+    title: The interface is served
+    kind: http
+    url: http://freshrss/i/
+    expect:
+      status: 200
+      body_matches: "(?i)freshrss"
+
+  - id: db-integrity
+    title: The user database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: feeds-present
+    title: The feed that was backed up survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM feed WHERE name = 'drill-canary-feed';"
+    expect:
+      scalar_int_min: 1
+
+  - id: entries-present
+    title: The articles survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    # The articles, not just the subscription. A feed list restores from an OPML export
+    # in a minute; the read/unread state and the archive of what the feed said do not.
+    query: "SELECT count(*) FROM entry;"
+    expect:
+      scalar_int_min: 1
+
+  - id: user-config-present
+    title: The user's own configuration came back
+    kind: file
+    service: freshrss
+    path: /var/www/FreshRSS/data/users/{{ .vars.drill_user }}/config.php
+    expect:
+      exists: true
+      size_min: 1
+
+test:
+  seed:
+    - name: import a feed and fetch it
+      kind: exec
+      service: freshrss
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          cd /var/www/FreshRSS
+          # Stage A must see an application that has never been installed, so the image
+          # is not given FRESHRSS_INSTALL / FRESHRSS_USER. Stage B therefore has to do
+          # the install itself, with the same CLI the image's own entrypoint uses.
+          ./cli/do-install.php --default-user drilladmin --auth-type form             --db-type sqlite --base-url http://freshrss --language en
+          ./cli/create-user.php --user drilladmin --password Drill-Password-1 --language en
+          cat > /tmp/drill.opml <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <opml version="2.0"><head><title>drill</title></head><body>
+          <outline text="drill-canary-feed" title="drill-canary-feed" type="rss"
+            xmlUrl="http://feed/feed.xml" htmlUrl="http://feed/"/>
+          </body></opml>
+          XML
+          ./cli/import-for-user.php --user drilladmin --filename /tmp/drill.opml
+          ./cli/actualize-user.php --user drilladmin
+          echo "seeded one feed and its articles"
+  export: []

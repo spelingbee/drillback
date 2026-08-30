@@ -298,6 +298,7 @@ rejects a recipe that breaks any of it.
 | [`beszel`](recipes/beszel/) | Beszel (PocketBase / SQLite) | directories + SQLite | 5 |
 | [`changedetection`](recipes/changedetection/) | changedetection.io (JSON datastore) | directories | 3 |
 | [`filebrowser`](recipes/filebrowser/) | File Browser (Bolt database) | directories | 4 |
+| [`freshrss`](recipes/freshrss/) | FreshRSS (SQLite) | directories + SQLite | 5 |
 | [`gitea`](recipes/gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 |
 | [`gogs`](recipes/gogs/) | Gogs (SQLite) | directories + SQLite | 7 |
 | [`gotify`](recipes/gotify/) | Gotify (SQLite) | directories + SQLite | 6 |

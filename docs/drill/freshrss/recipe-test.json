@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T13:27:40Z",
+  "finished_at": "2026-08-30T13:28:03Z",
+  "duration_ms": 23338,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "freshrss",
+      "title": "FreshRSS (SQLite)",
+      "dir": "recipes\\freshrss",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "3 of 5 checks failed against an empty stack: feeds-present, entries-present, user-config-present",
+          "duration_ms": 5861,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 5857,
+              "note": "3 of 5 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\freshrss --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 5 checks passed",
+          "duration_ms": 16957,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 2023,
+              "note": "3 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 587,
+              "note": "FreshRSS serves its interface"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 1049,
+              "note": "1 step"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 858,
+              "note": "30 files, 120618 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 5085,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 925,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 6371,
+              "note": "5 of 5 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\freshrss --stage b --keep"
+        }
+      ],
+      "duration_ms": 23337
+    }
+  ]
+}

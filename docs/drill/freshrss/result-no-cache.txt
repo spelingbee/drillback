@@ -1,0 +1,26 @@
+restored 0.1.0-dev · recipe freshrss · run jv7ir32b
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/freshrss/restic-no-cache
+  snapshot   79fcefe1  2026-08-30 13:28:56  host=drill  tags=[drill]
+  inputs     data        /var/www/FreshRSS/data                             524.4 KiB  37 files
+             extensions  /var/www/FreshRSS/extensions                           573 B  4 files
+             db          /var/www/FreshRSS/data/users/drilladmin/db.sqlite  508.0 KiB  1 file
+
+  restore    ok          1.7s   3 inputs
+  compose    ok          2.0s   3 services
+  load db    ok         0.00s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.58s   FreshRSS serves its interface
+
+  CHECKS
+  ✔  serves-ui            The interface is served                        0.59s
+  ✔  db-integrity         The user database passes PRAGMA                0.00s
+                          integrity_check → ok
+  ✔  feeds-present        The feed that was backed up survived the       0.00s
+                          restore → 1
+  ✔  entries-present      The articles survived the restore → 11         0.00s
+  ✔  user-config-present  The user's own configuration came back →       0.00s
+                          3582 bytes
+
+  PASS  5/5 checks  ·  total 5.4s  ·  teardown ok
+
+This backup boots.
