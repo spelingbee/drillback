@@ -11,6 +11,21 @@
 #   brew install vhs
 # On Linux, see https://github.com/charmbracelet/vhs#installation
 #
+# If you would rather not install four things, this is how the committed GIF was
+# actually rendered - charm's vhs image with the docker CLI, the compose plugin and
+# restic added, driving the host daemon through a mounted socket:
+#
+#   cat > /tmp/vhs.Dockerfile <<EOF
+#   FROM ghcr.io/charmbracelet/vhs:latest
+#   RUN apt-get update -qq && apt-get install -y --no-install-recommends #         docker-cli docker-compose restic ca-certificates
+#   EOF
+#   docker build -t restored-vhs -f /tmp/vhs.Dockerfile /tmp
+#
+#   # The workspace must be a path the daemon and the container both resolve, for the
+#   # reason docs/docker.md calls the same-path rule.
+#   sudo mkdir -p /var/lib/restored-demo
+#   docker run --rm -u 0 #     -v /var/run/docker.sock:/var/run/docker.sock #     -v /var/lib/restored-demo:/var/lib/restored-demo #     -v "$PWD:/work" -e TMPDIR=/var/lib/restored-demo -w /work #     --entrypoint sh restored-vhs -c 'vhs docs/demo/demo.tape'
+#
 # It takes several minutes. It stands up Gitea and PostgreSQL twice, takes two real
 # restic backups, throws both stacks away, and restores them.
 set -eu

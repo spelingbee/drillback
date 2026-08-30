@@ -44,19 +44,20 @@ Type "# Does this backup actually restore? Let's find out the only honest way."
 Enter
 Sleep 1500ms
 
-Type "./scripts/demo.sh"
+# The `; echo` is not decoration. Wait+Screen matches against what is currently on
+# the screen, and the tail of a long run scrolls the verdict off it - so waiting for
+# the word PASS is waiting for something that may already be gone. The exit code is
+# printed last, is the thing a cron job actually reads, and cannot scroll away before
+# vhs sees it, because nothing follows it.
+Type `./scripts/demo.sh; echo "exit=$?"`
 Enter
 
 # demo.sh stands up Gitea and PostgreSQL, seeds them, dumps and backs up with
 # restic, destroys the stack, and asks restored. Ten minutes is generous; the
 # @-timeout is a ceiling, not a delay - vhs continues as soon as the regex matches.
-Wait+Screen@10m /This backup boots|RESTORE UNUSABLE|restored exited/
+Wait+Screen@10m /exit=[0-9]/
 
-Sleep 4s
-
-Type "echo $?"
-Enter
-Sleep 2s
+Sleep 5s
 
 Type "clear"
 Enter
@@ -67,12 +68,8 @@ Type "# Now the same drill, on a backup that is missing its database dump."
 Enter
 Sleep 1500ms
 
-Type "./scripts/demo-broken.sh"
+Type `./scripts/demo-broken.sh; echo "exit=$?"`
 Enter
-Wait+Screen@10m /restored exited|This backup boots/
+Wait+Screen@10m /exit=[0-9]/
 
-Sleep 5s
-
-Type "echo $?"
-Enter
-Sleep 3s
+Sleep 6s
