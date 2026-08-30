@@ -335,12 +335,19 @@ func firstLines(s string, n int) string {
 // run in the project's life; every earlier host was Windows.
 func (c *Client) Scrub(ctx context.Context, hostDir, helperImage string) error {
 	entrypoint := ""
-	_, err := c.RunContainer(ctx, ContainerOptions{
-		Image:      helperImage,
+	res, err := c.RunContainer(ctx, ContainerOptions{
+		Image: helperImage,
+		// The helper image declares its own unprivileged USER, which is right
+		// for probes and useless here: the whole point is root's authority
+		// over another uid's modes.
+		User:       "0:0",
 		Entrypoint: &entrypoint,
 		Binds:      []Bind{{Host: filepath.ToSlash(hostDir), Container: "/scrub"}},
 		Argv:       []string{"chmod", "-R", "a+rwX", "/scrub"},
 	})
+	if err == nil && res.ExitCode != 0 {
+		err = fmt.Errorf("chmod exited %d: %s", res.ExitCode, firstLines(res.Combined(), 4))
+	}
 	if err != nil {
 		return fmt.Errorf("scrubbing %s for removal: %w", hostDir, err)
 	}
