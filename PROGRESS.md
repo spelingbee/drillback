@@ -1146,13 +1146,146 @@ date. It now asks `grep -I` whether the file is text.
 Both are the same bug in different clothes: a check whose coverage depends on somebody
 remembering to extend it.
 
+### Session 5 - 2026-08-30 - The official-docs restore drill
+
+**Goal:** for the most popular self-hosted applications, follow each one's *own* backup
+documentation literally, take the backup it describes, restore it with `restored`, and
+record whether the application comes back with its data. Not "does application X lose
+data" - "if you follow the documentation as written, here is what you get back". Every
+application tested also gets a recipe that passes `restored recipe test`.
+
+**Done:**
+
+1. **Fourteen applications, end to end.** Each has a folder under `docs/drill/` with the
+   official documentation quoted as written (`docs.md`), the commands that were run and
+   their real output (`steps.md`, `run.sh`), the reports the tool produced
+   (`result*.txt`, `result*.json` - never hand-written), the verdict and the root cause
+   with evidence (`result.md`), and a draft issue that has **not** been filed
+   (`upstream-issue.md`).
+
+   Verdicts on the primary documented reading: **9 PASS, 2 PARTIAL, 2 FAIL, 1 SKIPPED**.
+   Four secondary readings also failed. `docs/drill/summary.md` has the totals, the three
+   most instructive cases, the five patterns that repeat, three headline options and the
+   caveats; `docs/drill/README.md` is the table.
+
+2. **Fourteen new recipes**, one per application, all passing both stages of
+   `restored recipe test`. The registry is nineteen recipes, which is well past the
+   six-recipe gate of ADR-033.
+
+3. **`docs/drill/SKIPPED.md`** - every application passed over, in three honest
+   categories: too big for the budget (immich, appwrite, langfuse, signoz and five
+   others), nothing a backup would be for (glance, homepage, dashy - configuration files
+   an operator wrote), and not reached. Stirling-PDF is recorded as attempted and
+   abandoned, with the exact reason.
+
+4. **`scripts/lint-english.sh`** now skips `docs/drill/*/result*.json`. Those files are
+   written by `restored --report` and quote another application's log lines verbatim;
+   Navidrome prints elapsed times in microseconds and "us" is not what it prints.
+
+**The three findings a human should look at first**, all reproduced twice from an empty
+scratch directory:
+
+- **Navidrome (FAIL).** The best backup page in the drill, and its restore does not
+  work. `navidrome backup restore` refuses to start without an existing database - which
+  is the state of every machine anybody restores onto - and once given one it reports
+  `Restore complete` in six milliseconds and leaves the instance empty. `POST
+  /auth/createAdmin` then answers 200, which Navidrome only does when it has no users at
+  all. The backup file itself has the user, the playlist and the library row in it.
+- **Gogs (FAIL).** `gogs backup` writes a complete archive and the official image runs
+  it on a schedule if you enable it; `gogs restore --from` cannot run inside that image.
+  It resolves the database path against its working directory rather than `GOGS_CUSTOM`
+  and dies on `mkdir /app/gogs/data: permission denied`; made writable, it fails on
+  `rename ... invalid cross-device link` after moving the live `/data/gogs` aside. Two
+  open upstream issues (#4339, #7684) describe the same wall, so the draft is written as
+  a comment on those rather than a third issue.
+- **n8n (PARTIAL).** The only thing n8n's documentation calls a backup -
+  `export:workflow --backup` plus `export:credentials --backup` - restores the workflows,
+  no users, and a credential nobody can decrypt, because the encryption key is in
+  `.n8n/config` and the export does not contain it. Separately, and reproducibly:
+  `import:credentials --separate` aborts on the very directory the documented export
+  commands write, because it tries to insert the workflow file sitting next to the
+  credential as a credential.
+
+**Not done:** the fifteenth application. Stirling-PDF was pulled (3.38 GB), deployed and
+abandoned: its v2 interface is a JavaScript client, `POST /login` answers 405 and HTTP
+Basic answers 401 on every `/api/v1/user/...` endpoint, so nothing could be seeded
+through the application - and without seeding, a restore check cannot tell a restored
+instance from a fresh one. No verdict was invented for it. `internal/config`, which was
+the *previous* plan for session 5, is untouched and is still the next thing.
+
+**Evidence.**
+
+The whole registry, both stages, in one run:
+
+```text
+$ ./bin/restored.exe recipe test ./recipes/beszel ./recipes/changedetection     ./recipes/filebrowser ./recipes/freshrss ./recipes/gogs ./recipes/gotify     ./recipes/listmonk ./recipes/mealie ./recipes/memos ./recipes/n8n     ./recipes/navidrome ./recipes/open-webui ./recipes/siyuan ./recipes/trilium
+  PASS   beszel in 39.4s
+  PASS   changedetection in 1m34s
+  PASS   filebrowser in 41.5s
+  PASS   freshrss in 25.3s
+  PASS   gogs in 47.0s
+  PASS   gotify in 44.7s
+  PASS   listmonk in 1m05s
+  PASS   mealie in 1m09s
+  PASS   memos in 39.0s
+  PASS   n8n in 1m36s
+  PASS   navidrome in 45.3s
+  PASS   open-webui in 1m24s
+  PASS   siyuan in 58.2s
+  PASS   trilium in 57.2s
+
+  14 recipes: 14 passed, 0 failed, 0 errored, in 13m28s
+```
+
+The five that existed before, unchanged and re-run to keep the "all nineteen" claim
+above honest:
+
+```text
+$ ./bin/restored.exe recipe test ./recipes/gitea ./recipes/nextcloud     ./recipes/paperless-ngx ./recipes/uptime-kuma ./recipes/vaultwarden
+  PASS   gitea in 50.1s
+  PASS   nextcloud in 1m20s
+  PASS   paperless-ngx in 1m44s
+  PASS   uptime-kuma in 2m00s
+  PASS   vaultwarden in 16.4s
+
+  5 recipes: 5 passed, 0 failed, 0 errored, in 6m13s
+```
+
+Everything else still green:
+
+```text
+$ go build ./... && go test ./...
+(no output; every package ok or without tests)
+
+$ gofmt -l .
+(nothing)
+
+$ go vet ./... && go vet -tags integration ./...
+(nothing)
+
+$ ./bin/restored.exe recipe validate ./recipes/*/ --strict
+ok       ./recipes/TEMPLATE/
+ok       ./recipes/beszel/
+... 20 lines, all ok ...
+
+$ ./scripts/lint-english.sh
+lint-english: ok
+```
+
+The drill's own verdicts are not summarised here: each application's folder holds the
+report the tool wrote, and `docs/drill/summary.md` holds the totals. Nothing in this
+entry restates a verdict that is not in a `result*.txt` next to it.
+
 ---
 
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
 
-### Session 5 - `internal/config`, and the rest of the CLI surface
+### Session 6 - `internal/config`, and the rest of the CLI surface
+
+(This was session 5's plan. Session 5 did the restore drill instead, on a brief that
+arrived after this was written, and left this untouched.)
 
 `internal/config`: `restored.yaml`, sources, targets, the precedence chain, `--config`,
 `--target`, `--all`, and the `--all` report shape. Then diff `--help` against SPEC.md
@@ -1164,14 +1297,21 @@ at that one key and uses SPEC.md 2.9's search order. It exists so a user who wro
 `nudge: false` is believed today. When `internal/config` lands it should take that over
 and `nudge/config.go` should go; the behaviour must not change under anyone.
 
-### Session 6 - the sixth recipe
+### The sixth recipe - done, and then some
 
-Miniflux reaches the six-recipe gate (ADR-033). It is the easiest of the remaining
-candidates: one binary, PostgreSQL, no first-run wizard - and session 4's fresh-clone
-reviewer already wrote one that passes both stages, in `docs/review/fresh-clone.md`
-under "The miniflux recipe I ended up with". Adopting it is not the same as taking it:
-it was written from the documentation in thirteen minutes by somebody who had never
-seen the codebase, so read the two notes they left underneath it first.
+**Answered by session 5.** The six-recipe gate of ADR-033 is met and passed: there are
+nineteen, and all nineteen round-trip. Miniflux is still not among them, and session 4's
+fresh-clone reviewer's recipe for it is still in `docs/review/fresh-clone.md` if
+somebody wants a twentieth.
+
+The fourteen that arrived with the drill were each written against the application's own
+documentation and each proves itself, so `recipes/` is now a registry rather than a
+sample. Two things in it are worth copying rather than reinventing: a check that names
+the object it is looking for instead of counting rows (a fresh application usually makes
+its own administrator, so `count(*) > 0` passes against a restore of nothing), and a
+check that asks for the file beside the database - the uploads directory, the avatar, the
+encryption key - because that is where five of the fourteen keep something a person would
+call their data.
 
 ### The launch, which is entirely a human's
 
