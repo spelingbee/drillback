@@ -1,0 +1,68 @@
+# The example from SPEC.md section 2.9, verbatim: the specification's own file must
+# load, or the specification is wrong (the spirit of ADR-034).
+version: 1
+
+defaults:
+  source: home-nas          # which entry of `sources` a target uses if it says nothing
+  timeout: 15m
+  restore_timeout: 10m
+  ready_timeout: 5m
+  check_timeout: 60s
+  pull: missing             # always|missing|never
+  nudge: true               # false is the config equivalent of --no-nudge
+  workspace: /var/tmp       # parent dir for run workspaces; needs room for the data
+
+sources:
+  home-nas:
+    kind: restic
+    repository: sftp:backup@nas.lan:/srv/restic
+    password_file: /etc/restored/nas.pass
+    host: hypervisor        # default snapshot filter for every target on this source
+
+  offsite:
+    kind: restic
+    repository: s3:s3.eu-central-1.amazonaws.com/acme-backups
+    password_command: ["pass", "show", "restic/offsite"]
+    env:
+      # Passed to restic verbatim. Values are read from the environment of the
+      # restored process; restored does not read secrets out of this file.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+
+  staging-export:
+    kind: dir
+    path: /mnt/exports/nightly
+
+targets:
+  gitea:
+    recipe: gitea
+    source: home-nas
+    tags: [gitea]
+    inputs:
+      data: /srv/gitea/data
+      db:   /srv/gitea/dumps/gitea.sql
+
+  vaultwarden:
+    recipe: vaultwarden
+    source: home-nas
+    tags: [vaultwarden]
+    inputs:
+      data: /srv/vaultwarden
+
+  uptime-kuma:
+    recipe: uptime-kuma
+    source: offsite
+    inputs:
+      data: /srv/uptime-kuma/data
+      db:   /srv/uptime-kuma/data/kuma.db
+    check_timeout: 90s      # this target is slow over the offsite repository
+
+  paperless:
+    recipe: ./recipes-local/paperless   # a recipe that is not bundled yet
+    source: home-nas
+    inputs:
+      data:  /srv/paperless/media
+      db:    /srv/paperless/dumps/paperless.dump
+    set:
+      pg_version: "16"
+    enabled: false          # skipped by --all; still runnable with --target paperless
