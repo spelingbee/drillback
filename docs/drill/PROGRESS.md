@@ -33,12 +33,18 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 
 ## Next
 
-Working down `docs/recipes-wanted.txt` from the top:
+Fourteen applications tested. [SKIPPED.md](SKIPPED.md) has the full list of what was
+passed over and why; the short version of what to do next:
 
-- immich (112,933)
-- Stirling-PDF (90,910)
-- appwrite (57,160)
-- siyuan (46,036)
+- **Stirling-PDF (90,910)** - fourth on the list and the one this session ran out of
+  time on. Its documentation has a *Database Backups* page describing automatic daily
+  backups and an import path, which is exactly the shape that failed for Gogs and
+  Navidrome. The image pull was still running when the session ended.
+- **immich (112,933)** - the highest-value untested application anywhere in the list.
+  Specific backup documentation, four services, several gigabytes of images. It needs a
+  session of its own, not a slot in a queue.
+- **photoprism, appsmith, plausible, karakeep, ArchiveBox, linkwarden** - all feasible,
+  none reached.
 
 ## Machine notes for the next session
 
