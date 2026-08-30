@@ -68,7 +68,11 @@ func newCheck(g *globals) *cobra.Command {
 	fl.StringVar(&f.host, "host", "", "Only consider snapshots written by this host")
 	fl.StringArrayVar(&f.inputs, "input", nil, "Override a recipe input's path inside the backup (repeatable), as name=path")
 	fl.StringArrayVar(&f.sets, "set", nil, "Override a recipe variable (repeatable), as key=value")
-	fl.DurationVar(&f.timeout, "timeout", 15*time.Minute, "Wall-clock budget for the whole run")
+	// 30 minutes, not 15: --restore-timeout and --ready-timeout below already sum to
+	// 15, so the old default guaranteed that a large restore left nothing for the
+	// stages after it. A run that shortens this has its stage budgets clamped to fit
+	// inside it; see runner.applyDefaults and DECISIONS.md ADR-058.
+	fl.DurationVar(&f.timeout, "timeout", 30*time.Minute, "Wall-clock budget for the whole run, including every stage below")
 	fl.DurationVar(&f.restoreTimeout, "restore-timeout", 10*time.Minute, "Budget for the restore stage")
 	fl.DurationVar(&f.readyTimeout, "ready-timeout", 5*time.Minute, "Budget for all ready probes together")
 	fl.DurationVar(&f.checkTimeout, "check-timeout", 60*time.Second, "Per-check timeout")
@@ -146,7 +150,12 @@ func runCheck(cmd *cobra.Command, g *globals, f *checkFlags) error {
 			Color: colourEnabled(g, human),
 			ASCII: os.Getenv("RESTORED_ASCII") != "",
 		}
-		if runErr == nil {
+		// Printed on a tool error too, not only on a verdict. A run that got far
+		// enough to have an id got far enough to be worth showing: the stages it
+		// completed, the workspace it used, and - since ADR-058 - the hint that says
+		// what to do next. Before this, a tool error printed one line and no report,
+		// while --report still wrote the JSON, so a machine saw more than the human.
+		if rep.Run.ID != "" {
 			if err := rep.WriteTTY(human, renderOpts); err != nil {
 				return fail(ExitError, "%v", err)
 			}
@@ -177,6 +186,13 @@ func runCheck(cmd *cobra.Command, g *globals, f *checkFlags) error {
 			kept.Workspace, kept.Project, kept.Project, kept.Workspace)
 	}
 	if runErr != nil {
+		// The report already printed the error, in a block with the stages that led
+		// to it and the hint that says what to do next. Repeating it underneath is
+		// noise. When there was no report - a failure before the run had an id -
+		// this line is the only thing the user gets, so it still has to be here.
+		if rep != nil && rep.Run.ID != "" {
+			return &exitError{code: ExitError, err: errSilent{}}
+		}
 		return fail(ExitError, "%v", runErr)
 	}
 	if rep.Verdict != report.VerdictPass {

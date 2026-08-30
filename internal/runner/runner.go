@@ -85,6 +85,29 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		},
 	}
 
+	// A tool error is still a run that happened, and the user still needs to be told
+	// what to do about it. Before this, attachHint was reached only from the two
+	// exit-1 paths, so every rule in the catalog about a tool error - an unreachable
+	// docker daemon, a failed image pull, a path that is not in the snapshot, a full
+	// disk, a wrong restic password - was unreachable code. See ADR-058 and
+	// docs/review/architecture.md ARCH-04.
+	//
+	// Registered first, so it runs last: teardown has finished by then and the logs
+	// it collected are in the report the hint is matched against.
+	var resolved *recipe.Resolved
+	defer func() {
+		if err == nil || rep == nil {
+			return
+		}
+		if rep.Error == "" {
+			rep.Error = err.Error()
+		}
+		rep.Verdict = report.VerdictError
+		rep.ExitCode = 2
+		o.attachHint(rep, resolved)
+		finish(rep, started)
+	}()
+
 	// ---- RESOLVE -----------------------------------------------------------
 	if err := compose.Preflight(ctx, o.SourceKind == "restic"); err != nil {
 		return rep, nil, err
@@ -165,6 +188,9 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 	if err != nil {
 		return rep, kept, err
 	}
+	// The deferred finaliser matches hints against the recipe's inputs, so it needs
+	// the resolution as soon as there is one.
+	resolved = res
 
 	composeRaw, err := o.Recipe.ReadFile("compose.yaml")
 	if err != nil {
@@ -258,11 +284,29 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		rep.Verdict = report.VerdictUnusable
 		rep.ExitCode = 1
 		rep.Error = e.Error()
+		// Unless the reason is that restored ran out of time. A cancelled runCtx
+		// looks exactly like a failed stage from in here - the probe records
+		// `context deadline exceeded` and the stage is marked failed - and calling
+		// that an unusable restore accuses a backup that may be perfectly good. The
+		// cause decides the verdict, not the stage. See DECISIONS.md ADR-058.
+		if ctxErr := runCtx.Err(); ctxErr != nil {
+			rep.Verdict = report.VerdictError
+			rep.ExitCode = 2
+			switch {
+			case errors.Is(ctxErr, context.DeadlineExceeded):
+				rep.Error = fmt.Sprintf(
+					"restored ran out of its --timeout budget of %s during the %s stage. "+
+						"Nothing is known about the backup: the drill did not finish. "+
+						"Re-run with a longer --timeout.", o.Timeout, stage)
+			default:
+				rep.Error = fmt.Sprintf("the run was cancelled during the %s stage. "+
+					"Nothing is known about the backup: the drill did not finish.", stage)
+			}
+		}
 		rep.Logs = collectLogs(runCtx, cli, services)
 		rep.Summary = report.Summary{ChecksTotal: len(res.Recipe.Checks), ChecksSkipped: len(res.Recipe.Checks)}
 		o.attachHint(rep, res)
 		finish(rep, started)
-		_ = stage
 		return rep, kept, nil
 	}
 
@@ -375,8 +419,12 @@ func finish(rep *report.Report, started time.Time) {
 }
 
 func (o *Options) applyDefaults() {
+	// 30 minutes, not 15. The stage budgets below already sum to 15, so a 15-minute
+	// run budget guaranteed that a big restore left nothing for the stages after it
+	// and the run died of its own defaults. SPEC.md 4.2's per-state budgets sum to
+	// roughly 27 minutes. See DECISIONS.md ADR-058.
 	if o.Timeout <= 0 {
-		o.Timeout = 15 * time.Minute
+		o.Timeout = 30 * time.Minute
 	}
 	if o.RestoreTimeout <= 0 {
 		o.RestoreTimeout = 10 * time.Minute
@@ -386,6 +434,21 @@ func (o *Options) applyDefaults() {
 	}
 	if o.CheckTimeout <= 0 {
 		o.CheckTimeout = 60 * time.Second
+	}
+	// A stage budget is the ceiling for one stage; --timeout is the ceiling for all
+	// of them together. When a user shortens --timeout, the stage budgets have to
+	// come down with it, or the first stage consumes the whole run and every stage
+	// after it is judged against a deadline it never had a chance against. Clamp
+	// down, never up: an explicit --restore-timeout larger than the run is a
+	// contradiction, and the run is the one the user typed last.
+	if limit := o.Timeout / 2; o.RestoreTimeout > limit {
+		o.RestoreTimeout = limit
+	}
+	if limit := o.Timeout / 4; o.ReadyTimeout > limit {
+		o.ReadyTimeout = limit
+	}
+	if limit := o.Timeout / 8; o.CheckTimeout > limit {
+		o.CheckTimeout = limit
 	}
 	if o.Pull == "" {
 		o.Pull = "missing"
@@ -601,8 +664,18 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 		info, err := os.Stat(src)
 		if err != nil {
 			if in.Required {
+				// The highest-traffic error in the tool: a recipe's default paths
+				// are the recipe author's layout, and most people's differ. Naming
+				// the flag that fixes it, and the command that lists what the recipe
+				// wants, is the difference between a second command and a dead end.
+				// See docs/review/ux.md UX-03.
 				return desc, warnings, fmt.Errorf(
-					"required input %q: no matching files found for %s in the backup", in.Name, in.BackupPath)
+					"required input %q: no matching files found for %s in the backup.\n"+
+						"  A recipe default path is a guess at your layout. Point this input\n"+
+						"  at the path your backup actually uses:\n"+
+						"      --input %s=/your/path\n"+
+						"  `restored recipe show %s --inputs-only` lists every input this recipe wants",
+					in.Name, in.BackupPath, in.Name, res.Recipe.Metadata.Name)
 			}
 			continue
 		}
@@ -661,10 +734,17 @@ func repositoryLabel(from string) string {
 
 // attachHint matches the catalog against what the run produced. At most one hint is
 // ever shown, and it never changes the verdict.
+// attachHint tolerates a nil resolution: the earliest failures - an unreachable
+// docker daemon, a workspace that cannot be created - happen before the recipe has
+// been resolved, and those are exactly the ones the catalog has the most to say
+// about.
 func (o *Options) attachHint(rep *report.Report, res *recipe.Resolved) {
 	catalog, err := hints.Builtin()
 	if err != nil {
 		return
+	}
+	if res == nil {
+		res = &recipe.Resolved{Recipe: o.Recipe}
 	}
 	if o.HintsFile != "" {
 		extra, err := hints.Load(o.HintsFile)

@@ -1282,3 +1282,68 @@ review this class of change should get.
 
 `internal/recipe/safety/bypass_test.go` holds one test per bypass above, so a
 regression names the finding it re-opens.
+
+## ADR-058: A run that ran out of time has no opinion about the backup
+
+**Status:** accepted
+**Extends:** SPEC.md sections 4.2 and 5.1
+**Found by:** the session 4 architecture review (`docs/review/architecture.md` ARCH-01
+and ARCH-04) and the UX review (`docs/review/ux.md` UX-01)
+
+**Context.** Two findings, one root cause: the runner decided what a failure *meant*
+from *where* it happened rather than from *why*.
+
+Every stage from LOAD DUMPS onward routed its error through `fail()`, which set
+`RESTORE_UNUSABLE` and exit 1 unconditionally. A cancelled `runCtx` is
+indistinguishable from a real failure at that point - the probe records `context
+deadline exceeded`, the stage is marked failed, and the report accuses the backup. The
+`restored --help` text said the opposite, promising exit 2 for a "timeout before any
+check could run".
+
+The defaults made it reachable rather than theoretical: `--timeout 15m` with
+`--restore-timeout 10m` and `--ready-timeout 5m` inside it left nothing for COMPOSE
+UP, LOAD DUMPS and the checks. A 40 GB restore that took nine minutes - inside its own
+budget, so it succeeded - ran the whole run out of time during the ready probes, and a
+cron job paged somebody at 03:00 about a backup that was fine.
+
+The mirror image of the same mistake: `attachHint` was called only from the two exit-1
+paths, so every catalog rule about a *tool* error was unreachable code. Four of the
+seventeen shipped rules could never fire, including the one for an unreachable docker
+daemon and the one for a path that is not in the snapshot. `cli/check.go` then
+suppressed the TTY report whenever the run returned an error, while `--report` still
+wrote the JSON - so a machine consumer saw more than the human did. ADR-011 sells the
+hint catalog as "the easiest useful contribution to restored", and a quarter of the
+examples a contributor would read from were dead.
+
+**Decision.** Three changes.
+
+1. `fail()` asks `runCtx.Err()` before it sets a verdict. A deadline or a cancellation
+   produces `ERROR` and exit 2 with a message naming the stage and the budget, and
+   saying plainly that nothing is known about the backup because the drill did not
+   finish. Only a real stage failure still produces `RESTORE_UNUSABLE`.
+
+2. The default `--timeout` is 30 minutes, and the stage budgets are clamped to fit
+   inside whatever it is: restore to half, ready to a quarter, a check to an eighth.
+   Clamping is downward only, so an explicit `--restore-timeout 30s` is left where the
+   user put it. SPEC.md 4.2's per-state budgets sum to roughly 27 minutes, which is
+   what 30 is drawn from.
+
+3. `attachHint` moves into a deferred finaliser registered before anything can fail,
+   so every exit path gets a hint match - including the ones that never reach a
+   verdict. It tolerates a nil resolution, because the earliest failures happen before
+   the recipe is resolved and those are the ones the catalog has most to say about.
+   `cli/check.go` renders the report whenever the run got far enough to have an id,
+   and stops repeating the error underneath it.
+
+**Consequences.** Exit 1 now means what the help says it means: the drill finished and
+the restore was unusable. That is the number people put in cron jobs and alerting
+rules, and it was wrong in the one case where a false alarm is most expensive.
+
+A run can now take twice as long before it gives up, which is the right trade for a
+tool whose slowest supported operation is restoring somebody's entire Nextcloud.
+
+Four hint rules that were shipped, tested and unreachable now fire. The most common
+first failure - a recipe default path that is not the user's layout - reaches the user
+as a report with the stages, the workspace, a message naming `--input`, and a hint
+carrying a runnable `restic ls latest` command. It used to be one line of prose with
+nothing to do next.

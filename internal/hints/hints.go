@@ -153,9 +153,16 @@ func (r *Rule) RenderCommands(ctx CommandContext) []string {
 	for name, p := range ctx.Inputs {
 		inputs[name] = map[string]any{"path": p}
 	}
+	// `restic ls  | head -50` helps nobody. When the run failed before it selected a
+	// snapshot - which is when these hints fire most - `latest` is what the user
+	// would have typed anyway.
+	snapshotID := ctx.SnapshotID
+	if snapshotID == "" {
+		snapshotID = "latest"
+	}
 	data := map[string]any{
 		"input":    inputs,
-		"snapshot": map[string]any{"id": ctx.SnapshotID},
+		"snapshot": map[string]any{"id": snapshotID},
 	}
 	var out []string
 	for _, cmd := range r.Commands {

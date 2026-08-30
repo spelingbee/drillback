@@ -210,7 +210,7 @@ Flags:
                                 (repeatable). See `restored recipe show <name>` for
                                 the input names a recipe declares.
       --set key=value           Override a recipe variable (repeatable)
-      --timeout duration        Wall-clock budget for the whole run (default 15m)
+      --timeout duration        Wall-clock budget for the whole run (default 30m)
       --restore-timeout duration  Budget for the restore stage (default 10m)
       --ready-timeout duration  Budget for all ready probes together (default 5m)
       --check-timeout duration  Per-check timeout (default 60s)

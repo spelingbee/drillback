@@ -84,7 +84,14 @@ func (r *Report) WriteTTY(w io.Writer, o Options) error {
 		}
 		fmt.Fprintln(b, strings.TrimRight(line, " "))
 		if st.Error != "" {
-			for _, l := range wrap(st.Error, Width-14) {
+			// The first line only. A stage row says which stage failed and roughly
+			// why; the error block below says the whole thing, including the
+			// instructions, and printing both in full says everything twice.
+			headline := st.Error
+			if i := strings.IndexByte(headline, '\n'); i >= 0 {
+				headline = headline[:i]
+			}
+			for _, l := range wrap(headline, Width-14) {
 				fmt.Fprintf(b, "  %-10s %s\n", "", l)
 			}
 		}
