@@ -60,8 +60,8 @@ This is a proposal, not a recipe. Next:
   1. work through the TODO markers in %s
   2. make one check data-sensitive: a check that passes against an empty database
      proves nothing about a restore, and the round-trip harness will refuse it
-  3. restored recipe validate %s
-  4. restored recipe test %s     # this is what CI runs
+  3. drillback recipe validate %s
+  4. drillback recipe test %s     # this is what CI runs
 `, filepath.Join(target, "recipe.yaml"), target, target)
 	return nil
 }

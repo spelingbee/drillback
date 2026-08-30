@@ -68,8 +68,8 @@ source|1d76db|Reading a backup: restic, borg, kopia, a tarball
 notifier|5319e7|Telling somebody the drill failed
 hint|fbca04|A rule in docs/hints.yaml that turns an error into an explanation
 check-type|c2e0c6|The expect vocabulary a recipe asserts with
-bug|d73a4a|restored did something wrong
-enhancement|a2eeef|Something restored should be able to do and cannot
+bug|d73a4a|drillback did something wrong
+enhancement|a2eeef|Something drillback should be able to do and cannot
 '
 
 printf '%s\n' "$LABELS" | while IFS='|' read -r name colour description; do

@@ -1,4 +1,4 @@
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -26,7 +26,7 @@ inputs:
     default_path: /var/www/FreshRSS/data
     required: true
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: freshrss:/var/www/FreshRSS/data
 
   extensions:
@@ -38,7 +38,7 @@ inputs:
     default_path: /var/www/FreshRSS/extensions
     required: true
     mount:
-      env: RESTORED_INPUT_extensions
+      env: DRILLBACK_INPUT_extensions
       into: freshrss:/var/www/FreshRSS/extensions
 
   db:

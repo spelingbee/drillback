@@ -26,7 +26,7 @@ Two things the tables cannot tell you:
 
 | field | type | required | constraints |
 |---|---|---|---|
-| `apiVersion` | const | yes | must be `restored/v1` |
+| `apiVersion` | const | yes | must be `drillback/v1` |
 | `checks` | array of `check` | yes | at least 1 items |
 | `inputs` | object | yes | at least 1 keys; keys match `^[a-z][a-z0-9_]*$` |
 | `kind` | const | yes | must be `Recipe` |

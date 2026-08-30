@@ -3,7 +3,7 @@ package harness
 import (
 	"testing"
 
-	"github.com/spelingbee/restored/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 func intp(v int) *int { return &v }

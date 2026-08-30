@@ -26,7 +26,7 @@ you would have to upgrade anyway.
 **The official docker-compose.yml** mounts one volume at `/var/www/html`, so both
 inputs are inside it:
 
-    restored check --recipe nextcloud \
+    drillback check --recipe nextcloud \
       --input data=/var/lib/docker/volumes/nextcloud_nextcloud/_data/data \
       --input config=/var/lib/docker/volumes/nextcloud_nextcloud/_data/config \
       --input db=/srv/backups/nextcloud/db.sql
@@ -46,7 +46,7 @@ recipe does not fit it; restoring an AIO backup is AIO's own command.
 installer notices when it was given a PostgreSQL superuser and creates a dedicated
 role for itself called `oc_<your admin user>`, which then owns every table. A plain
 dump carries `ALTER ... OWNER TO oc_admin` into a database where that role does not
-exist and psql stops. If you restore without it, `restored` will tell you exactly that:
+exist and psql stops. If you restore without it, `drillback` will tell you exactly that:
 hint `postgres/role-missing`.
 
 ## What restored changes about your instance, and why
@@ -89,7 +89,7 @@ your files.
 
 ## Round trip
 
-    restored recipe test ./recipes/nextcloud
+    drillback recipe test ./recipes/nextcloud
 
 The harness installs Nextcloud with `occ maintenance:install`, which is the command
 its own documentation gives for an unattended install, and which creates the schema,

@@ -13,7 +13,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	restored "github.com/spelingbee/restored"
+	drillback "github.com/spelingbee/drillback"
 )
 
 // Rule is one entry in the catalog.
@@ -53,7 +53,7 @@ type Subject struct {
 
 // Builtin is the catalog compiled into the binary.
 func Builtin() (*Catalog, error) {
-	raw, err := restored.Hints.ReadFile("docs/hints.yaml")
+	raw, err := drillback.Hints.ReadFile("docs/hints.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("reading the built-in hint catalog: %w", err)
 	}

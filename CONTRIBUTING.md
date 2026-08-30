@@ -1,4 +1,4 @@
-# Contributing to restored
+# Contributing to drillback
 
 The one number this project is trying to move is **the number of different people with
 a merged pull request**. Not stars, not features. Everything below is arranged around
@@ -11,9 +11,9 @@ reporting on its own.
 
 ## Add a recipe in 10 minutes
 
-A recipe teaches `restored` how to stand one application up from a backup and how to
+A recipe teaches `drillback` how to stand one application up from a backup and how to
 tell whether the restore actually worked. It is two YAML files. You do not need to
-know Go, and you do not need to know anything about `restored`'s internals.
+know Go, and you do not need to know anything about `drillback`'s internals.
 
 ### 0. Get the tool (2 minutes)
 
@@ -21,16 +21,16 @@ You need **Docker** with compose v2, **restic**, and **Go 1.27** (until there ar
 released binaries).
 
 ```sh
-git clone https://github.com/spelingbee/restored
-cd restored
-go build -o bin/restored ./cmd/restored
-./bin/restored version
+git clone https://github.com/spelingbee/drillback
+cd drillback
+go build -o bin/drillback ./cmd/drillback
+./bin/drillback version
 ```
 
 ### 1. Start from the compose file you already have (1 minute)
 
 ```sh
-./bin/restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+./bin/drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml
 ```
 
 That reads your compose file and writes `recipes/myapp/`: your volumes become inputs,
@@ -65,7 +65,7 @@ inputs:
     default_path: /srv/myapp/data
     required: true
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: app:/data      # service:path
 ```
 
@@ -79,7 +79,7 @@ restore fell short rather than only the first.
 
 > **At least one check must FAIL against an empty application.**
 >
-> This is not a style rule. `restored recipe test` starts your stack with empty inputs
+> This is not a style rule. `drillback recipe test` starts your stack with empty inputs
 > and rejects the recipe if everything passes, because a recipe whose checks pass
 > against an empty database manufactures confidence — which is worse than having no
 > recipe at all.
@@ -106,11 +106,11 @@ Then open `recipes/myapp/compose.yaml`. The rules, all mechanically enforced:
   run's internal network;
 - no `privileged:`, `network_mode:`, `pid:`, `ipc:`, `userns_mode:`, `devices:`,
   `cgroup_parent:`, `build:`, `extends:`, `external_links:`;
-- every bind mount's source is a `${RESTORED_*}` placeholder, so it resolves inside the
+- every bind mount's source is a `${DRILLBACK_*}` placeholder, so it resolves inside the
   run workspace and nowhere else;
 - the network is `internal: true`;
 - every image carries a real tag - not `latest`, which moves, and a digest is better;
-- every compose key you use is one restored knows about. The safety schema is an
+- every compose key you use is one drillback knows about. The safety schema is an
   allow-list, so a key nobody has considered is rejected by name rather than granted
   silently (ADR-057). If your application genuinely needs one that is not there, open
   an issue - that is a one-line change with a reason attached, not a wall.
@@ -129,8 +129,8 @@ actually happened.
 ### 3. Run what CI runs (2 minutes, or twenty)
 
 ```sh
-./bin/restored recipe validate ./recipes/myapp --strict
-./bin/restored recipe test ./recipes/myapp
+./bin/drillback recipe validate ./recipes/myapp --strict
+./bin/drillback recipe test ./recipes/myapp
 ```
 
 `recipe test` is the whole review process, mechanised:
@@ -141,7 +141,7 @@ actually happened.
   and exit 2.
 - **Stage B, positive.** A fresh stack starts, `test.seed` runs, `test.export` runs,
   the result goes into a throwaway restic repository, everything is torn down, and then
-  an ordinary `restored check` runs against that repository. Every check must pass.
+  an ordinary `drillback check` runs against that repository. Every check must pass.
 
 Stage B ends by running the command a user runs. There is no test-only restore path, so
 the harness cannot pass while the real one is broken.
@@ -149,10 +149,10 @@ the harness cannot pass while the real one is broken.
 Useful while you are working:
 
 ```sh
-./bin/restored recipe test ./recipes/myapp --stage a          # just the negative half
-./bin/restored recipe test ./recipes/myapp --keep             # leave the stack up to poke at
-./bin/restored recipe test ./recipes/myapp --timeout 30m      # a slow first-run migration
-./bin/restored recipe test ./recipes/myapp --log-level debug  # every command, on stderr
+./bin/drillback recipe test ./recipes/myapp --stage a          # just the negative half
+./bin/drillback recipe test ./recipes/myapp --keep             # leave the stack up to poke at
+./bin/drillback recipe test ./recipes/myapp --timeout 30m      # a slow first-run migration
+./bin/drillback recipe test ./recipes/myapp --log-level debug  # every command, on stderr
 ```
 
 With `--keep` you get a workspace path and a compose project name; `docker compose -p
@@ -174,7 +174,7 @@ git push -u origin recipe-myapp
 gh pr create
 ```
 
-If `restored check` already printed you a prefilled GitHub link after a successful run,
+If `drillback check` already printed you a prefilled GitHub link after a successful run,
 that link opens the file-creation editor with your `recipe.yaml` already in it. It
 carries only `recipe.yaml`, so you will still need to add `compose.yaml` — for anything
 non-trivial, the fork-and-branch route above is less work, not more.
@@ -186,7 +186,7 @@ non-trivial, the fork-and-branch route above is less work, not more.
 | workflow | when | what it does |
 |---|---|---|
 | `ci.yml` | every PR | gofmt, `go vet`, golangci-lint, the English-only check, the unit suite on Linux/macOS/Windows, and the integration suite |
-| `recipes.yml` | PRs touching `recipes/**` | works out which recipes changed and runs `restored recipe test` on each, in a matrix, one verdict per recipe |
+| `recipes.yml` | PRs touching `recipes/**` | works out which recipes changed and runs `drillback recipe test` on each, in a matrix, one verdict per recipe |
 | `recipe-health.yml` | weekly | runs every recipe and opens an issue when one breaks |
 | `refresh-registry.yml` | after your PR merges | regenerates the recipe tables in `recipes/README.md` and `README.md`, so you never have to |
 
@@ -262,7 +262,7 @@ cannot write without it.
 
 ### A source
 
-`restored` reads restic repositories and already-restored directories. Borg, kopia,
+`drillback` reads restic repositories and already-restored directories. Borg, kopia,
 rsnapshot and plain tarballs are all missing. A source implements the small interface
 in `internal/source`, and `internal/source/dir` is 40 lines if you want to see the
 shape.
@@ -319,7 +319,7 @@ By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Where to ask a question
 
-**[Discussions](https://github.com/spelingbee/restored/discussions).** That is the place
+**[Discussions](https://github.com/spelingbee/drillback/discussions).** That is the place
 for "does this fit my setup?", "is my backup the right shape for a recipe?", and
 anything you are still working out. Same promise as an issue: a first response within
 24 hours.

@@ -1,4 +1,4 @@
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -26,7 +26,7 @@ inputs:
     default_path: /backup
     required: true
     mount:
-      env: RESTORED_INPUT_backups
+      env: DRILLBACK_INPUT_backups
       into: restore:/backup
 
 ready:
@@ -59,7 +59,7 @@ checks:
   - id: playlist-restored
     title: The playlist is back, under its owner
     kind: http
-    url: http://navidrome:{{ .vars.nd_port }}/rest/getPlaylists?u=drilladmin&p=Drill-Password-1&v=1.16.1&c=restored-drill&f=json
+    url: http://navidrome:{{ .vars.nd_port }}/rest/getPlaylists?u=drilladmin&p=Drill-Password-1&v=1.16.1&c=drillback-drill&f=json
     expect:
       status: 200
       body_matches: "drill-canary-playlist"
@@ -67,7 +67,7 @@ checks:
   - id: library-rows-restored
     title: The library catalogue is back
     kind: http
-    url: http://navidrome:{{ .vars.nd_port }}/rest/search3?u=drilladmin&p=Drill-Password-1&v=1.16.1&c=restored-drill&f=json&query=Drill
+    url: http://navidrome:{{ .vars.nd_port }}/rest/search3?u=drilladmin&p=Drill-Password-1&v=1.16.1&c=drillback-drill&f=json&query=Drill
     expect:
       status: 200
       body_matches: "Drill Operator"

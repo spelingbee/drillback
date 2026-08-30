@@ -16,16 +16,16 @@ import (
 	"time"
 )
 
-// LabelRun is set on every object restored creates, so orphans from a crashed process
-// are always findable with `docker ps -aq --filter label=com.restored.run`.
-const LabelRun = "com.restored.run"
+// LabelRun is set on every object drillback creates, so orphans from a crashed process
+// are always findable with `docker ps -aq --filter label=com.drillback.run`.
+const LabelRun = "com.drillback.run"
 
 // Client drives one compose project.
 type Client struct {
 	Project string
 	File    string
 	RunID   string
-	// Profiles are the compose profiles this client activates. `restored check`
+	// Profiles are the compose profiles this client activates. `drillback check`
 	// activates none; the round-trip harness activates "test", which is how a
 	// recipe's seeder service exists during `recipe test` and nowhere else.
 	Profiles []string
@@ -186,7 +186,7 @@ func (c *Client) Services(ctx context.Context) ([]string, error) {
 }
 
 // NetworkName returns the docker network compose created for this project. Checks run
-// from a helper container attached to it, which is how restored reaches an
+// from a helper container attached to it, which is how drillback reaches an
 // application it has deliberately not published a port for.
 func (c *Client) NetworkName(ctx context.Context) (string, error) {
 	res, err := c.run(ctx, nil, "network", "ls",

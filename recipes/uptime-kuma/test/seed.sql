@@ -8,4 +8,4 @@ INSERT INTO monitor (name, type, url, interval, active, user_id)
 VALUES ('drill monitor', 'http', 'http://kuma:3001/', 60, 0, 1);
 
 INSERT INTO heartbeat (monitor_id, status, msg, time, ping, important, duration)
-VALUES (1, 1, 'seeded by restored recipe test', datetime('now'), 12, 1, 60);
+VALUES (1, 1, 'seeded by drillback recipe test', datetime('now'), 12, 1, 60);

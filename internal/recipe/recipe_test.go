@@ -7,7 +7,7 @@ import (
 
 // minimalRecipe is the smallest document the schema accepts. Every negative case below
 // is this document with exactly one thing wrong, so a failure names the constraint.
-const minimalRecipe = `apiVersion: restored/v1
+const minimalRecipe = `apiVersion: drillback/v1
 kind: Recipe
 metadata:
   name: sample
@@ -19,7 +19,7 @@ inputs:
     title: The data directory
     default_path: /srv/sample/data
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: app:/data
 checks:
   - id: app-answers
@@ -56,7 +56,7 @@ func TestSchemaRejects(t *testing.T) {
 		old, new string
 		want     string
 	}{
-		{"wrong apiVersion", "apiVersion: restored/v1", "apiVersion: restored/v2", "apiVersion"},
+		{"wrong apiVersion", "apiVersion: drillback/v1", "apiVersion: drillback/v2", "apiVersion"},
 		{"wrong kind", "kind: Recipe", "kind: Cookbook", "kind"},
 		{"name with an underscore", "name: sample", "name: not_a_name", "metadata.name"},
 		{"name too short", "name: sample", "name: ab", "metadata.name"},
@@ -65,8 +65,8 @@ func TestSchemaRejects(t *testing.T) {
 		{"unknown input kind", "    kind: dir", "    kind: tarball", "inputs.data.kind"},
 		{"relative default_path", "default_path: /srv/sample/data", "default_path: srv/sample/data", "default_path"},
 		{"default_path escaping upwards", "default_path: /srv/sample/data", "default_path: /srv/../etc", "default_path"},
-		{"dir input without a mount", "    mount:\n      env: RESTORED_INPUT_data\n      into: app:/data", "", "mount"},
-		{"mount env not namespaced", "env: RESTORED_INPUT_data", "env: DATA_DIR", "env"},
+		{"dir input without a mount", "    mount:\n      env: DRILLBACK_INPUT_data\n      into: app:/data", "", "mount"},
+		{"mount env not namespaced", "env: DRILLBACK_INPUT_data", "env: DATA_DIR", "env"},
 		{"mount into without a service", "into: app:/data", "into: /data", "into"},
 		{"check id with capitals", "id: app-answers", "id: App-Answers", "checks.0.id"},
 		{"unknown check kind", "    kind: http\n    url: http://app:8080/", "    kind: telepathy", "checks.0"},
@@ -198,7 +198,7 @@ func TestTemplateContext(t *testing.T) {
 		{"http://app:{{ .vars.port }}/", "http://app:3000/"},
 		{"{{ .inputs.db.path }}", "/ws/inputs/db"},
 		{"{{ .inputs.db.kind }}", "sqlite"},
-		{"restored-{{ .run.id }}", "restored-abc123"},
+		{"drillback-{{ .run.id }}", "drillback-abc123"},
 		{"{{ printf \"%s-%d\" .vars.name .vars.port }}", "gitea-3000"},
 		{"{{ .vars.blank | default \"fallback\" }}", "fallback"},
 		{"{{ .vars.name | default \"fallback\" }}", "gitea"},

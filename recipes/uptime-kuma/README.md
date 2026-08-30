@@ -19,12 +19,12 @@ leaving `kuma.db-wal` behind.
 **The docker-compose.yml from Kuma's docs** uses a named volume,
 `uptime-kuma:/app/data`:
 
-    restored check --recipe uptime-kuma \
+    drillback check --recipe uptime-kuma \
       --input data=/var/lib/docker/volumes/uptime-kuma/_data
 
 **A bind mount** (`./data:/app/data`) is whatever directory that is:
 
-    restored check --recipe uptime-kuma --input data=/opt/uptime-kuma/data
+    drillback check --recipe uptime-kuma --input data=/opt/uptime-kuma/data
 
 ## Back up the WAL file too
 
@@ -34,7 +34,7 @@ ones that make the dashboard look alive - are usually in `kuma.db-wal`, not in
 `kuma.db` gives you a database that opens, passes an integrity check, and has lost the
 recent history.
 
-`restored` reports that case as a hint rather than as a mystery: see `docs/hints.yaml`,
+`drillback` reports that case as a hint rather than as a mystery: see `docs/hints.yaml`,
 rule `sqlite/wal-missing`.
 
 ## What the checks prove
@@ -63,7 +63,7 @@ not notice a schema change that Kuma handles on startup.
 
 ## Round trip
 
-    restored recipe test ./recipes/uptime-kuma
+    drillback recipe test ./recipes/uptime-kuma
 
 Stage A of this recipe reports **PASS-BY-STARTUP-REFUSAL**: given a zero-length
 `kuma.db`, Kuma does not start at all rather than starting empty. That is an accepted

@@ -68,11 +68,11 @@ func Main() int {
 	var ee *exitError
 	if errors.As(err, &ee) {
 		if ee.err != nil && strings.TrimSpace(ee.err.Error()) != "" {
-			fmt.Fprintf(os.Stderr, "restored: %v\n", ee.err)
+			fmt.Fprintf(os.Stderr, "drillback: %v\n", ee.err)
 		}
 		return ee.code
 	}
-	fmt.Fprintf(os.Stderr, "restored: %v\n", err)
+	fmt.Fprintf(os.Stderr, "drillback: %v\n", err)
 	return ExitError
 }
 
@@ -87,7 +87,7 @@ func interruptContext() (context.Context, func()) {
 		fmt.Fprintln(os.Stderr, "\nrestored: interrupted, tearing down (press Ctrl-C again to leave everything in place)")
 		cancel()
 		<-ch
-		fmt.Fprintln(os.Stderr, "restored: leaving the workspace and the compose project in place")
+		fmt.Fprintln(os.Stderr, "drillback: leaving the workspace and the compose project in place")
 		os.Exit(ExitInterrupted)
 	}()
 	return ctx, func() {
@@ -99,9 +99,9 @@ func interruptContext() (context.Context, func()) {
 func newRoot() *cobra.Command {
 	g := &globals{}
 	root := &cobra.Command{
-		Use:   "restored",
-		Short: "restored — your backup is a lie until it boots.",
-		Long: "restored — your backup is a lie until it boots.\n\n" +
+		Use:   "drillback",
+		Short: "drillback — your backup is a lie until it boots.",
+		Long: "drillback — your backup is a lie until it boots.\n\n" +
 			"Restores the latest snapshot of a backup into a throwaway, isolated environment,\n" +
 			"starts the application with docker compose, and verifies that it actually works.",
 		SilenceUsage:  true,
@@ -109,7 +109,7 @@ func newRoot() *cobra.Command {
 		Version:       Version,
 	}
 	root.PersistentFlags().StringVar(&g.configPath, "config", "",
-		"Path to restored.yaml. Default search order: ./restored.yaml, $XDG_CONFIG_HOME/restored/restored.yaml, /etc/restored/restored.yaml")
+		"Path to drillback.yaml. Default search order: ./drillback.yaml, $XDG_CONFIG_HOME/drillback/drillback.yaml, /etc/drillback/drillback.yaml")
 	root.PersistentFlags().BoolVar(&g.json, "json", false,
 		"Emit the machine-readable report on stdout; human output goes to stderr")
 	root.PersistentFlags().StringVar(&g.logLevel, "log-level", "info", "trace|debug|info|warn|error")
@@ -134,7 +134,7 @@ func keyValues(pairs []string, flag string) (map[string]string, error) {
 	return out, nil
 }
 
-// CheckExitCodes is the contract for `restored check` and for the root command, which
+// CheckExitCodes is the contract for `drillback check` and for the root command, which
 // is a synonym for it in a user's head. It is the only place the three-way split is
 // true: `recipe validate`, `recipe show`, `recipe init` and `version` return 0 or 2
 // and never 1, so promising them "1 means checks failed" invites a shell script to
@@ -148,7 +148,7 @@ Exit codes:
        run exceeded --timeout before it could reach a verdict
   130  interrupted - the workspace and the compose project may still exist
 
-Docs: https://github.com/spelingbee/restored
+Docs: https://github.com/spelingbee/drillback
 `
 
 // RecipeExitCodes is the contract for the recipe subcommands that only ever answer
@@ -158,7 +158,7 @@ Exit codes:
   0    ok
   2    the recipe is invalid, or the command could not be run as written
 
-Docs: https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md
+Docs: https://github.com/spelingbee/drillback/blob/main/CONTRIBUTING.md
 `
 
 // AddExitCodes appends an exit-code footer to one command's help, rather than to the

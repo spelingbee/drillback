@@ -1,8 +1,8 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   # FreshRSS runs as www-data and keeps its data directory group-writable. A restored
   # tree carries the uids of the machine it came from, or none at all, so the group has
@@ -18,9 +18,9 @@ services:
         chmod -R u=rwX,g=rwX,o= /var/www/FreshRSS/data
         exit 0
     volumes:
-      - ${RESTORED_INPUT_data}:/var/www/FreshRSS/data
-      - ${RESTORED_INPUT_extensions}:/var/www/FreshRSS/extensions
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/var/www/FreshRSS/data
+      - ${DRILLBACK_INPUT_extensions}:/var/www/FreshRSS/extensions
+    networks: [drillback]
 
   freshrss:
     image: freshrss/freshrss:1.29.1
@@ -36,9 +36,9 @@ services:
       # the image installs itself over an empty volume, and the checks below would be
       # measuring a fresh install. `recipe test` seeds through the CLI instead.
     volumes:
-      - ${RESTORED_INPUT_data}:/var/www/FreshRSS/data
-      - ${RESTORED_INPUT_extensions}:/var/www/FreshRSS/extensions
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/var/www/FreshRSS/data
+      - ${DRILLBACK_INPUT_extensions}:/var/www/FreshRSS/extensions
+    networks: [drillback]
 
   # The feed under subscription. It exists so that a restore check does not depend on
   # somebody else's website, and because this stack has no route out.
@@ -63,8 +63,8 @@ services:
         </channel></rss>
         XML
         exec nginx -g 'daemon off;'
-    networks: [restored]
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

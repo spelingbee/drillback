@@ -1,16 +1,16 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`
 # plus any --set overrides.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   db:
     image: postgres:16.4-alpine
     environment:
-      POSTGRES_DB: ${RESTORED_VAR_db_name}
-      POSTGRES_USER: ${RESTORED_VAR_db_user}
-      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+      POSTGRES_DB: ${DRILLBACK_VAR_db_name}
+      POSTGRES_USER: ${DRILLBACK_VAR_db_user}
+      POSTGRES_PASSWORD: ${DRILLBACK_VAR_db_password}
     # Speed only. This database is thrown away; durability is not a goal. These are
     # postmaster settings, so they go on the server's own command line: putting them
     # in PGOPTIONS breaks the image's own initialisation, which connects as a client.
@@ -24,7 +24,7 @@ services:
       - synchronous_commit=off
     volumes:
       - db-data:/var/lib/postgresql/data
-    networks: [restored]
+    networks: [drillback]
 
   gitea:
     image: gitea/gitea:1.22.6
@@ -36,22 +36,22 @@ services:
       USER_GID: "1000"
       GITEA__database__DB_TYPE: postgres
       GITEA__database__HOST: db:5432
-      GITEA__database__NAME: ${RESTORED_VAR_db_name}
-      GITEA__database__USER: ${RESTORED_VAR_db_user}
-      GITEA__database__PASSWD: ${RESTORED_VAR_db_password}
-      GITEA__server__ROOT_URL: http://gitea:${RESTORED_VAR_gitea_port}/
+      GITEA__database__NAME: ${DRILLBACK_VAR_db_name}
+      GITEA__database__USER: ${DRILLBACK_VAR_db_user}
+      GITEA__database__PASSWD: ${DRILLBACK_VAR_db_password}
+      GITEA__server__ROOT_URL: http://gitea:${DRILLBACK_VAR_gitea_port}/
       # The network is internal; without offline mode Gitea blocks on fetching
       # avatars and assets from the internet and the ready probe times out.
       GITEA__server__OFFLINE_MODE: "true"
       GITEA__security__INSTALL_LOCK: "true"
       GITEA__cron__ENABLED: "false"
     volumes:
-      - ${RESTORED_INPUT_data}:/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/data
+    networks: [drillback]
 
 volumes:
   db-data:
 
 networks:
-  restored:
+  drillback:
     internal: true

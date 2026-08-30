@@ -8,7 +8,7 @@ body:
       value: |
         A recipe is two YAML files and no Go. If you run this application yourself,
         you are already the best-placed person to write one — the
-        [10-minute guide](https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes)
+        [10-minute guide](https://github.com/spelingbee/drillback/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes)
         starts from the `docker-compose.yml` you already have.
 
         If you are asking rather than writing, that is fine too. What makes a request
@@ -36,7 +36,7 @@ body:
       label: The compose file you run
       description: >
         Paste it, with your secrets removed. This is the single most useful thing in
-        the issue: `restored recipe init --compose` turns it straight into a draft.
+        the issue: `drillback recipe init --compose` turns it straight into a draft.
       render: yaml
     validations:
       required: false
@@ -48,7 +48,7 @@ body:
       options:
         - label: PostgreSQL
         - label: SQLite
-        - label: MySQL or MariaDB (restored has no source for these yet)
+        - label: MySQL or MariaDB (drillback has no source for these yet)
         - label: Files on disk only
         - label: Something else, described below
 

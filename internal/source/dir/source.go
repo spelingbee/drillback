@@ -4,7 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/spelingbee/restored/internal/source"
+	"github.com/spelingbee/drillback/internal/source"
 )
 
 // Source is the dir implementation of source.Source: a tree that is already restored

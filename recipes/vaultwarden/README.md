@@ -20,19 +20,19 @@ the bytes you need are in three files, not one.
 If your compose file lives in `/opt/vaultwarden`, the directory to back up is
 `/opt/vaultwarden/vw-data`:
 
-    restored check --recipe vaultwarden --input data=/opt/vaultwarden/vw-data
+    drillback check --recipe vaultwarden --input data=/opt/vaultwarden/vw-data
 
 **A named volume** (`vaultwarden_data:/data`) puts it under
 `/var/lib/docker/volumes/vaultwarden_data/_data`. Backing that path up directly works,
 and so does this:
 
-    restored check --recipe vaultwarden --input data=/var/lib/docker/volumes/vaultwarden_data/_data
+    drillback check --recipe vaultwarden --input data=/var/lib/docker/volumes/vaultwarden_data/_data
 
 **A bare-metal install** with `DATA_FOLDER` set puts it wherever that says.
 
 Whatever the path, the two inputs move together:
 
-    restored check --recipe vaultwarden \
+    drillback check --recipe vaultwarden \
       --input data=/mnt/backup/vaultwarden \
       --input db=/mnt/backup/vaultwarden/db.sqlite3
 
@@ -49,7 +49,7 @@ backup command, which takes a consistent copy:
 
     sqlite3 /data/db.sqlite3 ".backup '/data/backup/db.sqlite3'"
 
-`restored` reports a missing `-wal` as a hint, not a guess: see `docs/hints.yaml`,
+`drillback` reports a missing `-wal` as a hint, not a guess: see `docs/hints.yaml`,
 rule `sqlite/wal-missing`.
 
 ## What the checks prove
@@ -69,7 +69,7 @@ a missing `rsa_key.pem` invalidates every token every client is holding.
 
 ## Round trip
 
-    restored recipe test ./recipes/vaultwarden
+    drillback recipe test ./recipes/vaultwarden
 
 The harness registers an account through `POST /api/accounts/register`, which is the
 request the web vault itself makes. The key material it sends is nonsense, because the

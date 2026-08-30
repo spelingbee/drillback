@@ -20,9 +20,9 @@ services:
         unzip -o /backups/$(cd /backups && ls -1 changedetection-backup-*.zip | tail -1) -d /datastore
         ls -la /datastore
     volumes:
-      - ${RESTORED_INPUT_backups}:/backups:ro
+      - ${DRILLBACK_INPUT_backups}:/backups:ro
       - changedetection-data:/datastore
-    networks: [restored]
+    networks: [drillback]
 
   changedetection:
     image: dgtlmoon/changedetection.io:0.55.8
@@ -30,15 +30,15 @@ services:
       restore:
         condition: service_completed_successfully
     environment:
-      BASE_URL: http://changedetection:${RESTORED_VAR_cd_port}
+      BASE_URL: http://changedetection:${DRILLBACK_VAR_cd_port}
       ALLOW_IANA_RESTRICTED_ADDRESSES: "true"
     volumes:
       - changedetection-data:/datastore
-    networks: [restored]
+    networks: [drillback]
 
 volumes:
   changedetection-data:
 
 networks:
-  restored:
+  drillback:
     internal: true

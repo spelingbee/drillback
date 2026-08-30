@@ -5,15 +5,15 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/spelingbee/restored/internal/compose"
+	"github.com/spelingbee/drillback/internal/compose"
 )
 
-// LabelCompose stamps com.restored.run on every service, network and volume the run
+// LabelCompose stamps com.drillback.run on every service, network and volume the run
 // creates, so orphans from a crashed process are always findable:
 //
-//	docker ps -aq --filter label=com.restored.run
+//	docker ps -aq --filter label=com.drillback.run
 //
-// It runs on the interpolated file restored writes into the workspace, never on the
+// It runs on the interpolated file drillback writes into the workspace, never on the
 // recipe's own compose.yaml.
 func LabelCompose(raw []byte, runID string) ([]byte, error) {
 	var doc map[string]any

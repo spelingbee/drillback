@@ -1,4 +1,4 @@
-restored 0.1.0 · recipe gitea · run q4x8b1na
+drillback 0.1.0 · recipe gitea · run q4x8b1na
 
   source     restic  sftp:backup@nas.lan:/srv/restic
   snapshot   4a7f1c2e  2026-09-13 02:14:07  host=hypervisor  tags=[gitea]

@@ -4,9 +4,9 @@
 
 Every recipe here has passed the round-trip harness: its checks fail against an
 empty stack, and pass after its data has been seeded, backed up, restored, and
-checked by the same `restored check` a user runs.
+checked by the same `drillback check` a user runs.
 
-    restored check --recipe <name> --source restic --from /srv/backups/restic
+    drillback check --recipe <name> --source restic --from /srv/backups/restic
 
 Each directory has a README saying which of your directories each input is.
 
@@ -39,6 +39,6 @@ Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute
 walk-through. If you already have a compose file for the application, start with
 
-    restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+    drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml
 
 which turns it into a draft that already validates.

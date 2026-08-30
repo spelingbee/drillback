@@ -1,6 +1,6 @@
 # The Homebrew tap
 
-`brew install spelingbee/tap/restored` needs a second repository, `homebrew-tap`,
+`brew install spelingbee/tap/drillback` needs a second repository, `homebrew-tap`,
 that this one pushes a cask into at release time. This file is the steps to create it.
 
 It lives in `docs/` rather than in `dist/homebrew/`, where the cask itself is written,
@@ -13,7 +13,7 @@ point 6.
 ## Why a cask and not a formula
 
 Homebrew wants a *cask* for a prebuilt binary and a *formula* for something it
-compiles. `restored` ships prebuilt binaries, so it is a cask. GoReleaser agrees:
+compiles. `drillback` ships prebuilt binaries, so it is a cask. GoReleaser agrees:
 its `brews` section is deprecated in v2 in favour of `homebrew_casks`, which is what
 [`.goreleaser.yaml`](../.goreleaser.yaml) uses.
 
@@ -28,7 +28,7 @@ with `install.sh` or `go install`, both of which the README documents first.
    *(Stop point 4: a human creates this, not a session.)*
 
 2. Give it a `README.md` and a `Casks/` directory. GoReleaser writes
-   `Casks/restored.rb` into it; it will not create the directory for you on every
+   `Casks/drillback.rb` into it; it will not create the directory for you on every
    backend, so create it with a `.gitkeep`.
 
 3. Create a fine-grained personal access token with **contents: read and write** on
@@ -47,9 +47,9 @@ After the first release that uploads a cask:
 
 ```sh
 brew tap spelingbee/tap
-brew install spelingbee/tap/restored
-restored version
-brew uninstall restored && brew untap spelingbee/tap
+brew install spelingbee/tap/drillback
+drillback version
+brew uninstall drillback && brew untap spelingbee/tap
 ```
 
 To check the generated cask *without* publishing anything, run a snapshot release
@@ -57,19 +57,19 @@ and read what it produced:
 
 ```sh
 goreleaser release --snapshot --clean
-cat dist/homebrew/Casks/restored.rb
+cat dist/homebrew/Casks/drillback.rb
 ```
 
 ## What the cask contains, and why
 
-- `binaries: [restored]` - the one binary in the archive.
+- `binaries: [drillback]` - the one binary in the archive.
 - A `caveats` block naming Docker and restic. Neither is a `dependencies:` entry on
-  purpose: `restored version`, `recipe validate` and `recipe show` all work with
+  purpose: `drillback version`, `recipe validate` and `recipe show` all work with
   neither installed, and when a command does need one it says which. Declaring a
   hard dependency would install a second Docker on a machine that already runs
   colima.
 - A post-install `hooks` block that clears `com.apple.quarantine`. Without it the
   first run of an unsigned, non-browser-downloaded binary dies with "cannot be opened
-  because the developer cannot be verified", which reads as *restored is broken*
-  rather than as *restored is unsigned*. It is unsigned; notarisation costs an Apple
+  because the developer cannot be verified", which reads as *drillback is broken*
+  rather than as *drillback is unsigned*. It is unsigned; notarisation costs an Apple
   Developer account, which is stop point 5.

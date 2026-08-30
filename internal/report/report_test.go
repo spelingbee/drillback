@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spelingbee/restored/internal/check"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/source"
+	"github.com/spelingbee/drillback/internal/check"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/source"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
@@ -34,9 +34,9 @@ func mustTime(s string) time.Time {
 func passing() *Report {
 	return &Report{
 		SchemaVersion: SchemaVersion,
-		Tool:          Tool{Name: "restored", Version: "0.1.0", Commit: "3f9a1c4e"},
+		Tool:          Tool{Name: "drillback", Version: "0.1.0", Commit: "3f9a1c4e"},
 		Run: Run{
-			ID: "k7m2q9xf", ComposeProject: "restored-k7m2q9xf",
+			ID: "k7m2q9xf", ComposeProject: "drillback-k7m2q9xf",
 			StartedAt: "2026-09-14T02:31:08Z", FinishedAt: "2026-09-14T02:32:10Z",
 			DurationMS: 62000, WorkspaceRemoved: true,
 		},
@@ -82,7 +82,7 @@ func passing() *Report {
 func unusable() *Report {
 	r := passing()
 	r.Run.ID = "q4x8b1na"
-	r.Run.ComposeProject = "restored-q4x8b1na"
+	r.Run.ComposeProject = "drillback-q4x8b1na"
 	r.Run.DurationMS = 58412
 	r.Verdict = VerdictUnusable
 	r.ExitCode = 1

@@ -13,15 +13,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/sqlite"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/sqlite"
 )
 
 // statusMarker separates the response body from the status code curl appends. It is
 // long and unlikely enough that a body containing it would already be pathological,
 // and only the last occurrence is read.
-const statusMarker = "\n###restored-http-status:"
+const statusMarker = "\n###drillback-http-status:"
 
 // Mount is one place where a container path and a workspace path are the same bytes.
 // It is how a `file` check looks at what a service sees without entering a container.
@@ -97,7 +97,7 @@ type HTTPRequest struct {
 }
 
 // HTTP makes a request from a throwaway container attached to the run's internal
-// network. restored publishes no ports, so this is the only way in.
+// network. drillback publishes no ports, so this is the only way in.
 func (e *Executor) HTTP(ctx context.Context, r HTTPRequest) Observation {
 	secs := int(r.Timeout.Seconds())
 	if secs < 1 {
@@ -307,7 +307,7 @@ func (e *Executor) HostPath(service, p string) (string, error) {
 	}
 	if best.HostPath == "" {
 		return "", fmt.Errorf("no input of this recipe is mounted at %s in service %q, "+
-			"so restored cannot see that path", p, service)
+			"so drillback cannot see that path", p, service)
 	}
 	rel := strings.TrimPrefix(clean, path.Clean(best.ContainerPath))
 	return filepath.Join(best.HostPath, filepath.FromSlash(strings.TrimPrefix(rel, "/"))), nil

@@ -35,4 +35,4 @@ func Check(from string) error {
 
 // errNoTree is the message for `--source dir` with no tree to read.
 var errNoTree = fmt.Errorf("--source dir needs --from <tree>: the root of a tree you " +
-	"have already restored, which restored reads instead of running a restore itself")
+	"have already restored, which drillback reads instead of running a restore itself")

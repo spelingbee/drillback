@@ -74,7 +74,7 @@ func TestScaffoldEmitsStartupOrdering(t *testing.T) {
 }
 
 // FC-04. The scaffold rewrites the database service's own credentials to
-// ${RESTORED_VAR_*} and used to leave the application's connection string frozen at
+// ${DRILLBACK_VAR_*} and used to leave the application's connection string frozen at
 // the contributor's, so the two halves of the generated file disagreed about the
 // password and the stack could not come up.
 func TestScaffoldRepointsTheConnectionString(t *testing.T) {
@@ -83,7 +83,7 @@ func TestScaffoldRepointsTheConnectionString(t *testing.T) {
 	if strings.Contains(out, "secret") {
 		t.Error("the contributor's database password survived into the generated file")
 	}
-	want := "postgres://${RESTORED_VAR_db_user}:${RESTORED_VAR_db_password}@db/${RESTORED_VAR_db_name}?sslmode=disable"
+	want := "postgres://${DRILLBACK_VAR_db_user}:${DRILLBACK_VAR_db_password}@db/${DRILLBACK_VAR_db_name}?sslmode=disable"
 	if !strings.Contains(out, want) {
 		t.Errorf("DATABASE_URL was not repointed at the minted credentials.\nwant a line containing:\n  %s\ngot:\n%s", want, out)
 	}

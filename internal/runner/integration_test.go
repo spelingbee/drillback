@@ -18,9 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/report"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/report"
 )
 
 const fixtureRecipe = "../../testdata/recipes/fixture"
@@ -59,7 +59,7 @@ func tree(t *testing.T, dump string) string {
 	if err := os.MkdirAll(site, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	page := "<!doctype html><title>fixture</title><p>restored fixture page</p>\n"
+	page := "<!doctype html><title>fixture</title><p>drillback fixture page</p>\n"
 	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte(page), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestKeepRetainsTheWorkspaceAndSaysHow(t *testing.T) {
 	}
 }
 
-// A missing required input is a tool error, not a verdict: restored could not perform
+// A missing required input is a tool error, not a verdict: drillback could not perform
 // the test, and the backup is unproven rather than proven bad.
 func TestMissingInputIsAToolError(t *testing.T) {
 	requireDocker(t)

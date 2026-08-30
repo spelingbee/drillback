@@ -106,7 +106,7 @@ func dedupe(in []string) []string {
 
 // CheckResolvedMounts is the containment half of the volume rule: after
 // interpolation, every bind source must be inside the run workspace. The schema
-// rejects a bind that is not a ${RESTORED_*} placeholder; this rejects a placeholder
+// rejects a bind that is not a ${DRILLBACK_*} placeholder; this rejects a placeholder
 // that resolved somewhere it should not.
 func CheckResolvedMounts(resolved []byte, workspace string) error {
 	var doc struct {

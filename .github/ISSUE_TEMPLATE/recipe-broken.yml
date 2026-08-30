@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         A recipe usually breaks because the application upstream changed — a new image
-        tag, a renamed table, a moved endpoint — rather than because `restored` did.
+        tag, a renamed table, a moved endpoint — rather than because `drillback` did.
         The fix is often one line, which makes this a good first contribution.
 
         The weekly `recipe-health` workflow opens these automatically. If you are
@@ -29,7 +29,7 @@ body:
       options:
         - "stage A (negative): every check passed against an empty stack"
         - "stage B (positive): the round trip did not restore"
-        - "restored check against my own backup"
+        - "drillback check against my own backup"
         - "Somewhere else"
     validations:
       required: true
@@ -43,7 +43,7 @@ body:
         docker command it ran.
       render: text
       placeholder: |
-        $ restored recipe test ./recipes/nextcloud
+        $ drillback recipe test ./recipes/nextcloud
         ...
     validations:
       required: true
@@ -51,9 +51,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: restored version
-      description: The output of `restored version`.
-      placeholder: restored 0.1.0-dev
+      label: drillback version
+      description: The output of `drillback version`.
+      placeholder: drillback 0.1.0-dev
     validations:
       required: true
 

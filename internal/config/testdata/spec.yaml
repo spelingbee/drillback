@@ -16,7 +16,7 @@ sources:
   home-nas:
     kind: restic
     repository: sftp:backup@nas.lan:/srv/restic
-    password_file: /etc/restored/nas.pass
+    password_file: /etc/drillback/nas.pass
     host: hypervisor        # default snapshot filter for every target on this source
 
   offsite:
@@ -25,7 +25,7 @@ sources:
     password_command: ["pass", "show", "restic/offsite"]
     env:
       # Passed to restic verbatim. Values are read from the environment of the
-      # restored process; restored does not read secrets out of this file.
+      # drillback process; drillback does not read secrets out of this file.
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
 

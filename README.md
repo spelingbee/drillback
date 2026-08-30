@@ -1,17 +1,17 @@
-# restored
+# drillback
 
-[![ci](https://github.com/spelingbee/restored/actions/workflows/ci.yml/badge.svg)](https://github.com/spelingbee/restored/actions/workflows/ci.yml)
-[![recipes](https://github.com/spelingbee/restored/actions/workflows/recipes.yml/badge.svg)](https://github.com/spelingbee/restored/actions/workflows/recipes.yml)
-[![recipe-health](https://github.com/spelingbee/restored/actions/workflows/recipe-health.yml/badge.svg)](https://github.com/spelingbee/restored/actions/workflows/recipe-health.yml)
+[![ci](https://github.com/spelingbee/drillback/actions/workflows/ci.yml/badge.svg)](https://github.com/spelingbee/drillback/actions/workflows/ci.yml)
+[![recipes](https://github.com/spelingbee/drillback/actions/workflows/recipes.yml/badge.svg)](https://github.com/spelingbee/drillback/actions/workflows/recipes.yml)
+[![recipe-health](https://github.com/spelingbee/drillback/actions/workflows/recipe-health.yml/badge.svg)](https://github.com/spelingbee/drillback/actions/workflows/recipe-health.yml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **Your backup is a lie until it boots.**
 
-`restored` restores a backup into a throwaway, isolated environment, starts the
+`drillback` restores a backup into a throwaway, isolated environment, starts the
 application with `docker compose`, and tells you whether the data actually came back.
 One command, about a minute, and an exit code a cron job can act on.
 
-![restored proving a Gitea backup, and then failing one](docs/demo/demo.gif)
+![drillback proving a Gitea backup, and then failing one](docs/demo/demo.gif)
 
 *A real recording, played at double speed. It stands up Gitea and PostgreSQL, seeds
 them, backs them up with restic, destroys the stack, and restores it - twice: once from
@@ -20,8 +20,8 @@ typed by [`docs/demo/demo.tape`](docs/demo/demo.tape); everything underneath the
 what the tool printed, unedited, and it is the same `scripts/demo.sh` you can run
 yourself.*
 
-> Pre-release, and not tagged. `restored check` works end to end against restic and
-> against an already-restored tree; `restored recipe test` runs the round trip that
+> Pre-release, and not tagged. `drillback check` works end to end against restic and
+> against an already-restored tree; `drillback recipe test` runs the round trip that
 > proves a recipe both ways; five recipes ship. See [PROGRESS.md](PROGRESS.md) for what
 > is not built yet.
 
@@ -41,31 +41,31 @@ boots, and doing that by hand is expensive enough that nobody does it.
 
 ```sh
 # any Linux or macOS, verifies the checksum, installs to ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/spelingbee/restored/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/spelingbee/drillback/main/install.sh | sh
 
 # macOS, via Homebrew
-brew install spelingbee/tap/restored
+brew install spelingbee/tap/drillback
 
 # anywhere Go is installed
-go install github.com/spelingbee/restored/cmd/restored@latest
+go install github.com/spelingbee/drillback/cmd/drillback@latest
 ```
 
-Or download an archive from [Releases](https://github.com/spelingbee/restored/releases)
+Or download an archive from [Releases](https://github.com/spelingbee/drillback/releases)
 and unpack it: `checksums.txt` covers every one, and an SBOM ships beside each.
 
-For a NAS, there is an image with `restored`, the Docker CLI, the Compose plugin and
+For a NAS, there is an image with `drillback`, the Docker CLI, the Compose plugin and
 `restic` already in it. Read [docs/docker.md](docs/docker.md) first - it needs the
 Docker socket, and it is blunt about what that grants.
 
 ```sh
-docker run --rm ghcr.io/spelingbee/restored:0.1.0 version
+docker run --rm ghcr.io/spelingbee/drillback:0.1.0 version
 ```
 
 **What you need:** a Docker daemon, and `restic` if your backups are restic
-repositories. `restored version` tells you what it can see:
+repositories. `drillback version` tells you what it can see:
 
 ```sh
-restored version      # exits 0 even when docker and restic are both missing
+drillback version      # exits 0 even when docker and restic are both missing
 ```
 
 ---
@@ -76,7 +76,7 @@ This is the fastest way to find out whether the tool does what this page says, a
 needs nothing but Docker and restic:
 
 ```sh
-git clone https://github.com/spelingbee/restored && cd restored
+git clone https://github.com/spelingbee/drillback && cd drillback
 ./scripts/demo.sh          # stands up a real Gitea, backs it up, restores it: PASS, exit 0
 ./scripts/demo-broken.sh   # the same backup with an empty dump: RESTORE UNUSABLE, exit 1
 ```
@@ -93,30 +93,30 @@ A Gitea backup that is fine:
 
 <!-- BEGIN docs/demo/pass.txt -->
 ```text
-restored 0.1.0-dev · recipe gitea · run 72ixb2f2
+drillback 0.1.0-dev · recipe gitea · run fyd34mcf
 
-  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   21a01801  2026-08-30 03:55:56  host=demo-host  tags=[gitea]
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/drillback-demo/repo
+  snapshot   a8dc39bc  2026-08-30 17:50:59  host=demo-host  tags=[gitea]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql  231.1 KiB  plain SQL
 
-  restore    ok          1.8s   2 inputs
-  compose    ok          1.2s   2 services, db first for the dump
-  load db    ok          3.0s   db: psql, 0 stderr lines
-  ready      ok          5.4s   postgres accepts connections, gitea answers on the internal network
+  restore    ok          4.1s   2 inputs
+  compose    ok          2.9s   2 services, db first for the dump
+  load db    ok         12.8s   db: psql, 0 stderr lines
+  ready      ok         11.5s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.53s
-  ✔  repos-in-db         The database contains at least one repository   0.44s
+  ✔  web-ui-renders      The web UI renders the instance home page       0.75s
+  ✔  repos-in-db         The database contains at least one repository   0.52s
                          row → 1
-  ✔  users-in-db         The database contains at least one real user    0.45s
+  ✔  users-in-db         The database contains at least one real user    0.52s
                          account → 1
   ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
                          → 1 match for */*.git/HEAD
-  ✔  api-lists-repos     The API lists repositories, so the database     0.53s
+  ✔  api-lists-repos     The API lists repositories, so the database     0.82s
                          and the disk agree → 1 item
 
-  PASS  5/5 checks  ·  total 13.8s  ·  teardown ok
+  PASS  5/5 checks  ·  total 35.1s  ·  teardown ok
 
 This backup boots.
 ```
@@ -127,38 +127,38 @@ runs every night, it exits 0, and it produces a file:
 
 <!-- BEGIN docs/demo/fail.txt -->
 ```text
-restored 0.1.0-dev · recipe gitea · run hfnneq6j
+drillback 0.1.0-dev · recipe gitea · run tdlgj2lv
 
-  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-demo/repo
-  snapshot   782c24b1  2026-08-30 03:56:39  host=demo-host  tags=[gitea-broken]
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/drillback-demo/repo
+  snapshot   fcc2819c  2026-08-30 17:52:15  host=demo-host  tags=[gitea-broken]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql      489 B  plain SQL
 
-  restore    ok          1.8s   2 inputs
-  compose    ok          1.2s   2 services, db first for the dump
-  load db    ok          2.3s   db: psql, 0 stderr lines
-  ready      ok          5.3s   postgres accepts connections, gitea answers on the internal network
+  restore    ok          1.9s   2 inputs
+  compose    ok          1.4s   2 services, db first for the dump
+  load db    ok          2.0s   db: psql, 0 stderr lines
+  ready      ok          5.8s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.53s
-  ✘  repos-in-db         The database contains at least one repository   0.43s
+  ✔  web-ui-renders      The web UI renders the instance home page       0.84s
+  ✘  repos-in-db         The database contains at least one repository   0.53s
                          row
                            query   SELECT count(*) FROM repository;
                            expect  scalar_int_min: 1
                            got     0
-  ✘  users-in-db         The database contains at least one real user    0.43s
+  ✘  users-in-db         The database contains at least one real user    0.66s
                          account
                            query   SELECT count(*) FROM "user" WHERE lower_name <> 'ghost';
                            expect  scalar_int_min: 1
                            got     0
   ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
                          → 1 match for */*.git/HEAD
-  ✘  api-lists-repos     The API lists repositories, so the database     0.54s
+  ✘  api-lists-repos     The API lists repositories, so the database      1.0s
                          and the disk agree
                            expect  json_path_len_min: 1
                            got     0
 
-  RESTORE UNUSABLE  2/5 checks  ·  total 13.9s  ·  teardown ok
+  RESTORE UNUSABLE  2/5 checks  ·  total 15.6s  ·  teardown ok
 
   LIKELY CAUSE
     The application's tables are there, but they are empty
@@ -194,7 +194,7 @@ make build
 
 Each script stands up a real Gitea and PostgreSQL, seeds a user, a repository and a
 commit, backs the data up with restic, destroys the stack, and hands the backup to
-`restored`. They need docker and restic, they clean up after themselves, and they can
+`drillback`. They need docker and restic, they clean up after themselves, and they can
 be run twice in a row.
 
 ---
@@ -205,11 +205,11 @@ be run twice in a row.
 export RESTIC_REPOSITORY=/mnt/backups/restic
 export RESTIC_PASSWORD_FILE=/etc/restic/pass        # your restic password file
 
-restored recipe show gitea --inputs-only            # which paths does this recipe want?
+drillback recipe show gitea --inputs-only            # which paths does this recipe want?
 # data  dir            required  /srv/gitea/data
 # db    postgres-dump  required  /srv/gitea/db.sql
 
-restored check --recipe gitea                       # if your paths match the two above
+drillback check --recipe gitea                       # if your paths match the two above
 echo $?                                             # 0 pass, 1 unusable, 2 tool error
 ```
 
@@ -217,7 +217,7 @@ If your layout differs - and it usually does, because those defaults are the rec
 author's machine - point each input at your path:
 
 ```sh
-restored check --recipe gitea   --input data=/var/lib/gitea   --input db=/srv/dumps/gitea.sql
+drillback check --recipe gitea   --input data=/var/lib/gitea   --input db=/srv/dumps/gitea.sql
 ```
 
 `restic ls latest | head -50` shows what your snapshot actually contains, which is the
@@ -248,7 +248,7 @@ inputs:
     title: Gitea data directory
     default_path: /srv/gitea/data      # a guess; you override it with --input
     mount:
-      env: RESTORED_INPUT_data         # compose.yaml refers to ${RESTORED_INPUT_data}
+      env: DRILLBACK_INPUT_data         # compose.yaml refers to ${DRILLBACK_INPUT_data}
       into: gitea:/data
 
   db:
@@ -284,7 +284,7 @@ expression language: a recipe is data, not a program.
 Every run is isolated, and the isolation is enforced by a schema rather than by
 convention. No `privileged`, no host networking, no host PID or IPC namespace, no
 published ports, no bind mount outside the run's own workspace. HTTP checks run from a
-helper container attached to the run's internal network. `restored recipe validate`
+helper container attached to the run's internal network. `drillback recipe validate`
 rejects a recipe that breaks any of it.
 
 ---
@@ -338,8 +338,8 @@ If you already have a `docker-compose.yml` for the application, the first draft 
 command:
 
 ```sh
-restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
-restored recipe test ./recipes/myapp        # this is exactly what CI runs
+drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+drillback recipe test ./recipes/myapp        # this is exactly what CI runs
 ```
 
 `recipe init --compose` turns your volumes into inputs, recognises a PostgreSQL or
@@ -362,7 +362,7 @@ than ten minutes, that is a bug in this project and worth an issue.
   with `recipe has no data-sensitive check`.
 - **Stage B** starts a fresh stack, seeds it, exports what a backup would have taken,
   puts that into a throwaway restic repository, tears everything down, and then runs an
-  ordinary `restored check` against it. Every check must pass.
+  ordinary `drillback check` against it. Every check must pass.
 
 Stage B ends by running the command a user runs. There is no test-only restore path, so
 the harness cannot pass while the real one is broken — which is why a maintainer can
@@ -401,16 +401,16 @@ in the trailing 365 days.
 
 ## Roadmap
 
-- **v0.1, "it boots".** `restored check` against restic and `dir`, the round-trip
+- **v0.1, "it boots".** `drillback check` against restic and `dir`, the round-trip
   harness, five bundled recipes, CI, and the install paths. A sixth - the one you
   write - is the point.
 - **v0.2, "more of everything".** MySQL dumps, borg and kopia sources, notifiers, cron
-  mode with history, `restored doctor`.
+  mode with history, `drillback doctor`.
 - **v0.3, "evidence you can show someone".** A self-contained HTML report, and a
   "restore verified" badge fed by the JSON report.
 
 Not on the roadmap: Kubernetes, a hosted service, a GUI, and restoring to production.
-`restored` verifies; a human restores.
+`drillback` verifies; a human restores.
 
 ---
 

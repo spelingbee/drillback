@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/recipe/safety"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe/safety"
 )
 
 func newRecipe(g *globals) *cobra.Command {
@@ -175,7 +175,7 @@ func newRecipeShow(g *globals) *cobra.Command {
 		Short: "Print a resolved recipe: defaults applied, variables expanded",
 		Long: "Print a recipe with defaults applied, variables expanded, and inputs resolved to the\n" +
 			"paths this invocation would actually use.\n\n" +
-			"Use this to see exactly what `restored check` would do, without running anything.",
+			"Use this to see exactly what `drillback check` would do, without running anything.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// --json is a global flag, advertised under Global Flags in this
@@ -359,7 +359,7 @@ func newRecipeInit(g *globals) *cobra.Command {
 			if g.json {
 				return fail(ExitError,
 					"--json: recipe init has no machine-readable output. It writes files "+
-						"and prints what it wrote; `restored recipe show <dir> --json` will "+
+						"and prints what it wrote; `drillback recipe show <dir> --json` will "+
 						"read the result back")
 			}
 			name := args[0]
@@ -390,7 +390,7 @@ func newRecipeInit(g *globals) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s\n\nNext:\n"+
 				"  1. make the checks data-sensitive: a check that passes against an empty\n"+
 				"     database proves nothing about a restore\n"+
-				"  2. restored recipe validate %s --strict\n", target, target)
+				"  2. drillback recipe validate %s --strict\n", target, target)
 			return nil
 		},
 	}

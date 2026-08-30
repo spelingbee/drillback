@@ -12,23 +12,23 @@
 #   goreleaser release --snapshot --clean
 version: 2
 
-project_name: restored
+project_name: drillback
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: restored
-    main: ./cmd/restored
-    binary: restored
+  - id: drillback
+    main: ./cmd/drillback
+    binary: drillback
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/spelingbee/restored/internal/cli.Version={{ .Version }}
-      - -X github.com/spelingbee/restored/internal/cli.Commit={{ .FullCommit }}
-      - -X github.com/spelingbee/restored/internal/cli.Date={{ .Date }}
+      - -X github.com/spelingbee/drillback/internal/cli.Version={{ .Version }}
+      - -X github.com/spelingbee/drillback/internal/cli.Commit={{ .FullCommit }}
+      - -X github.com/spelingbee/drillback/internal/cli.Date={{ .Date }}
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -100,8 +100,8 @@ changelog:
 # in goreleaser v2. A cask is macOS-only, which is the honest scope: Linux users get
 # install.sh or `go install`.
 homebrew_casks:
-  - name: restored
-    binaries: [restored]
+  - name: drillback
+    binaries: [drillback]
     # The tap repository has to exist before this can push to it, and creating it is
     # a human's job: docs/homebrew-tap.md says how. Until then, and until the
     # release checklist says otherwise, goreleaser writes the cask into dist/ and
@@ -113,31 +113,31 @@ homebrew_casks:
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Casks
-    homepage: "https://github.com/spelingbee/restored"
+    homepage: "https://github.com/spelingbee/drillback"
     description: "Prove a backup restores, by restoring it into a throwaway stack."
     license: "Apache-2.0"
     commit_author:
       name: goreleaser
       email: noreply@github.com
-    commit_msg_template: "restored {{ .Tag }}"
-    # Not a `dependencies:` entry for either of them: restored runs `recipe validate`,
+    commit_msg_template: "drillback {{ .Tag }}"
+    # Not a `dependencies:` entry for either of them: drillback runs `recipe validate`,
     # `recipe show` and `version` with neither installed, and says precisely which one
     # is missing when it does need one. A hard dependency would install a second
     # docker on a machine that already has colima.
     caveats: |
-      restored needs a Docker daemon, and restic for restic sources:
+      drillback needs a Docker daemon, and restic for restic sources:
         brew install restic
         # plus Docker Desktop, colima, or any daemon DOCKER_HOST points at
       Start with:
-        restored check --recipe gitea --source restic --from /path/to/repo
+        drillback check --recipe gitea --source restic --from /path/to/repo
     hooks:
       post:
         # Without this, macOS quarantines a binary downloaded outside a browser and
         # the first run dies with "cannot be opened because the developer cannot be
-        # verified" - which looks like restored is broken rather than unsigned.
+        # verified" - which looks like drillback is broken rather than unsigned.
         install: |
           if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/restored"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/drillback"]
           end
 
 release:
@@ -146,7 +146,7 @@ release:
   # knowing where a release would go.
   github:
     owner: spelingbee
-    name: restored
+    name: drillback
   draft: true
   prerelease: auto
   name_template: "{{ .ProjectName }} {{ .Tag }}"
@@ -157,4 +157,4 @@ release:
 
         sha256sum -c checksums.txt --ignore-missing
 
-    Full instructions: https://github.com/spelingbee/restored#install
+    Full instructions: https://github.com/spelingbee/drillback#install

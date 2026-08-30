@@ -88,8 +88,8 @@ var fixtures = map[string]struct{ match, nearMiss string }{
 		`docker: 'compose' is not a docker command`,
 	},
 	"workspace/no-space": {
-		`write /var/tmp/restored-k7m2q9xf/inputs/data: no space left on device`,
-		`write /var/tmp/restored-k7m2q9xf/inputs/data: input/output error`,
+		`write /var/tmp/drillback-k7m2q9xf/inputs/data: no space left on device`,
+		`write /var/tmp/drillback-k7m2q9xf/inputs/data: input/output error`,
 	},
 	"db/tables-empty": {
 		"expected scalar_int_min: 1, got 0",

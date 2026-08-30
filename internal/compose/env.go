@@ -10,8 +10,8 @@ import (
 )
 
 // Versions is what the runtime reports about itself. An empty field means the
-// dependency was not found, which `restored version` prints as "not found" and
-// `restored check` treats as a tool error.
+// dependency was not found, which `drillback version` prints as "not found" and
+// `drillback check` treats as a tool error.
 type Versions struct {
 	Docker  string
 	Compose string
@@ -19,7 +19,7 @@ type Versions struct {
 }
 
 // Probe asks docker, docker compose and restic what they are. It never fails: a
-// missing dependency is an empty string, so `restored version` stays usable as a
+// missing dependency is an empty string, so `drillback version` stays usable as a
 // bug-report command on a machine where nothing is installed.
 func Probe(ctx context.Context) Versions {
 	return Versions{
@@ -37,7 +37,7 @@ func Probe(ctx context.Context) Versions {
 // source.Source.Preflight. See DECISIONS.md ADR-063.
 func Preflight(ctx context.Context) error {
 	if _, err := exec.LookPath("docker"); err != nil {
-		return fmt.Errorf("docker is not on PATH: restored needs docker and docker compose v2")
+		return fmt.Errorf("docker is not on PATH: drillback needs docker and docker compose v2")
 	}
 	if out := output(ctx, "docker", "version", "--format", "{{.Server.Version}}"); out == "" {
 		return fmt.Errorf("cannot reach the docker daemon: %s",
@@ -54,7 +54,7 @@ func Preflight(ctx context.Context) error {
 // that is down, or a remote TCP daemon behind a dropped route, the CLI waits on the
 // connection. Preflight runs before the run context exists (it has to - it is what
 // decides whether there can be a run), so without a deadline of its own a cron job
-// with a stale docker context hangs past its --timeout and forever. `restored
+// with a stale docker context hangs past its --timeout and forever. `drillback
 // version` is worse, because its whole purpose is to be runnable when the
 // environment is broken. See docs/review/architecture.md ARCH-05.
 //

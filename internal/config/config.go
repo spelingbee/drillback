@@ -1,4 +1,4 @@
-// Package config loads restored.yaml: sources, targets, defaults, and the precedence
+// Package config loads drillback.yaml: sources, targets, defaults, and the precedence
 // chain of SPEC.md section 2.9. It reads exactly one file and resolves nothing else:
 // recipes are loaded by the caller, restic is never invoked from here, and the only
 // I/O is reading the file it is given. See SPEC.md section 13.1 and DECISIONS.md
@@ -20,13 +20,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// FileName is what restored.yaml is looked for under.
-const FileName = "restored.yaml"
+// FileName is what drillback.yaml is looked for under.
+const FileName = "drillback.yaml"
 
 // Version is the one config schema version this build reads.
 const Version = 1
 
-// Config is one parsed restored.yaml.
+// Config is one parsed drillback.yaml.
 type Config struct {
 	Version  int               `yaml:"version"`
 	Defaults Defaults          `yaml:"defaults"`
@@ -92,20 +92,20 @@ type Target struct {
 }
 
 // SearchPath is SPEC.md section 2.9: --config overrides the search; otherwise
-// ./restored.yaml, then $XDG_CONFIG_HOME/restored/restored.yaml (falling back to
+// ./drillback.yaml, then $XDG_CONFIG_HOME/drillback/drillback.yaml (falling back to
 // ~/.config when XDG_CONFIG_HOME is unset, which is what the variable means), then
-// /etc/restored/restored.yaml. First match wins.
+// /etc/drillback/drillback.yaml. First match wins.
 func SearchPath(explicit string) []string {
 	if explicit != "" {
 		return []string{explicit}
 	}
 	paths := []string{FileName}
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		paths = append(paths, filepath.Join(xdg, "restored", FileName))
+		paths = append(paths, filepath.Join(xdg, "drillback", FileName))
 	} else if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, filepath.Join(home, ".config", "restored", FileName))
+		paths = append(paths, filepath.Join(home, ".config", "drillback", FileName))
 	}
-	return append(paths, filepath.Join("/etc", "restored", FileName))
+	return append(paths, filepath.Join("/etc", "drillback", FileName))
 }
 
 // Discover returns the first config file that exists on the search path, or an error
@@ -124,7 +124,7 @@ func Discover(explicit string) (string, error) {
 	return "", fmt.Errorf("no %s found (searched: %s)", FileName, strings.Join(searched, ", "))
 }
 
-// Load reads and validates one restored.yaml.
+// Load reads and validates one drillback.yaml.
 func Load(path string) (*Config, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -216,7 +216,7 @@ func (c *Config) validate() error {
 		case "":
 			return fmt.Errorf("source %q: missing kind (restic or dir)", name)
 		default:
-			return fmt.Errorf("source %q: unknown kind %q (restored reads restic or dir)", name, s.Kind)
+			return fmt.Errorf("source %q: unknown kind %q (drillback reads restic or dir)", name, s.Kind)
 		}
 	}
 	if d := c.Defaults.Source; d != "" {
@@ -278,7 +278,7 @@ func sortStrings(s []string) {
 var envRef = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 
 // resolveEnv expands ${NAME} from the process environment. The values are read from
-// the environment of the restored process, never out of the file (SPEC.md 2.9); an
+// the environment of the drillback process, never out of the file (SPEC.md 2.9); an
 // unset variable is a loud error, because the alternative is restic failing later
 // with a message about credentials that never mentions the config file.
 func resolveEnv(sourceName string, env map[string]string) ([]string, error) {

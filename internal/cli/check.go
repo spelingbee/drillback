@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/spelingbee/restored/internal/config"
-	"github.com/spelingbee/restored/internal/nudge"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/recipe/safety"
-	"github.com/spelingbee/restored/internal/report"
-	"github.com/spelingbee/restored/internal/runner"
+	"github.com/spelingbee/drillback/internal/config"
+	"github.com/spelingbee/drillback/internal/nudge"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe/safety"
+	"github.com/spelingbee/drillback/internal/report"
+	"github.com/spelingbee/drillback/internal/runner"
 )
 
 type checkFlags struct {
@@ -58,27 +58,27 @@ func newCheckCommand(g *globals) (*cobra.Command, *checkFlags) {
 		Short: "Restore a backup and verify that the application boots",
 		Long: "Restore a backup into a throwaway environment and verify that the application boots.\n\n" +
 			"Every run gets its own workspace directory, its own compose project named\n" +
-			"restored-<runid>, and its own internal network. No ports are published; HTTP checks\n" +
+			"drillback-<runid>, and its own internal network. No ports are published; HTTP checks\n" +
 			"run from a helper container attached to the run's network. The workspace and the\n" +
 			"compose project are always destroyed on exit — including on Ctrl-C and on panic —\n" +
 			"unless --keep or --keep-on-fail says otherwise.",
 		Example: "  # a local recipe directory, against a tree that is already restored on disk\n" +
-			"  restored check --recipe ./recipes/uptime-kuma --source dir --from /mnt/export/uk\n\n" +
+			"  drillback check --recipe ./recipes/uptime-kuma --source dir --from /mnt/export/uk\n\n" +
 			"  # restic repository from the environment, bundled recipe, latest snapshot\n" +
 			"  export RESTIC_REPOSITORY=/mnt/backups/restic\n" +
 			"  export RESTIC_PASSWORD_FILE=/etc/restic/pass\n" +
-			"  restored check --recipe gitea\n\n" +
-			"  # one named target from restored.yaml\n" +
-			"  restored check --target gitea\n\n" +
-			"  # every target in restored.yaml, for cron\n" +
-			"  restored check --all --json --report /var/log/restored/run.json",
+			"  drillback check --recipe gitea\n\n" +
+			"  # one named target from drillback.yaml\n" +
+			"  drillback check --target gitea\n\n" +
+			"  # every target in drillback.yaml, for cron\n" +
+			"  drillback check --all --json --report /var/log/drillback/run.json",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return runCheck(cmd, g, f) },
 	}
 	fl := cmd.Flags()
 	fl.StringVar(&f.recipeRef, "recipe", "", `Recipe to run: a bundled name (e.g. "gitea"), a path to a directory containing recipe.yaml, or a path to a recipe.yaml file. Required unless --target or --all`)
-	fl.StringVar(&f.target, "target", "", "Run one named target from restored.yaml")
-	fl.BoolVar(&f.all, "all", false, "Run every target in restored.yaml, sequentially")
+	fl.StringVar(&f.target, "target", "", "Run one named target from drillback.yaml")
+	fl.BoolVar(&f.all, "all", false, "Run every target in drillback.yaml, sequentially")
 	fl.StringVar(&f.source, "source", "restic", "Backup source: restic|dir")
 	fl.StringVar(&f.from, "from", "", "Source location: the restic repository, or the already-restored tree")
 	fl.StringVar(&f.snapshot, "snapshot", "latest", `restic snapshot id, or "latest"`)
@@ -125,7 +125,7 @@ func runCheck(cmd *cobra.Command, g *globals, f *checkFlags) error {
 	case modes > 1:
 		return fail(ExitError, "--recipe, --target and --all are mutually exclusive")
 	case modes == 0:
-		return fail(ExitError, "--recipe is required (or --target <name> / --all, which read restored.yaml)")
+		return fail(ExitError, "--recipe is required (or --target <name> / --all, which read drillback.yaml)")
 	}
 
 	inputs, err := keyValues(f.inputs, "input")
@@ -154,7 +154,7 @@ func runCheck(cmd *cobra.Command, g *globals, f *checkFlags) error {
 }
 
 // resolveJobs turns the invocation into runnable jobs, all of them before any run
-// starts: a typo in the fifth target of restored.yaml should refuse now, not at four
+// starts: a typo in the fifth target of drillback.yaml should refuse now, not at four
 // in the morning after the first four targets already ran.
 func resolveJobs(cmd *cobra.Command, g *globals, f *checkFlags, inputs, sets map[string]string) ([]*job, error) {
 	if f.recipeRef != "" {
@@ -313,7 +313,7 @@ func runSingle(cmd *cobra.Command, g *globals, f *checkFlags, j *job) error {
 	}
 	renderOpts := report.Options{
 		Color: colourEnabled(g, human),
-		ASCII: os.Getenv("RESTORED_ASCII") != "",
+		ASCII: os.Getenv("DRILLBACK_ASCII") != "",
 	}
 	if rep != nil {
 		// Printed on a tool error too, not only on a verdict. A run that got far
@@ -367,7 +367,7 @@ func runAll(cmd *cobra.Command, g *globals, f *checkFlags, jobs []*job) error {
 	}
 	renderOpts := report.Options{
 		Color: colourEnabled(g, human),
-		ASCII: os.Getenv("RESTORED_ASCII") != "",
+		ASCII: os.Getenv("DRILLBACK_ASCII") != "",
 	}
 
 	multi := report.NewMulti()
@@ -396,7 +396,7 @@ func runAll(cmd *cobra.Command, g *globals, f *checkFlags, jobs []*job) error {
 				return fail(ExitError, "%v", err)
 			}
 		} else if runErr != nil {
-			fmt.Fprintf(human, "restored: %v\n", runErr)
+			fmt.Fprintf(human, "drillback: %v\n", runErr)
 		}
 		printKept(human, kept)
 		multi.Add(j.target, rep)
@@ -475,7 +475,7 @@ func maybeNudge(cmd *cobra.Command, g *globals, f *checkFlags, rec *recipe.Recip
 			return
 		}
 	}
-	// `nudge: false` in restored.yaml is the config equivalent of --no-nudge.
+	// `nudge: false` in drillback.yaml is the config equivalent of --no-nudge.
 	if config.NudgeSilenced(g.configPath) {
 		return
 	}

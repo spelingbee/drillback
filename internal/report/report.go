@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/spelingbee/restored/internal/observe"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/source"
+	"github.com/spelingbee/drillback/internal/observe"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/source"
 )
 
 // SchemaVersion is bumped on any breaking change to the JSON document. Within a major

@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const smallRecipe = `apiVersion: restored/v1
+const smallRecipe = `apiVersion: drillback/v1
 kind: Recipe
 metadata:
   name: paperless
@@ -65,7 +65,7 @@ func TestFoldOverridesIsAnIdentityWithNoOverrides(t *testing.T) {
 	}
 }
 
-// The one-key restored.yaml reader this package carried while internal/config did
+// The one-key drillback.yaml reader this package carried while internal/config did
 // not exist (ADR-045) moved there when it landed: config.NudgeSilenced, tested in
 // internal/config, with the same search order and the same semantics.
 
@@ -94,7 +94,7 @@ func TestBuildPrintsNoURL(t *testing.T) {
 	for _, want := range []string{
 		"1. fork",
 		"cp -r /home/you/recipes/paperless-ngx recipes/paperless-ngx",
-		"restored recipe test ./recipes/paperless-ngx",
+		"drillback recipe test ./recipes/paperless-ngx",
 		"--no-nudge",
 	} {
 		if !strings.Contains(out, want) {

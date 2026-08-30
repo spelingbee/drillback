@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// recorded is real `restic snapshots --json` output, trimmed to the fields restored
+// recorded is real `restic snapshots --json` output, trimmed to the fields drillback
 // reads. Snapshot selection is tested against this rather than against a live
 // repository, so the test costs nothing and cannot flake.
 const recorded = `[

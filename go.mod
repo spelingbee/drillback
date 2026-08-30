@@ -1,4 +1,4 @@
-module github.com/spelingbee/restored
+module github.com/spelingbee/drillback
 
 go 1.27.0
 

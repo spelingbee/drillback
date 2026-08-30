@@ -14,14 +14,14 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"gopkg.in/yaml.v3"
 
-	restored "github.com/spelingbee/restored"
-	"github.com/spelingbee/restored/internal/recipe"
+	drillback "github.com/spelingbee/drillback"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 var composeSchema = mustCompile("schema/compose-safety.schema.json")
 
 func mustCompile(path string) *jsonschema.Schema {
-	b, err := restored.Schemas.ReadFile(path)
+	b, err := drillback.Schemas.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
@@ -78,8 +78,8 @@ func Parse(raw []byte) (*Compose, error) {
 
 // ValidateSchema checks compose.yaml against schema/compose-safety.schema.json.
 //
-// It runs on the file as written, with ${RESTORED_*} placeholders still in it: the
-// schema's volume rule can only recognise a bind mount restored controls while the
+// It runs on the file as written, with ${DRILLBACK_*} placeholders still in it: the
+// schema's volume rule can only recognise a bind mount drillback controls while the
 // placeholder is intact. Containment of the resolved paths is checked separately by
 // CheckResolvedMounts, after interpolation. See DECISIONS.md ADR-039.
 func ValidateSchema(raw []byte) error {
@@ -135,15 +135,15 @@ func Placeholders(raw []byte) []string {
 // stripEscapes removes $$ pairs so they cannot look like a reference.
 func stripEscapes(s string) string { return strings.ReplaceAll(s, "$$", "") }
 
-// KnownNames is the set of placeholders restored itself defines for a resolution.
+// KnownNames is the set of placeholders drillback itself defines for a resolution.
 func KnownNames(r *recipe.Resolved) map[string]bool {
 	known := map[string]bool{
-		"RESTORED_RUN_ID":      true,
-		"RESTORED_TEST_ASSETS": true,
-		"RESTORED_EXPORT":      true,
+		"DRILLBACK_RUN_ID":      true,
+		"DRILLBACK_TEST_ASSETS": true,
+		"DRILLBACK_EXPORT":      true,
 	}
 	for k := range r.Vars {
-		known["RESTORED_VAR_"+k] = true
+		known["DRILLBACK_VAR_"+k] = true
 	}
 	for _, in := range r.Inputs {
 		if in.Mount != nil {
@@ -154,7 +154,7 @@ func KnownNames(r *recipe.Resolved) map[string]bool {
 }
 
 // CheckPlaceholders is Go-only rule 2: every ${...} in compose.yaml must be one
-// restored defines. An unset variable silently expanding to the empty string is how a
+// drillback defines. An unset variable silently expanding to the empty string is how a
 // volume mount becomes "/".
 func CheckPlaceholders(raw []byte, r *recipe.Resolved) error {
 	known := KnownNames(r)
@@ -167,9 +167,9 @@ func CheckPlaceholders(raw []byte, r *recipe.Resolved) error {
 	if len(unknown) == 0 {
 		return nil
 	}
-	return fmt.Errorf("compose.yaml refers to %s, which restored does not define; "+
-		"only ${RESTORED_VAR_<var>}, ${RESTORED_INPUT_<input>}, ${RESTORED_TEST_ASSETS}, "+
-		"${RESTORED_EXPORT} and ${RESTORED_RUN_ID} are available",
+	return fmt.Errorf("compose.yaml refers to %s, which drillback does not define; "+
+		"only ${DRILLBACK_VAR_<var>}, ${DRILLBACK_INPUT_<input>}, ${DRILLBACK_TEST_ASSETS}, "+
+		"${DRILLBACK_EXPORT} and ${DRILLBACK_RUN_ID} are available",
 		quoteAll(unknown))
 }
 
@@ -234,7 +234,7 @@ func Validate(raw []byte, r *recipe.Resolved) error {
 		return err
 	}
 	// Render the file the way a run would, and throw the result away. The schema
-	// sees the compose file with its ${RESTORED_*} placeholders intact (ADR-039), so
+	// sees the compose file with its ${DRILLBACK_*} placeholders intact (ADR-039), so
 	// a variable whose value adds YAML to the document passes every check above and
 	// only fails minutes later, inside a run. Doing the substitution here means
 	// `recipe validate` - which is what CI gates a contributed recipe on, and what a
@@ -293,7 +293,7 @@ var forbiddenTopLevel = map[string]string{
 }
 
 var forbiddenService = map[string]string{
-	"ports":               "restored never publishes a port; checks run from a helper container on the run's internal network",
+	"ports":               "drillback never publishes a port; checks run from a helper container on the run's internal network",
 	"privileged":          "a privileged container is not isolated from the host",
 	"network_mode":        "the run gets its own internal network, and nothing else",
 	"pid":                 "sharing the host PID namespace is not isolation",
@@ -328,7 +328,7 @@ func checkForbiddenKeys(doc any) error {
 		}
 		for _, key := range sortedNames(body) {
 			if why, bad := forbiddenService[key]; bad {
-				return fmt.Errorf("compose.yaml: service %q uses `%s`, which restored does not allow: %s",
+				return fmt.Errorf("compose.yaml: service %q uses `%s`, which drillback does not allow: %s",
 					name, key, why)
 			}
 		}

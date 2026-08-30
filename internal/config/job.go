@@ -125,7 +125,7 @@ func (c *Config) recipeRef(ref string) string {
 // invocation; relative to the file is the reading its author can predict.
 func (c *Config) hostPath(p string) string {
 	// Rooted counts as absolute here even where filepath.IsAbs says otherwise: on
-	// Windows "/etc/restored/nas.pass" has no drive letter, but the person who
+	// Windows "/etc/drillback/nas.pass" has no drive letter, but the person who
 	// wrote it meant a fixed place, and silently gluing the config directory in
 	// front of it would be worse than leaving it as written.
 	if p == "" || filepath.IsAbs(p) || p[0] == '/' || p[0] == '\\' {

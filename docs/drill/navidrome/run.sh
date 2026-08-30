@@ -29,7 +29,7 @@ echo "-- seed: the admin account, a scanned library, a playlist"
 drill_curl -f -o /dev/null -w 'createAdmin: %{http_code}\n' -X POST http://navidrome:4533/auth/createAdmin \
   -H 'content-type: application/json' \
   -d '{"username":"drilladmin","password":"Drill-Password-1"}'
-Q="u=drilladmin&p=Drill-Password-1&v=1.16.1&c=restored-drill&f=json"
+Q="u=drilladmin&p=Drill-Password-1&v=1.16.1&c=drillback-drill&f=json"
 for i in $(seq 1 30); do
   if drill_curl "http://navidrome:4533/rest/search3?$Q&query=Drill" | grep -q '"artist"'; then
     echo "library scanned after ${i} attempts"; break

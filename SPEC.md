@@ -1,4 +1,4 @@
-# restored — Specification v0.1
+# drillback — Specification v0.1
 
 > **Your backup is a lie until it boots.**
 
@@ -8,7 +8,7 @@ changed five things in it where reality disagreed: see ADR-039, ADR-041, ADR-042
 ADR-043 and the `PGOPTIONS` note in section 3.1. [PROGRESS.md](PROGRESS.md) records what
 is built and what is not.
 
-Working name: `restored`, owner `spelingbee` (ADR-036). See
+Working name: `drillback`, owner `spelingbee` (ADR-036). See
 [docs/name-check.md](docs/name-check.md) — the name is still not final, and the rename
 is still a single grep.
 
@@ -60,9 +60,9 @@ the current one, you need to remember how the app was wired, you need to not clo
 the running instance, and you need to know what "it worked" even looks like for that
 app. So nobody does it. Not monthly, not ever.
 
-### 1.2 What `restored` does
+### 1.2 What `drillback` does
 
-`restored` is a single-binary CLI. Given a backup repository and a *recipe*, it:
+`drillback` is a single-binary CLI. Given a backup repository and a *recipe*, it:
 
 1. picks a snapshot (default: the latest),
 2. restores the paths the recipe needs into a fresh temporary workspace,
@@ -110,9 +110,9 @@ These are deliberate omissions, not oversights. Each is a "no" for v0.1 specific
 | MySQL / MariaDB dumps | `mysql-dump` needs its own format detection, charset handling, and `--single-transaction` caveats. Postgres and SQLite cover the two most common self-hosted shapes. | v0.2 |
 | Notifications (ntfy, Gotify, healthchecks.io, email, webhooks) | Exit codes and `--json` are already enough to wire any notifier in one cron line. Building notifiers in v0.1 spends effort on plumbing instead of on recipes. | v0.2 |
 | Web UI, dashboard, HTML report | The output is a terminal and a JSON document. Anything else is a second product. | HTML report in v0.3 |
-| Built-in scheduling / daemon mode | `restored` is a one-shot command. The system already has cron and systemd timers, and they are better at it. | cron mode with history in v0.2 |
+| Built-in scheduling / daemon mode | `drillback` is a one-shot command. The system already has cron and systemd timers, and they are better at it. | cron mode with history in v0.2 |
 | A remote recipe registry | Recipes ship embedded in the binary from `recipes/` in this repository. A registry is an availability and trust problem we have not earned yet. | undecided |
-| Restoring *to* production | `restored` never writes outside its workspace and has no "and now put it back" mode. It verifies; a human restores. | never |
+| Restoring *to* production | `drillback` never writes outside its workspace and has no "and now put it back" mode. It verifies; a human restores. | never |
 | Non-Docker runtimes (Podman without the Docker socket, LXC, systemd-nspawn) | One runtime contract. Podman's docker-compatible socket happens to work today, but it is not tested or supported. | undecided |
 | Incremental / partial verification, deduplication awareness, backup *performance* measurement | Different question. | never |
 
@@ -131,16 +131,16 @@ a differing default, or a missing documented section (see UX-11 in
 `docs/review/backlog.md` for the known one) is a bug in one of the two. ADR-069
 records the adjudication.
 
-### 2.1 `restored --help`
+### 2.1 `drillback --help`
 
 ```text
-restored — your backup is a lie until it boots.
+drillback — your backup is a lie until it boots.
 
 Restores the latest snapshot of a backup into a throwaway, isolated environment,
 starts the application with docker compose, and verifies that it actually works.
 
 Usage:
-  restored [command]
+  drillback [command]
 
 Available Commands:
   check       Restore a backup and verify that the application boots
@@ -149,11 +149,11 @@ Available Commands:
   help        Help about any command
 
 Flags:
-      --config string      Path to restored.yaml. Default search order:
-                           ./restored.yaml, $XDG_CONFIG_HOME/restored/restored.yaml,
-                           /etc/restored/restored.yaml
+      --config string      Path to drillback.yaml. Default search order:
+                           ./drillback.yaml, $XDG_CONFIG_HOME/drillback/drillback.yaml,
+                           /etc/drillback/drillback.yaml
       --json               Emit the machine-readable report on stdout; human output
-                           goes to stderr, so `restored check --json | jq` works
+                           goes to stderr, so `drillback check --json | jq` works
       --log-level string   trace|debug|info|warn|error (default "info")
       --no-color           Disable ANSI colour (NO_COLOR is also honoured)
       --no-nudge           Never print the "contribute this recipe" invitation
@@ -168,51 +168,51 @@ Exit codes:
        run exceeded --timeout before it could reach a verdict
   130  interrupted - the workspace and the compose project may still exist
 
-Docs: https://github.com/spelingbee/restored
+Docs: https://github.com/spelingbee/drillback
 ```
 
 > The owner is `spelingbee` (ADR-036). A human has not confirmed the name; the rename
 > is one grep and it is listed under *Open questions* in [PROGRESS.md](PROGRESS.md).
 
-### 2.2 `restored check --help`
+### 2.2 `drillback check --help`
 
 ```text
 Restore a backup into a throwaway environment and verify that the application boots.
 
 Every run gets its own workspace directory, its own compose project named
-restored-<runid>, and its own internal network. No ports are published; HTTP checks
+drillback-<runid>, and its own internal network. No ports are published; HTTP checks
 run from a helper container attached to the run's network. The workspace and the
 compose project are always destroyed on exit — including on Ctrl-C and on panic —
 unless --keep or --keep-on-fail says otherwise.
 
 Usage:
-  restored check [flags]
+  drillback check [flags]
 
 Examples:
   # restic repository from the environment, bundled recipe, latest snapshot
   export RESTIC_REPOSITORY=/mnt/backups/restic
   export RESTIC_PASSWORD_FILE=/etc/restic/pass
-  restored check --recipe gitea
+  drillback check --recipe gitea
 
   # a specific snapshot, with one input remapped to a non-default path
-  restored check --recipe gitea --snapshot 4a7f1c2e \
+  drillback check --recipe gitea --snapshot 4a7f1c2e \
       --input db=/var/backups/gitea/gitea.dump
 
   # a local recipe directory, against a tree that is already restored on disk
-  restored check --recipe ./recipes/uptime-kuma --source dir --from /mnt/export/uk
+  drillback check --recipe ./recipes/uptime-kuma --source dir --from /mnt/export/uk
 
   # only snapshots this host wrote, tagged "gitea"
-  restored check --recipe gitea --host hypervisor --tag gitea
+  drillback check --recipe gitea --host hypervisor --tag gitea
 
-  # every target in restored.yaml, for cron
-  restored check --all --json --report /var/log/restored/run.json
+  # every target in drillback.yaml, for cron
+  drillback check --all --json --report /var/log/drillback/run.json
 
 Flags:
       --recipe string           Recipe to run: a bundled name (e.g. "gitea"), a path
                                 to a directory containing recipe.yaml, or a path to a
                                 recipe.yaml file. Required unless --target or --all.
-      --target string           Run one named target from restored.yaml
-      --all                     Run every target in restored.yaml, sequentially
+      --target string           Run one named target from drillback.yaml
+      --all                     Run every target in drillback.yaml, sequentially
       --source string           Backup source: restic|dir (default "restic")
       --from string             Source location. For restic: the repository, overriding
                                 RESTIC_REPOSITORY. For dir: the already-restored tree.
@@ -220,7 +220,7 @@ Flags:
       --tag strings             Only consider snapshots carrying this tag (repeatable)
       --host string             Only consider snapshots written by this host
       --input name=path         Override a recipe input's path inside the backup
-                                (repeatable). See `restored recipe show <name>` for
+                                (repeatable). See `drillback recipe show <name>` for
                                 the input names a recipe declares.
       --set key=value           Override a recipe variable (repeatable)
       --timeout duration        Wall-clock budget for the whole run (default 30m)
@@ -243,10 +243,10 @@ Flags:
 Environment:
   RESTIC_REPOSITORY, RESTIC_PASSWORD, RESTIC_PASSWORD_FILE, RESTIC_PASSWORD_COMMAND
   and the backend variables restic itself reads (AWS_*, B2_*, AZURE_*, ...) are passed
-  through to restic unchanged. restored never parses or logs their values.
+  through to restic unchanged. drillback never parses or logs their values.
 ```
 
-### 2.3 `restored recipe --help`
+### 2.3 `drillback recipe --help`
 
 ```text
 Work with recipes.
@@ -256,7 +256,7 @@ test assets. It declares the *logical inputs* an application needs — not your 
 plus the probes that say the app is up and the checks that say the data survived.
 
 Usage:
-  restored recipe [command]
+  drillback recipe [command]
 
 Available Commands:
   init        Scaffold a new recipe directory
@@ -267,10 +267,10 @@ Available Commands:
 Flags:
   -h, --help   help for recipe
 
-Use "restored recipe [command] --help" for more information about a command.
+Use "drillback recipe [command] --help" for more information about a command.
 ```
 
-### 2.4 `restored recipe validate --help`
+### 2.4 `drillback recipe validate --help`
 
 ```text
 Validate one or more recipes against the JSON Schema and the safety rules.
@@ -281,13 +281,13 @@ namespace, published ports, a non-internal network, a bind mount to a path outsi
 the run workspace, or a `!!` YAML tag. See SPEC.md section 9, Threat model.
 
 Usage:
-  restored recipe validate <dir|file>... [flags]
+  drillback recipe validate <dir|file>... [flags]
 
 Examples:
-  restored recipe validate ./recipes/gitea
-  restored recipe validate ./recipes/*/
-  restored recipe validate ./recipes/gitea --json
-  restored recipe validate ./recipes/*/ --strict     # what CI runs
+  drillback recipe validate ./recipes/gitea
+  drillback recipe validate ./recipes/*/
+  drillback recipe validate ./recipes/gitea --json
+  drillback recipe validate ./recipes/*/ --strict     # what CI runs
 
 Flags:
       --strict   Also fail on warnings: missing description, missing maintainer,
@@ -301,21 +301,21 @@ Exit codes:
   2  at least one recipe is invalid  (recipe problems are tool errors, not verdicts)
 ```
 
-### 2.5 `restored recipe show --help`
+### 2.5 `drillback recipe show --help`
 
 ```text
 Print a recipe with defaults applied, variables expanded, and inputs resolved to the
 paths this invocation would actually use.
 
-Use this to see exactly what `restored check` would do, without running anything.
+Use this to see exactly what `drillback check` would do, without running anything.
 
 Usage:
-  restored recipe show <name|dir|file> [flags]
+  drillback recipe show <name|dir|file> [flags]
 
 Examples:
-  restored recipe show gitea
-  restored recipe show gitea --input db=/backup/gitea.dump --format json
-  restored recipe show ./recipes/uptime-kuma --compose
+  drillback recipe show gitea
+  drillback recipe show gitea --input db=/backup/gitea.dump --format json
+  drillback recipe show ./recipes/uptime-kuma --compose
 
 Flags:
       --format string     yaml|json (default "yaml")
@@ -327,24 +327,24 @@ Flags:
   -h, --help              help for show
 ```
 
-### 2.6 `restored recipe init --help`
+### 2.6 `drillback recipe init --help`
 
 ```text
 Scaffold a new recipe directory: recipe.yaml, compose.yaml, and README.md, prefilled
 with comments and a working skeleton.
 
-The generated recipe deliberately does NOT pass `restored recipe test` yet. It has no
+The generated recipe deliberately does NOT pass `drillback recipe test` yet. It has no
 data-sensitive check, and stage A will tell you so. Writing that check is the first
 and most important thing you do, because it is the only thing that makes the recipe
 worth anything.
 
 Usage:
-  restored recipe init <name> [flags]
+  drillback recipe init <name> [flags]
 
 Examples:
-  restored recipe init paperless
-  restored recipe init immich --db postgres-dump --with-dir data --with-dir thumbs
-  restored recipe init miniflux --dir ./my-recipes --image miniflux/miniflux:2.2.0
+  drillback recipe init paperless
+  drillback recipe init immich --db postgres-dump --with-dir data --with-dir thumbs
+  drillback recipe init miniflux --dir ./my-recipes --image miniflux/miniflux:2.2.0
 
 Flags:
       --dir string         Parent directory (default "./recipes")
@@ -357,7 +357,7 @@ Flags:
   -h, --help               help for init
 ```
 
-### 2.7 `restored recipe test --help`
+### 2.7 `drillback recipe test --help`
 
 ```text
 Run the round-trip harness against a recipe. This is what CI runs for every PR that
@@ -370,15 +370,15 @@ check".
 
 Stage B, "positive": start a fresh stack, run test.seed, run test.export, back the
 resulting input tree up into a throwaway restic repository, tear everything down, then
-run a normal `restored check` against that repository and require that ALL checks PASS.
+run a normal `drillback check` against that repository and require that ALL checks PASS.
 
 Usage:
-  restored recipe test <name|dir>... [flags]
+  drillback recipe test <name|dir>... [flags]
 
 Examples:
-  restored recipe test ./recipes/gitea
-  restored recipe test ./recipes/gitea --stage a --keep
-  restored recipe test ./recipes/* --json --report ./recipe-test.json
+  drillback recipe test ./recipes/gitea
+  drillback recipe test ./recipes/gitea --stage a --keep
+  drillback recipe test ./recipes/* --json --report ./recipe-test.json
 
 Flags:
       --stage string      a|b|both (default "both")
@@ -400,11 +400,11 @@ The 1/2 split is the one the rest of the tool uses: 1 is a verdict about data, 2
 "this cannot be run as written". A recipe whose checks all pass against an empty stack
 has not failed a test - it is not a test. See DECISIONS.md ADR-052.
 
-### 2.8 `restored version --help` and its output
+### 2.8 `drillback version --help` and its output
 
 ```text
 Usage:
-  restored version [flags]
+  drillback version [flags]
 
 Flags:
       --json   Machine-readable output
@@ -412,8 +412,8 @@ Flags:
 ```
 
 ```text
-$ restored version
-restored 0.1.0
+$ drillback version
+drillback 0.1.0
   commit:    3f9a1c4e8b2d7605a1f39c0e5d84b7a2c6e1f093
   built:     2026-09-14T08:41:22Z
   go:        go1.25.1
@@ -424,17 +424,17 @@ restored 0.1.0
 ```
 
 The `docker`, `compose` and `restic` lines are probed at runtime and print
-`not found` when the dependency is missing. `restored version` never exits non-zero
+`not found` when the dependency is missing. `drillback version` never exits non-zero
 for a missing dependency — that is `check`'s job — so it stays usable as a bug-report
 command.
 
-### 2.9 `restored.yaml`
+### 2.9 `drillback.yaml`
 
-Discovered at `./restored.yaml`, then `$XDG_CONFIG_HOME/restored/restored.yaml`, then
-`/etc/restored/restored.yaml`. First match wins; `--config` overrides the search.
+Discovered at `./drillback.yaml`, then `$XDG_CONFIG_HOME/drillback/drillback.yaml`, then
+`/etc/drillback/drillback.yaml`. First match wins; `--config` overrides the search.
 
 ```yaml
-# /etc/restored/restored.yaml
+# /etc/drillback/drillback.yaml
 version: 1
 
 defaults:
@@ -451,7 +451,7 @@ sources:
   home-nas:
     kind: restic
     repository: sftp:backup@nas.lan:/srv/restic
-    password_file: /etc/restored/nas.pass
+    password_file: /etc/drillback/nas.pass
     host: hypervisor        # default snapshot filter for every target on this source
 
   offsite:
@@ -460,7 +460,7 @@ sources:
     password_command: ["pass", "show", "restic/offsite"]
     env:
       # Passed to restic verbatim. Values are read from the environment of the
-      # restored process; restored does not read secrets out of this file.
+      # drillback process; drillback does not read secrets out of this file.
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
 
@@ -520,11 +520,11 @@ A cron line that verifies everything nightly and lets the exit code do the alert
 
 ```cron
 # m  h  dom mon dow  command
-  17 4  *   *   *    /usr/local/bin/restored check --all --json \
-                       --report /var/log/restored/$(date +\%F).json \
-                       >>/var/log/restored/run.log 2>&1 \
+  17 4  *   *   *    /usr/local/bin/drillback check --all --json \
+                       --report /var/log/drillback/$(date +\%F).json \
+                       >>/var/log/drillback/run.log 2>&1 \
                      || curl -fsS -X POST https://ntfy.sh/my-backup-alerts \
-                          -d "restore drill FAILED, see /var/log/restored"
+                          -d "restore drill FAILED, see /var/log/drillback"
 ```
 
 With `--all`, the process exit code is the worst outcome across targets: `2` if any
@@ -539,23 +539,23 @@ A recipe is a directory:
 ```text
 recipes/gitea/
 ├── recipe.yaml      # the contract: inputs, ready probes, checks, test harness
-├── compose.yaml     # how to start the app, using ${RESTORED_*} placeholders
+├── compose.yaml     # how to start the app, using ${DRILLBACK_*} placeholders
 ├── README.md        # what this recipe assumes about your backup
-└── test/            # optional assets used only by `restored recipe test`
+└── test/            # optional assets used only by `drillback recipe test`
     └── seed.sql
 ```
 
 The central idea: **a recipe declares logical inputs, not user paths.** The recipe
 author knows that Gitea needs "a data directory" and "a database dump". Only the user
 knows those live at `/srv/gitea/data` and `/var/backups/gitea.sql`. The recipe supplies
-defaults; the user overrides them with `--input` or `restored.yaml`.
+defaults; the user overrides them with `--input` or `drillback.yaml`.
 
 ### 3.1 Example: Gitea + PostgreSQL
 
 `recipes/gitea/recipe.yaml`:
 
 ```yaml
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -573,7 +573,7 @@ vars:
   db_user: gitea
   # Not a secret. This database exists for about ninety seconds on an internal
   # network with no published ports, and is destroyed with `compose down -v`.
-  db_password: restored-throwaway
+  db_password: drillback-throwaway
   gitea_port: 3000
 
 inputs:
@@ -586,7 +586,7 @@ inputs:
     default_path: /srv/gitea/data
     required: true
     mount:
-      env: RESTORED_INPUT_data      # compose.yaml refers to ${RESTORED_INPUT_data}
+      env: DRILLBACK_INPUT_data      # compose.yaml refers to ${DRILLBACK_INPUT_data}
       into: gitea:/data             # service:path, for `file` checks and exports
 
   db:
@@ -705,12 +705,12 @@ test:
     - name: dump the database into the staging tree
       kind: exec
       service: db
-      # $RESTORED_EXPORT is mounted into every service by the harness, and only by
-      # the harness. It does not exist during `restored check`.
+      # $DRILLBACK_EXPORT is mounted into every service by the harness, and only by
+      # the harness. It does not exist during `drillback check`.
       command:
         - sh
         - -c
-        - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+        - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$DRILLBACK_EXPORT/db.sql"'
       timeout: 5m
       produces: db      # the file lands at the `db` input's path in the staging tree
 ```
@@ -718,19 +718,19 @@ test:
 `recipes/gitea/compose.yaml`:
 
 ```yaml
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`
 # plus any --set overrides.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   db:
     image: postgres:16.4-alpine
     environment:
-      POSTGRES_DB: ${RESTORED_VAR_db_name}
-      POSTGRES_USER: ${RESTORED_VAR_db_user}
-      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+      POSTGRES_DB: ${DRILLBACK_VAR_db_name}
+      POSTGRES_USER: ${DRILLBACK_VAR_db_user}
+      POSTGRES_PASSWORD: ${DRILLBACK_VAR_db_password}
     # Speed only. This database is thrown away; durability is not a goal. These are
     # postmaster settings, so they go on the server's own command line: putting them
     # in PGOPTIONS breaks the image's own initialisation, which connects as a client.
@@ -744,7 +744,7 @@ services:
       - synchronous_commit=off
     volumes:
       - db-data:/var/lib/postgresql/data
-    networks: [restored]
+    networks: [drillback]
 
   gitea:
     image: gitea/gitea:1.22.6
@@ -756,24 +756,24 @@ services:
       USER_GID: "1000"
       GITEA__database__DB_TYPE: postgres
       GITEA__database__HOST: db:5432
-      GITEA__database__NAME: ${RESTORED_VAR_db_name}
-      GITEA__database__USER: ${RESTORED_VAR_db_user}
-      GITEA__database__PASSWD: ${RESTORED_VAR_db_password}
-      GITEA__server__ROOT_URL: http://gitea:${RESTORED_VAR_gitea_port}/
+      GITEA__database__NAME: ${DRILLBACK_VAR_db_name}
+      GITEA__database__USER: ${DRILLBACK_VAR_db_user}
+      GITEA__database__PASSWD: ${DRILLBACK_VAR_db_password}
+      GITEA__server__ROOT_URL: http://gitea:${DRILLBACK_VAR_gitea_port}/
       # The network is internal; without offline mode Gitea blocks on fetching
       # avatars and assets from the internet and the ready probe times out.
       GITEA__server__OFFLINE_MODE: "true"
       GITEA__security__INSTALL_LOCK: "true"
       GITEA__cron__ENABLED: "false"
     volumes:
-      - ${RESTORED_INPUT_data}:/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/data
+    networks: [drillback]
 
 volumes:
   db-data:
 
 networks:
-  restored:
+  drillback:
     internal: true
 ```
 
@@ -782,7 +782,7 @@ networks:
 `recipes/uptime-kuma/recipe.yaml`:
 
 ```yaml
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -807,7 +807,7 @@ inputs:
     default_path: /srv/uptime-kuma/data
     required: true
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: kuma:/app/data
 
   db:
@@ -913,23 +913,23 @@ services:
   kuma:
     image: louislam/uptime-kuma:1.23.16-alpine
     environment:
-      UPTIME_KUMA_PORT: "${RESTORED_VAR_kuma_port}"
+      UPTIME_KUMA_PORT: "${DRILLBACK_VAR_kuma_port}"
     volumes:
-      - ${RESTORED_INPUT_data}:/app/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/app/data
+    networks: [drillback]
 
-  # Started only by `restored recipe test`, via the "test" compose profile.
+  # Started only by `drillback recipe test`, via the "test" compose profile.
   seeder:
     image: keinos/sqlite3:3.46.0
     profiles: [test]
     volumes:
-      - ${RESTORED_INPUT_data}:/app/data
-      - ${RESTORED_TEST_ASSETS}:/seed:ro
+      - ${DRILLBACK_INPUT_data}:/app/data
+      - ${DRILLBACK_TEST_ASSETS}:/seed:ro
     command: ["sleep", "infinity"]
-    networks: [restored]
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true
 ```
 
@@ -946,7 +946,7 @@ INSERT INTO monitor (name, type, url, interval, active, user_id)
 VALUES ('drill monitor', 'http', 'http://kuma:3001/', 60, 0, 1);
 
 INSERT INTO heartbeat (monitor_id, status, msg, time, ping, important, duration)
-VALUES (1, 1, 'seeded by restored recipe test', datetime('now'), 12, 1, 60);
+VALUES (1, 1, 'seeded by drillback recipe test', datetime('now'), 12, 1, 60);
 ```
 
 ### 3.3 Field reference
@@ -970,7 +970,7 @@ report so a surprise is visible rather than mysterious.
 `ready` probes take `http`, `tcp`, `exec`. They are *retried* until they succeed or
 their `timeout` expires, on `interval`. A ready probe that never succeeds ends the run
 as **RESTORE UNUSABLE** (exit 1), not as a tool error — "the app did not come up" is a
-verdict about the backup, not about `restored`. See [DECISIONS.md](DECISIONS.md) ADR-023.
+verdict about the backup, not about `drillback`. See [DECISIONS.md](DECISIONS.md) ADR-023.
 
 `checks` take `http`, `exec`, `sql`, `file`. They are run **once**, never retried, in
 declaration order, and every check runs even after an earlier one fails — a report that
@@ -1009,7 +1009,7 @@ cannot hang a runner with a catastrophic pattern.
 
 Recipe strings are Go `text/template` with a restricted context: `.vars`,
 `.inputs.<name>.path`, `.inputs.<name>.kind`, `.run.id`. No functions beyond
-`printf`, `quote`, `default`. `compose.yaml` uses `${RESTORED_*}` shell-style
+`printf`, `quote`, `default`. `compose.yaml` uses `${DRILLBACK_*}` shell-style
 interpolation instead, because that is what `docker compose` itself does; the two
 syntaxes are deliberately different so it is always obvious which engine expands a
 placeholder.
@@ -1022,13 +1022,13 @@ pattern repeats; every constraint that matters is present.
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/spelingbee/restored/schema/recipe.schema.json",
-  "title": "restored recipe",
+  "$id": "https://github.com/spelingbee/drillback/schema/recipe.schema.json",
+  "title": "drillback recipe",
   "type": "object",
   "additionalProperties": false,
   "required": ["apiVersion", "kind", "metadata", "inputs", "checks"],
   "properties": {
-    "apiVersion": { "const": "restored/v1" },
+    "apiVersion": { "const": "drillback/v1" },
     "kind": { "const": "Recipe" },
 
     "metadata": {
@@ -1074,7 +1074,7 @@ pattern repeats; every constraint that matters is present.
             "additionalProperties": false,
             "required": ["env", "into"],
             "properties": {
-              "env": { "type": "string", "pattern": "^RESTORED_INPUT_[a-z][a-z0-9_]*$" },
+              "env": { "type": "string", "pattern": "^DRILLBACK_INPUT_[a-z][a-z0-9_]*$" },
               "into": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:/[^\\s:]*$" }
             }
           },
@@ -1342,7 +1342,7 @@ placeholder therefore permits one; `internalURL` is the case that matters, since
 templated port is the normal way to write a recipe.
 
 `compose-safety.schema.json` validates **after** `${...}` interpolation, because the
-whole point is to see the real, resolved values: `${RESTORED_INPUT_data}` must be
+whole point is to see the real, resolved values: `${DRILLBACK_INPUT_data}` must be
 checked as the path it becomes, not as the literal placeholder.
 
 The order in RESOLVE is: parse recipe → validate against `recipe.schema.json` → expand
@@ -1358,8 +1358,8 @@ section 9 explains why each rule exists.
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/spelingbee/restored/schema/compose-safety.schema.json",
-  "title": "restored compose safety rules",
+  "$id": "https://github.com/spelingbee/drillback/schema/compose-safety.schema.json",
+  "title": "drillback compose safety rules",
   "type": "object",
   "required": ["services", "networks"],
   "properties": {
@@ -1403,8 +1403,8 @@ section 9 explains why each rule exists.
               "oneOf": [
                 {
                   "type": "string",
-                  "pattern": "^(\\$\\{RESTORED_(INPUT|TEST_ASSETS|EXPORT)[A-Za-z0-9_]*\\}|[a-z][a-z0-9_-]*):/[^:]+(:(ro|rw|z|Z|ro,z|rw,z))?$",
-                  "description": "Left side must be a named volume declared in this file, or a ${RESTORED_*} placeholder that restored resolves inside the workspace. An absolute host path is rejected."
+                  "pattern": "^(\\$\\{DRILLBACK_(INPUT|TEST_ASSETS|EXPORT)[A-Za-z0-9_]*\\}|[a-z][a-z0-9_-]*):/[^:]+(:(ro|rw|z|Z|ro,z|rw,z))?$",
+                  "description": "Left side must be a named volume declared in this file, or a ${DRILLBACK_*} placeholder that drillback resolves inside the workspace. An absolute host path is rejected."
                 },
                 {
                   "type": "object",
@@ -1413,7 +1413,7 @@ section 9 explains why each rule exists.
                     "type": { "enum": ["volume", "tmpfs"] },
                     "target": { "type": "string", "pattern": "^/" }
                   },
-                  "description": "Long syntax may not use type: bind. Bind mounts are only expressible through the ${RESTORED_*} short form, which restored controls."
+                  "description": "Long syntax may not use type: bind. Bind mounts are only expressible through the ${DRILLBACK_*} short form, which drillback controls."
                 }
               ]
             }
@@ -1447,7 +1447,7 @@ severity:
 
 1. **No YAML tags.** The recipe loader rejects any `!!` tag or anchor cycle before
    parsing, so a recipe cannot exploit the YAML layer.
-2. **Every `${...}` placeholder must be one restored defines.** After collecting the
+2. **Every `${...}` placeholder must be one drillback defines.** After collecting the
    recipe's `vars` and `inputs`, any remaining `${FOO}` in compose.yaml is an error —
    an unset variable silently expanding to the empty string is how a volume mount
    becomes `/`.
@@ -1481,7 +1481,7 @@ severity:
                          └──────┬───────┘
                                 ▼
                          ┌──────────────┐
-                         │  COMPOSE UP  │  docker compose -p restored-<runid> up -d
+                         │  COMPOSE UP  │  docker compose -p drillback-<runid> up -d
                          │   5m         │  (pull policy applies here)
                          └──────┬───────┘
                                 ▼
@@ -1527,14 +1527,14 @@ severity:
 | TEARDOWN | 2m | best-effort; a failure is logged and downgrades the exit code to 2 only if the workspace could not be removed | 0/1/2 |
 
 The distinction that matters: **states before LOAD DUMPS produce exit 2, states from
-LOAD DUMPS onward produce exit 1.** The line falls where `restored` stops being able to
+LOAD DUMPS onward produce exit 1.** The line falls where `drillback` stops being able to
 fail on its own and starts observing the backup. A dump that will not load, an app that
 never becomes ready, and a check that fails are all *verdicts about the backup*. See
 ADR-023 — this is the single call in this specification most worth a second opinion.
 
 ### 4.3 Restore-stage sanitisation
 
-Between RESTORE and COMPOSE UP, `restored` walks the restored tree once and:
+Between RESTORE and COMPOSE UP, `drillback` walks the restored tree once and:
 
 - resolves every symlink; any link whose target escapes the workspace is replaced with
   a zero-byte file, and the event is recorded in the report under `warnings` (a backup
@@ -1553,7 +1553,7 @@ Teardown runs from a single deferred function, and is registered *before* the fi
 resource is created. It is triggered by: normal completion, any error, `SIGINT`,
 `SIGTERM`, and a recovered panic. It is idempotent and time-boxed at 2 minutes.
 
-- `docker compose -p restored-<runid> down -v --remove-orphans --timeout 20`
+- `docker compose -p drillback-<runid> down -v --remove-orphans --timeout 20`
 - `os.RemoveAll(workspace)`
 
 A second `SIGINT` during teardown skips it and exits 130, after printing the workspace
@@ -1563,16 +1563,16 @@ With `--keep`, teardown is skipped and the tool prints:
 
 ```text
 Kept for inspection:
-  workspace:        /var/tmp/restored-k7m2q9xf
-  compose project:  restored-k7m2q9xf
+  workspace:        /var/tmp/drillback-k7m2q9xf
+  compose project:  drillback-k7m2q9xf
 
 Clean up with:
-  docker compose -p restored-k7m2q9xf down -v --remove-orphans
-  rm -rf /var/tmp/restored-k7m2q9xf
+  docker compose -p drillback-k7m2q9xf down -v --remove-orphans
+  rm -rf /var/tmp/drillback-k7m2q9xf
 ```
 
-Orphans from a crashed process are recoverable: every object `restored` creates carries
-the label `com.restored.run=<runid>`, so `docker ps -aq --filter label=com.restored.run`
+Orphans from a crashed process are recoverable: every object `drillback` creates carries
+the label `com.drillback.run=<runid>`, so `docker ps -aq --filter label=com.drillback.run`
 finds them all.
 
 ---
@@ -1590,7 +1590,7 @@ finds them all.
 PASS:
 
 ```text
-restored 0.1.0 · recipe gitea · run k7m2q9xf
+drillback 0.1.0 · recipe gitea · run k7m2q9xf
 
   source     restic  sftp:backup@nas.lan:/srv/restic
   snapshot   4a7f1c2e  2026-09-13 02:14:07  host=hypervisor  tags=[gitea]
@@ -1621,7 +1621,7 @@ This backup boots.
 RESTORE UNUSABLE:
 
 ```text
-restored 0.1.0 · recipe gitea · run q4x8b1na
+drillback 0.1.0 · recipe gitea · run q4x8b1na
 
   source     restic  sftp:backup@nas.lan:/srv/restic
   snapshot   9c1e77b0  2026-09-13 02:14:07  host=hypervisor  tags=[gitea]
@@ -1691,16 +1691,16 @@ Design rules the mocks encode:
 
 ### 5.2 JSON report
 
-`restored check --json` writes this document to stdout; human output goes to stderr.
+`drillback check --json` writes this document to stdout; human output goes to stderr.
 `--report FILE` writes the same document to a file regardless of `--json`.
 
 ```json
 {
   "schema_version": 1,
-  "tool": { "name": "restored", "version": "0.1.0", "commit": "3f9a1c4e" },
+  "tool": { "name": "drillback", "version": "0.1.0", "commit": "3f9a1c4e" },
   "run": {
     "id": "q4x8b1na",
-    "compose_project": "restored-q4x8b1na",
+    "compose_project": "drillback-q4x8b1na",
     "started_at": "2026-09-14T02:31:08Z",
     "finished_at": "2026-09-14T02:32:06Z",
     "duration_ms": 58412,
@@ -1816,26 +1816,26 @@ unusable, otherwise 0. See ADR-068.
 |---|---|---|---|
 | 0 | PASS | Every check passed. | Nothing. |
 | 1 | RESTORE UNUSABLE | The stack came up or failed to, and the data is not there. **This backup will not save you.** | Page someone. |
-| 2 | ERROR | `restored` could not perform the test: docker missing, restic failed, recipe invalid, snapshot not found, out of disk. **The backup is unproven, not proven bad.** | Fix the runner, then re-run. Do not treat as PASS. |
+| 2 | ERROR | `drillback` could not perform the test: docker missing, restic failed, recipe invalid, snapshot not found, out of disk. **The backup is unproven, not proven bad.** | Fix the runner, then re-run. Do not treat as PASS. |
 | 130 | interrupted | Second `SIGINT` during teardown. | — |
 
 The 1/2 split exists so a cron job can tell "your backup is broken" from "your drill is
 broken". Conflating them is how a monitoring system trains its owner to ignore it.
 
-Exit 2 is a statement about `restored`, never about the backup. A run that exceeds
+Exit 2 is a statement about `drillback`, never about the backup. A run that exceeds
 `--timeout` is exit 2 for this reason: the drill did not finish, so nothing is known
 (ADR-058).
 
 ### 5.4 The harness JSON report
 
-`restored recipe test --json` and `--report FILE` write a *different* document from
-`restored check`. It is one document per invocation, however many recipes it covered,
+`drillback recipe test --json` and `--report FILE` write a *different* document from
+`drillback check`. It is one document per invocation, however many recipes it covered,
 and it nests a check report per stage.
 
 ```json
 {
   "schema_version": 1,
-  "tool": { "name": "restored", "version": "0.1.0" },
+  "tool": { "name": "drillback", "version": "0.1.0" },
   "started_at": "2026-08-30T02:38:11Z",
   "finished_at": "2026-08-30T02:39:04Z",
   "duration_ms": 53000,
@@ -1851,7 +1851,7 @@ and it nests a check report per stage.
           "reason": "3 of 5 checks failed against an empty stack: repos-in-db, ...",
           "duration_ms": 21000,
           "phases": [ { "name": "up", "status": "pass", "duration_ms": 4200 } ],
-          "command": "restored recipe test ./recipes/gitea --stage a --keep"
+          "command": "drillback recipe test ./recipes/gitea --stage a --keep"
         }
       ]
     }
@@ -1875,7 +1875,7 @@ it, a contributor whose recipe fails in CI is told which checks failed and nothi
 else, while everything they need has already been computed and discarded (ADR-061).
 
 `stages[].command` is a command that still works after the run: the harness deletes its
-workspaces unless `--keep` was given, so it names `restored recipe test <ref> --stage
+workspaces unless `--keep` was given, so it names `drillback recipe test <ref> --stage
 <a|b> --keep` rather than a path that no longer exists.
 
 ---
@@ -1884,7 +1884,7 @@ workspaces unless `--keep` was given, so it names `restored recipe test <ref> --
 
 ### 6.1 Mechanism
 
-After the checks run and before the report renders, `restored` matches a catalog of
+After the checks run and before the report renders, `drillback` matches a catalog of
 regular expressions against, in order: each failing check's `observed.error`, its
 `observed.body`, its stderr, and then the last 200 log lines of each service. The first
 rule that matches wins; at most one hint is ever shown.
@@ -1909,7 +1909,7 @@ no Go, no Docker — and is deliberately advertised as the first-timer entry poi
 # `match` is an RE2 regular expression (Go's regexp), applied to check errors,
 # response bodies, and service logs.
 #
-# Adding a rule here is the easiest useful contribution to restored. If you hit a
+# Adding a rule here is the easiest useful contribution to drillback. If you hit a
 # confusing restore failure, the fix is often just twenty lines in this file.
 version: 1
 
@@ -1963,7 +1963,7 @@ rules:
     text: >
       The dump carries ownership and GRANT statements for roles that live in the source
       cluster's globals, which `pg_dump` of a single database does not include. For a
-      restore drill this is usually harmless noise — restored loads custom-format dumps
+      restore drill this is usually harmless noise — drillback loads custom-format dumps
       with `--no-owner --no-acl` for exactly this reason — but with a plain-SQL dump the
       statements run and fail. Re-dump with `--no-owner --no-acl`, or back up globals
       too with `pg_dumpall --globals-only`.
@@ -1986,7 +1986,7 @@ rules:
     text: >
       This is a recipe bug, not a backup problem. The `db_user`/`db_name` variables in
       recipe.yaml and the POSTGRES_* environment in compose.yaml have drifted apart.
-      `restored recipe show <name>` prints the resolved values.
+      `drillback recipe show <name>` prints the resolved values.
 
   - id: sqlite/not-a-database
     when: { driver: sqlite }
@@ -2036,11 +2036,11 @@ rules:
 
   - id: compose/port-conflict
     match: '(?i)(bind: address already in use|port is already allocated)'
-    title: A recipe is publishing a port, which restored does not allow
+    title: A recipe is publishing a port, which drillback does not allow
     text: >
-      restored never publishes ports; every check runs on the run's internal network.
+      drillback never publishes ports; every check runs on the run's internal network.
       If you see this, a recipe has a `ports:` entry that slipped past validation.
-      Please open an issue with the recipe name — `restored recipe validate` should have
+      Please open an issue with the recipe name — `drillback recipe validate` should have
       caught it.
 
   - id: permissions/eacces
@@ -2051,7 +2051,7 @@ rules:
       33, Paperless 1000). The backup preserved the ownership from the original host,
       and it does not match. On rootless Docker the mismatch is systematic, because the
       user namespace shifts every UID. Set USER_UID/USER_GID or PUID/PGID in the
-      recipe's compose.yaml to the UID the files actually have — `restored check --keep`
+      recipe's compose.yaml to the UID the files actually have — `drillback check --keep`
       then `ls -ln` in the workspace shows you which.
 
   - id: restore/empty-input
@@ -2069,7 +2069,7 @@ rules:
     title: The recipe's default path is not where your backup keeps that data
     text: >
       Recipe defaults are a guess at the most common layout. Point the input at your
-      path with `--input <name>=/your/path`, or record it in restored.yaml. To see what
+      path with `--input <name>=/your/path`, or record it in drillback.yaml. To see what
       the snapshot actually contains, use `restic ls latest | head -50`.
     commands:
       - "restic ls {{ .snapshot.id }} | head -50"
@@ -2092,13 +2092,13 @@ rules:
       the container is gone. The usual cause is an application that treats a refused
       first database connection as fatal.
     commands:
-      - "restored recipe test ./recipes/<name> --stage b --keep --log-level debug"
+      - "drillback recipe test ./recipes/<name> --stage b --keep --log-level debug"
 
   - id: docker/daemon-unreachable
     match: '(?i)(cannot connect to the docker daemon|docker daemon is not running|/var/run/docker\.sock.*permission denied)'
     title: Docker is not reachable from here
     text: >
-      restored needs a working `docker` and `docker compose` v2. On rootless Docker,
+      drillback needs a working `docker` and `docker compose` v2. On rootless Docker,
       check that DOCKER_HOST points at your user socket. If you are inside WSL2, the
       Docker Desktop integration for this distribution may be switched off.
     commands:
@@ -2116,7 +2116,7 @@ rules:
 ```
 
 That is 18 rules. `commands` are rendered with the same restricted template context as
-recipes and are printed verbatim — `restored` never executes them.
+recipes and are printed verbatim — `drillback` never executes them.
 
 ---
 
@@ -2168,20 +2168,20 @@ went wrong, because the author's next action is to add a check, not to debug one
 5. run test.export steps in order
    - every dir input is exported automatically by copying <service>:<mount.into>
      out of the container into  workspace/staging/<default_path>
-   - $RESTORED_EXPORT is bind-mounted at /export in every service, and maps to
+   - $DRILLBACK_EXPORT is bind-mounted at /export in every service, and maps to
      workspace/staging; a step with `produces: db` must leave its artifact where
      the `db` input's default_path says it will be
 6. initialise a throwaway restic repository. restic runs in a pinned container with
    each staged input bind-mounted at its own default_path, so the snapshot records
    /srv/gitea/data rather than a path inside the workspace and step 8 needs no
    --input override (DECISIONS.md ADR-051):
-     RESTIC_PASSWORD=restored-recipe-test               # not a secret, deleted at step 9
+     RESTIC_PASSWORD=drillback-recipe-test               # not a secret, deleted at step 9
      restic --repo /repo init --repository-version 2
-     restic --repo /repo backup --tag restored-recipe-test <each input's default_path>
+     restic --repo /repo backup --tag drillback-recipe-test <each input's default_path>
 7. teardown the stack completely (compose down -v), so nothing survives in a volume
    and the next step cannot accidentally read live state
 8. run the real code path, not a special one:
-     restored check --recipe <dir> --source restic --from <workspace>/repo --snapshot latest
+     drillback check --recipe <dir> --source restic --from <workspace>/repo --snapshot latest
 9. PASS if that run exits 0 and every check passed. Then teardown and delete the
    repository with the rest of the workspace.
 ```
@@ -2202,7 +2202,7 @@ never have to think about restic to contribute a recipe.
 | Stage A | 5m | short ready budget (90s), then the checks |
 | Stage B, seed | 5m | the usual bottleneck; app first-run migrations live here |
 | Stage B, export + restic | 3m | test fixtures are small by construction |
-| Stage B, `restored check` | 7m | the normal run budget |
+| Stage B, `drillback check` | 7m | the normal run budget |
 | Total per recipe | **20m** (`--timeout`) | CI job budget is 25m, giving teardown room |
 
 A recipe that cannot complete a round trip in 20 minutes is out of scope for v0.1 and
@@ -2248,7 +2248,7 @@ When a `check` run finishes and **all** of these hold:
 4. stdout or stderr is a TTY (never in `--json`, never in cron),
 5. the recipe passes `recipe validate --strict`,
 
-`restored` prints:
+`drillback` prints:
 
 ```text
   ────────────────────────────────────────────────────────────────────────
@@ -2256,15 +2256,15 @@ When a `check` run finishes and **all** of these hold:
   Other people running Paperless-ngx would use it. Adding it is a fork and a
   four-line pull request:
 
-    1. fork  https://github.com/spelingbee/restored
+    1. fork  https://github.com/spelingbee/drillback
     2. cp -r /home/you/recipes/paperless recipes/paperless
-    3. restored recipe test ./recipes/paperless     # this is what CI runs
+    3. drillback recipe test ./recipes/paperless     # this is what CI runs
     4. open a PR
 
-  restored does not touch your clipboard. Your recipe is at
+  drillback does not touch your clipboard. Your recipe is at
   /home/you/recipes/paperless.
 
-  (silence this with --no-nudge, or `nudge: false` in restored.yaml)
+  (silence this with --no-nudge, or `nudge: false` in drillback.yaml)
   ────────────────────────────────────────────────────────────────────────
 ```
 
@@ -2299,17 +2299,17 @@ user wrote it, with two exceptions applied to the file the instructions point at
 
 - any `--set` and `--input` overrides are folded back into `vars` and `default_path`, so
   the recipe that gets contributed reflects what actually worked;
-- `metadata.maintainers` is left exactly as it is. `restored` does not guess the
+- `metadata.maintainers` is left exactly as it is. `drillback` does not guess the
   contributor's GitHub handle and does not read git config for it.
 
-`restored` never opens a browser, never writes to the clipboard, and never sends
+`drillback` never opens a browser, never writes to the clipboard, and never sends
 anything anywhere. It prints four lines and stops.
 
 ---
 
 ## 9. Threat model
 
-### 9.1 What `restored` is asked to do
+### 9.1 What `drillback` is asked to do
 
 Run somebody else's YAML, which starts somebody else's container images, over the
 contents of a backup that may itself be adversarial, on a machine with a Docker socket.
@@ -2336,32 +2336,32 @@ pretending otherwise would be the most dangerous thing in this document.
   (which would run a Dockerfile), no `extends`/`include` (which would pull in files
   outside the recipe), no `security_opt` unconfining seccomp or AppArmor, `cap_add`
   restricted to a five-entry allowlist, all networks `internal: true`, no published
-  ports, and bind mounts expressible only through `${RESTORED_*}` placeholders that
-  `restored` resolves inside its own workspace. All of these are schema-level hard
+  ports, and bind mounts expressible only through `${DRILLBACK_*}` placeholders that
+  `drillback` resolves inside its own workspace. All of these are schema-level hard
   failures (section 3.5), enforced before anything is started.
 - *Mitigated:* a runaway recipe. Every stage is time-boxed; teardown is unconditional;
-  every object is labelled `com.restored.run=<runid>` so orphans are findable.
+  every object is labelled `com.drillback.run=<runid>` so orphans are findable.
 - *Accepted and documented:* a recipe can still name a malicious image, and that image
   runs with normal container privileges on the user's Docker. Recipes are therefore
   treated as **code review artifacts**: bundled recipes are reviewed like Go code,
   images must be pinned to a tag (`:latest` is rejected), and the README says in plain
   words: *running a recipe from a stranger is running a container from a stranger.*
-- *Accepted:* `restored` does not verify image signatures in v0.1. Digest pinning is
+- *Accepted:* `drillback` does not verify image signatures in v0.1. Digest pinning is
   supported by the schema and encouraged; it is not required, because requiring it
   would make recipes stale within weeks and destroy the contribution flow that is the
   project's entire point. This is a deliberate trade recorded in ADR-020.
 
-**Docker socket access.** `restored` requires it and is root-equivalent through it.
+**Docker socket access.** `drillback` requires it and is root-equivalent through it.
 
-- *Accepted and documented:* if you can run `restored`, you can already run `docker`,
-  so `restored` grants no privilege the user did not have. The README says so rather
+- *Accepted and documented:* if you can run `drillback`, you can already run `docker`,
+  so `drillback` grants no privilege the user did not have. The README says so rather
   than implying a sandbox that does not exist.
-- *Mitigated:* `restored` never mounts the Docker socket **into** a container, so a
+- *Mitigated:* `drillback` never mounts the Docker socket **into** a container, so a
   compromised recipe image does not inherit socket access.
 
 **Secrets.** restic passwords and cloud credentials are in the environment.
 
-- *Mitigated:* `restored` passes the environment to restic and never parses, stores, or
+- *Mitigated:* `drillback` passes the environment to restic and never parses, stores, or
   logs credential values. The JSON report contains the repository *URL* but no
   credentials, and the URL is scrubbed of any `user:password@` userinfo.
 - *Mitigated:* recipe `vars` are printed in reports, so recipes must not contain real
@@ -2386,14 +2386,14 @@ pretending otherwise would be the most dangerous thing in this document.
   `--target` restore does not emit them.
 - *Mitigated:* inputs are always **copied or restored into** the workspace, never
   bind-mounted from their original location, so nothing a container does can reach the
-  user's real data. There is no mode in which `restored` mounts a live backup directory
+  user's real data. There is no mode in which `drillback` mounts a live backup directory
   read-write into a container.
 - *Accepted:* a very large or zip-bomb-like backup fills the workspace disk. This
   produces a clean exit 2 with the `workspace/no-space` hint, not a wedged machine.
 - *Accepted:* file *contents* are not scanned. A malicious SQL dump does whatever SQL
   can do inside a throwaway Postgres container on an internal network.
 
-**Image pulling.** `restored` pulls images from the internet.
+**Image pulling.** `drillback` pulls images from the internet.
 
 - *Mitigated:* pulls happen on the host, before containers join the internal network,
   so a running recipe container has no egress at all.
@@ -2419,12 +2419,12 @@ runners.
 
 Stated plainly so nobody assumes otherwise:
 
-1. `restored` is **not** a sandbox for untrusted recipes. Read a recipe before running
+1. `drillback` is **not** a sandbox for untrusted recipes. Read a recipe before running
    it, exactly as you would read a `docker-compose.yml` before running it.
 2. A PASS verdict says *these checks passed on this snapshot*. It is not a guarantee of
    completeness, and a recipe with weak checks yields a weak PASS. The round-trip
    harness raises the floor; it does not set the ceiling.
-3. `restored` does not protect against a compromised Docker daemon, a compromised
+3. `drillback` does not protect against a compromised Docker daemon, a compromised
    restic binary, or a compromised host.
 4. No cryptographic attestation of results in v0.1. The JSON report is evidence for a
    human, not a signed artifact.
@@ -2445,7 +2445,7 @@ never need a daemon, a network, or a fixture larger than a few kilobytes.
 | Report | Rendering is a pure function of the report struct. Golden files for PASS, RESTORE UNUSABLE, and the multi-target `--all` shape, in both colour and `NO_COLOR`. The JSON report is round-tripped and validated against its own schema. |
 | Hints | Every rule in `hints.yaml` has at least one fixture string it must match and at least one near-miss it must not. Rule ordering is asserted, so adding a broad rule cannot silently shadow a specific one. |
 | Snapshot selection | `latest` with and without `--tag`/`--host`, ties broken by time then id, an explicit id, an ambiguous prefix, and a missing snapshot — driven by recorded `restic snapshots --json` output, not a live repository. |
-| Input mapping | Recipe default, `restored.yaml` target, `--input`, and `within:` resolution; precedence between them; `..` rejection; the collision case where two inputs resolve to the same path. |
+| Input mapping | Recipe default, `drillback.yaml` target, `--input`, and `within:` resolution; precedence between them; `..` rejection; the collision case where two inputs resolve to the same path. |
 | Dump detection | `PGDMP` magic bytes vs plain SQL vs an HTML error page vs an empty file. |
 | Expect evaluation | Each key in the `expect` vocabulary against matching and non-matching observations. |
 | Templating | The restricted context, and that an unknown function or field is an error rather than an empty string. |
@@ -2456,7 +2456,7 @@ never need a daemon, a network, or a fixture larger than a few kilobytes.
 for someone who just cloned the repo.
 
 - A real `docker compose up` of a two-service fixture stack in `testdata/`, asserting:
-  the project name is `restored-<runid>`, the network is internal, no ports are
+  the project name is `drillback-<runid>`, the network is internal, no ports are
   published, and teardown removes everything including volumes.
 - Teardown under `SIGINT`, under a panic, and under a `--keep` run followed by manual
   cleanup.
@@ -2473,7 +2473,7 @@ unavailable — so a contributor without Docker still gets a green `go test ./..
 
 ### 10.3 Recipe round-trips
 
-`restored recipe test ./recipes/<name>` per recipe, as specified in section 7. This is
+`drillback recipe test ./recipes/<name>` per recipe, as specified in section 7. This is
 the acceptance test for the domain the project actually lives in. It runs in CI on
 changed recipes per PR and on all recipes weekly.
 
@@ -2482,11 +2482,11 @@ changed recipes per PR and on all recipes weekly.
 The test that catches everything the others assume. On a clean runner, from nothing:
 
 ```sh
-git clone https://github.com/spelingbee/restored && cd restored
-go build ./cmd/restored          # builds with no network beyond the module cache
-./restored version               # exits 0 with docker/restic absent
-./restored recipe validate ./recipes/*/ --strict
-./restored recipe test ./recipes/uptime-kuma   # the cheapest recipe, end to end
+git clone https://github.com/spelingbee/drillback && cd drillback
+go build ./cmd/drillback          # builds with no network beyond the module cache
+./drillback version               # exits 0 with docker/restic absent
+./drillback recipe validate ./recipes/*/ --strict
+./drillback recipe test ./recipes/uptime-kuma   # the cheapest recipe, end to end
 go test ./...                    # green without Docker
 ```
 
@@ -2540,7 +2540,7 @@ on:
 
 1. compute changed recipes (section 7.5);
 2. matrix over them, `fail-fast: false`, max-parallel 5;
-3. per job, 25-minute timeout: `restored recipe test ./recipes/<name> --json --report r.json`;
+3. per job, 25-minute timeout: `drillback recipe test ./recipes/<name> --json --report r.json`;
 4. upload `r.json` as an artifact and post it as a sticky PR comment, so a contributor
    sees the same report locally and in the PR;
 5. a final `recipes-ok` job that depends on the matrix and is the only required status
@@ -2604,11 +2604,11 @@ Targets: `linux`, `darwin`, `windows` x `amd64`, `arm64` — six archives.
 
 ### 12.3 Container image
 
-`ghcr.io/spelingbee/restored`, tagged `vX.Y.Z`, `vX.Y`, `vX`, and `latest`, multi-arch
+`ghcr.io/spelingbee/drillback`, tagged `vX.Y.Z`, `vX.Y`, `vX`, and `latest`, multi-arch
 `linux/amd64,linux/arm64`.
 
-The image bundles what `restored` shells out to, so a user can drill without installing
-anything: the `restored` binary, the **docker CLI and the compose v2 plugin** (client
+The image bundles what `drillback` shells out to, so a user can drill without installing
+anything: the `drillback` binary, the **docker CLI and the compose v2 plugin** (client
 only — the image talks to the host's daemon through a mounted socket), `restic`,
 `postgresql-client` (for `psql`/`pg_restore`), and `ca-certificates`. Base:
 `debian:bookworm-slim`, because the Postgres client and the compose plugin are simply
@@ -2621,21 +2621,21 @@ Documented usage, with the socket mount stated as the privilege it is:
 docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /mnt/backups/restic:/repo:ro \
-  -v /var/tmp/restored:/workspace \
+  -v /var/tmp/drillback:/workspace \
   -e RESTIC_REPOSITORY=/repo \
   -e RESTIC_PASSWORD_FILE=/run/secrets/restic \
-  ghcr.io/spelingbee/restored:v0.1.0 check --recipe gitea --workspace /workspace
+  ghcr.io/spelingbee/drillback:v0.1.0 check --recipe gitea --workspace /workspace
 ```
 
 ### 12.4 Homebrew tap
 
-`OWNER/homebrew-tap`, formula `restored`, pushed by goreleaser on tag. `brew install
-OWNER/tap/restored`. The formula declares no dependency on docker or restic — it
+`OWNER/homebrew-tap`, formula `drillback`, pushed by goreleaser on tag. `brew install
+OWNER/tap/drillback`. The formula declares no dependency on docker or restic — it
 `caveats`-warns if they are missing, because on macOS people install Docker Desktop
 outside brew and a hard dependency would be wrong.
 
 Submission to homebrew-core is explicitly deferred until the project has an actual user
-base; the name `restored` is available there (section *name-check*), which is worth
+base; the name `drillback` is available there (section *name-check*), which is worth
 preserving but not worth blocking on.
 
 ### 12.5 `install.sh`
@@ -2649,14 +2649,14 @@ The script:
 
 1. detects OS and architecture, maps them to a goreleaser archive name, and refuses to
    guess on anything unrecognised;
-2. resolves the version — `latest` from the GitHub API, or `RESTORED_VERSION` if set;
+2. resolves the version — `latest` from the GitHub API, or `DRILLBACK_VERSION` if set;
 3. downloads the archive **and** `checksums.txt` **and** its cosign signature;
 4. verifies the checksum with `sha256sum` or `shasum -a 256`, and **exits non-zero on
    mismatch before extracting anything** — no fallback, no warning-and-continue;
 5. verifies the cosign signature if `cosign` is on `PATH`, and prints a clear
    "signature not verified (cosign not installed)" line when it is not, rather than
    silently skipping;
-6. installs to `$RESTORED_INSTALL_DIR`, else `/usr/local/bin` if writable, else
+6. installs to `$DRILLBACK_INSTALL_DIR`, else `/usr/local/bin` if writable, else
    `~/.local/bin`, and says which it chose;
 7. is `set -euo pipefail`, POSIX `sh`, does no `sudo` of its own, and prints every
    command it runs with `-v`.
@@ -2683,13 +2683,13 @@ settings that have to be turned on before any of this is safe - is
 ## 13. Repository layout
 
 ```text
-restored/
+drillback/
 ├── cmd/
-│   └── restored/
+│   └── drillback/
 │       └── main.go              # wiring only: flags → config → run. No logic.
 ├── internal/
 │   ├── cli/                     # cobra commands, flag parsing, exit-code mapping
-│   ├── config/                  # restored.yaml: load, merge, precedence
+│   ├── config/                  # drillback.yaml: load, merge, precedence
 │   ├── recipe/                  # types, loader, templating, JSON Schema validation
 │   │   └── safety/              # compose safety rules (schema + the three Go rules)
 │   ├── source/                  # backup sources
@@ -2751,7 +2751,7 @@ The rules that keep this from collapsing into one package with an import cycle:
   stage A and stage B without a special code path.
 - **`internal/cli` is the only package that knows about exit codes**, and the only one
   that writes to stdout/stderr directly.
-- **`cmd/restored/main.go` contains no logic**, so that a future `restored` used as a
+- **`cmd/drillback/main.go` contains no logic**, so that a future `drillback` used as a
   library, or a second entry point, costs nothing.
 
 ---
@@ -2773,12 +2773,12 @@ than its two authors before it is frozen.
 - **borg and kopia sources.** Both behind the same `source` interface restic already
   implements, which is the point of having defined it that way in v0.1.
 - **Notifiers.** `ntfy`, Gotify, and healthchecks.io, configured per target in
-  `restored.yaml`. Deliberately thin: they post the verdict and a link to the report.
-- **Cron mode with history.** `restored check --all --history /var/lib/restored`,
-  keeping the last N JSON reports per target and adding `restored history` to show a
+  `drillback.yaml`. Deliberately thin: they post the verdict and a link to the report.
+- **Cron mode with history.** `drillback check --all --history /var/lib/drillback`,
+  keeping the last N JSON reports per target and adding `drillback history` to show a
   pass/fail timeline. This is the feature that turns a one-shot answer into a trend, and
   it is the one most likely to make people keep the tool.
-- **`restored doctor`.** One command that checks docker, compose, restic, disk space,
+- **`drillback doctor`.** One command that checks docker, compose, restic, disk space,
   and repository reachability, and explains each failure. Most exit-2 issues are
   environment issues, and a dedicated command makes them self-service.
 

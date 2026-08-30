@@ -4,7 +4,7 @@
 # `match` is an RE2 regular expression (Go's regexp), applied to check errors,
 # response bodies, and service logs.
 #
-# Adding a rule here is the easiest useful contribution to restored. If you hit a
+# Adding a rule here is the easiest useful contribution to drillback. If you hit a
 # confusing restore failure, the fix is often just twenty lines in this file.
 version: 1
 
@@ -58,7 +58,7 @@ rules:
     text: >
       The dump carries ownership and GRANT statements for roles that live in the source
       cluster's globals, which `pg_dump` of a single database does not include. For a
-      restore drill this is usually harmless noise — restored loads custom-format dumps
+      restore drill this is usually harmless noise — drillback loads custom-format dumps
       with `--no-owner --no-acl` for exactly this reason — but with a plain-SQL dump the
       statements run and fail. Re-dump with `--no-owner --no-acl`, or back up globals
       too with `pg_dumpall --globals-only`.
@@ -81,7 +81,7 @@ rules:
     text: >
       This is a recipe bug, not a backup problem. The `db_user`/`db_name` variables in
       recipe.yaml and the POSTGRES_* environment in compose.yaml have drifted apart.
-      `restored recipe show <name>` prints the resolved values.
+      `drillback recipe show <name>` prints the resolved values.
 
   - id: sqlite/not-a-database
     when: { driver: sqlite }
@@ -131,11 +131,11 @@ rules:
 
   - id: compose/port-conflict
     match: '(?i)(bind: address already in use|port is already allocated)'
-    title: A recipe is publishing a port, which restored does not allow
+    title: A recipe is publishing a port, which drillback does not allow
     text: >
-      restored never publishes ports; every check runs on the run's internal network.
+      drillback never publishes ports; every check runs on the run's internal network.
       If you see this, a recipe has a `ports:` entry that slipped past validation.
-      Please open an issue with the recipe name — `restored recipe validate` should have
+      Please open an issue with the recipe name — `drillback recipe validate` should have
       caught it.
 
   - id: permissions/eacces
@@ -146,7 +146,7 @@ rules:
       33, Paperless 1000). The backup preserved the ownership from the original host,
       and it does not match. On rootless Docker the mismatch is systematic, because the
       user namespace shifts every UID. Set USER_UID/USER_GID or PUID/PGID in the
-      recipe's compose.yaml to the UID the files actually have — `restored check --keep`
+      recipe's compose.yaml to the UID the files actually have — `drillback check --keep`
       then `ls -ln` in the workspace shows you which.
 
   - id: restore/empty-input
@@ -164,7 +164,7 @@ rules:
     title: The recipe's default path is not where your backup keeps that data
     text: >
       Recipe defaults are a guess at the most common layout. Point the input at your
-      path with `--input <name>=/your/path`, or record it in restored.yaml. To see what
+      path with `--input <name>=/your/path`, or record it in drillback.yaml. To see what
       the snapshot actually contains, use `restic ls latest | head -50`.
     commands:
       - "restic ls {{ .snapshot.id }} | head -50"
@@ -188,17 +188,17 @@ rules:
       first database connection as fatal: the harness starts every service at once, the
       application tries the database immediately, is refused, and exits. Give the
       database a healthcheck and the application a `depends_on` with `condition:
-      service_healthy`. `restored recipe init --compose` writes both for you; a recipe
+      service_healthy`. `drillback recipe init --compose` writes both for you; a recipe
       written by hand often has neither. Re-run with `--log-level debug` and the real
       error is in the service logs, usually `connection refused`.
     commands:
-      - "restored recipe test ./recipes/<name> --stage b --keep --log-level debug"
+      - "drillback recipe test ./recipes/<name> --stage b --keep --log-level debug"
 
   - id: docker/daemon-unreachable
     match: '(?i)(cannot connect to the docker daemon|docker daemon is not running|/var/run/docker\.sock.*permission denied)'
     title: Docker is not reachable from here
     text: >
-      restored needs a working `docker` and `docker compose` v2. On rootless Docker,
+      drillback needs a working `docker` and `docker compose` v2. On rootless Docker,
       check that DOCKER_HOST points at your user socket. If you are inside WSL2, the
       Docker Desktop integration for this distribution may be switched off.
     commands:

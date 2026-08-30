@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/spelingbee/restored/schema/compose-safety.schema.json",
-  "title": "restored compose safety rules",
-  "description": "An allow-list, not a deny-list. A compose key that restored has not thought about is rejected, because the compose specification grows and a deny-list loses to it silently. See DECISIONS.md ADR-057.",
+  "$id": "https://github.com/spelingbee/drillback/schema/compose-safety.schema.json",
+  "title": "drillback compose safety rules",
+  "description": "An allow-list, not a deny-list. A compose key that drillback has not thought about is rejected, because the compose specification grows and a deny-list loses to it silently. See DECISIONS.md ADR-057.",
   "type": "object",
   "required": ["services", "networks"],
   "additionalProperties": false,
   "properties": {
     "name": {
       "type": "string",
-      "description": "Ignored: restored names the compose project itself, per run."
+      "description": "Ignored: drillback names the compose project itself, per run."
     },
     "services": {
       "type": "object",
@@ -60,8 +60,8 @@
               "oneOf": [
                 {
                   "type": "string",
-                  "pattern": "^(\\$\\{RESTORED_(INPUT|TEST_ASSETS|EXPORT)[A-Za-z0-9_]*\\}|[a-z][a-z0-9_-]*):/[^:]+(:(ro|rw|z|Z|ro,z|rw,z))?$",
-                  "description": "Left side must be a named volume declared in this file, or a ${RESTORED_*} placeholder that restored resolves inside the workspace. An absolute host path is rejected."
+                  "pattern": "^(\\$\\{DRILLBACK_(INPUT|TEST_ASSETS|EXPORT)[A-Za-z0-9_]*\\}|[a-z][a-z0-9_-]*):/[^:]+(:(ro|rw|z|Z|ro,z|rw,z))?$",
+                  "description": "Left side must be a named volume declared in this file, or a ${DRILLBACK_*} placeholder that drillback resolves inside the workspace. An absolute host path is rejected."
                 },
                 {
                   "type": "object",
@@ -75,7 +75,7 @@
                     "volume": { "type": "object" },
                     "tmpfs": { "type": "object" }
                   },
-                  "description": "Long syntax may not use type: bind. Bind mounts are only expressible through the ${RESTORED_*} short form, which restored controls."
+                  "description": "Long syntax may not use type: bind. Bind mounts are only expressible through the ${DRILLBACK_*} short form, which drillback controls."
                 }
               ]
             }

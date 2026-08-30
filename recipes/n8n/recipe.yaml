@@ -1,4 +1,4 @@
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -28,7 +28,7 @@ inputs:
     default_path: /home/node/.n8n
     required: true
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: n8n:/home/node/.n8n
 
   db:

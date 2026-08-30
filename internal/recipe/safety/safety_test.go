@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spelingbee/restored/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 // safeCompose is the smallest compose file that satisfies every isolation rule. Each
@@ -14,15 +14,15 @@ const safeCompose = `services:
   app:
     image: example/app:1.0.0
     volumes:
-      - ${RESTORED_INPUT_data}:/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/data
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true
 `
 
-const safeRecipe = `apiVersion: restored/v1
+const safeRecipe = `apiVersion: drillback/v1
 kind: Recipe
 metadata:
   name: sample
@@ -34,7 +34,7 @@ inputs:
     title: The data directory
     default_path: /srv/sample/data
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: app:/data
 checks:
   - id: app-answers
@@ -94,8 +94,8 @@ func TestComposeSafetyRejects(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := strings.Replace(safeCompose, "    networks: [restored]\n",
-				tc.insert+"    networks: [restored]\n", 1)
+			doc := strings.Replace(safeCompose, "    networks: [drillback]\n",
+				tc.insert+"    networks: [drillback]\n", 1)
 			err := ValidateSchema([]byte(doc))
 			if err == nil {
 				t.Fatalf("this compose file must be rejected:\n%s", doc)
@@ -111,13 +111,13 @@ func TestComposeSafetyRejectsOtherShapes(t *testing.T) {
 	cases := []struct{ name, doc, want string }{
 		{
 			"a host bind mount",
-			strings.Replace(safeCompose, "${RESTORED_INPUT_data}:/data", "/etc:/data", 1),
+			strings.Replace(safeCompose, "${DRILLBACK_INPUT_data}:/data", "/etc:/data", 1),
 			"volumes",
 		},
 		{
 			"a long-syntax bind mount",
 			strings.Replace(safeCompose,
-				"    volumes:\n      - ${RESTORED_INPUT_data}:/data\n",
+				"    volumes:\n      - ${DRILLBACK_INPUT_data}:/data\n",
 				"    volumes:\n      - type: bind\n        source: /etc\n        target: /data\n", 1),
 			"volumes",
 		},
@@ -143,7 +143,7 @@ func TestComposeSafetyRejectsOtherShapes(t *testing.T) {
 		},
 		{
 			"a service with no network",
-			strings.Replace(safeCompose, "    networks: [restored]\n", "", 1),
+			strings.Replace(safeCompose, "    networks: [drillback]\n", "", 1),
 			"networks",
 		},
 	}
@@ -171,7 +171,7 @@ func TestYAMLTagsAreRejected(t *testing.T) {
 
 func TestUndefinedPlaceholdersAreRejected(t *testing.T) {
 	res := resolved(t, safeRecipe)
-	doc := strings.Replace(safeCompose, "${RESTORED_INPUT_data}", "${HOME}", 1)
+	doc := strings.Replace(safeCompose, "${DRILLBACK_INPUT_data}", "${HOME}", 1)
 	err := CheckPlaceholders([]byte(doc), res)
 	if err == nil || !strings.Contains(err.Error(), "HOME") {
 		t.Fatalf("an undefined placeholder must be rejected, got %v", err)
@@ -198,10 +198,10 @@ func TestUnknownServiceReferencesAreRejected(t *testing.T) {
 }
 
 func TestInterpolate(t *testing.T) {
-	env := map[string]string{"RESTORED_INPUT_data": "/ws/inputs/data", "RESTORED_VAR_port": "8080"}
+	env := map[string]string{"DRILLBACK_INPUT_data": "/ws/inputs/data", "DRILLBACK_VAR_port": "8080"}
 	cases := []struct{ in, want string }{
-		{"a: ${RESTORED_INPUT_data}", "a: /ws/inputs/data"},
-		{"a: $RESTORED_VAR_port", "a: 8080"},
+		{"a: ${DRILLBACK_INPUT_data}", "a: /ws/inputs/data"},
+		{"a: $DRILLBACK_VAR_port", "a: 8080"},
 		{"a: $$literal", "a: $$literal"},
 		{"a: no placeholders", "a: no placeholders"},
 	}

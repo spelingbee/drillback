@@ -13,10 +13,10 @@ func TestNewCreatesTheTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := filepath.Base(ws.Root); got != "restored-k7m2q9xf" {
+	if got := filepath.Base(ws.Root); got != "drillback-k7m2q9xf" {
 		t.Errorf("workspace directory = %q", got)
 	}
-	if got := ws.ProjectName(); got != "restored-k7m2q9xf" {
+	if got := ws.ProjectName(); got != "drillback-k7m2q9xf" {
 		t.Errorf("compose project = %q", got)
 	}
 	for _, d := range []string{ws.InputsDir(), ws.RestoreDir(), ws.LogsDir(), ws.TestAssetsDir(), ws.ExportDir()} {

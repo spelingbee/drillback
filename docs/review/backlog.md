@@ -68,7 +68,7 @@ Grouped by what a contributor would need to know to pick one up.
 | UX-11 | `check --help` dropped the `Environment:` block and every `--input` example |
 | UX-12 | The ASCII fallback is undocumented, unreachable by flag, and incomplete |
 | FC-07 | `docs/recipe-spec.md` drops item-level constraints and object sub-fields, so a recipe written from the reference alone does not validate |
-| FC-08 | The `--compose` scaffold loses the only documentation of `profiles: [test]` and `${RESTORED_TEST_ASSETS}` |
+| FC-08 | The `--compose` scaffold loses the only documentation of `profiles: [test]` and `${DRILLBACK_TEST_ASSETS}` |
 | FC-09 | The generated recipe README omits an input and names the database after the service |
 | FC-10 | The contribution link never appears for a normally commented recipe, and its fallback prints a `cp` that is wrong on Windows |
 | FC-13 | Every documented command goes through `make`, with no fallback for a host that does not have it |
@@ -87,7 +87,7 @@ Grouped by what a contributor would need to know to pick one up.
 | SEC-11 | The `vars` secret warning specified in SPEC.md 9.3 is not implemented |
 | SEC-12 | Templates in `default_path` are silently not expanded, and the `..` guard runs pre-render |
 | SEC-13 | Defence in depth: an unreachable `..` check, and argv passed to `docker compose exec` without `--` |
-| FC-14 | Everything that points at `github.com/spelingbee/restored` 404s until the repository is public |
+| FC-14 | Everything that points at `github.com/spelingbee/drillback` 404s until the repository is public |
 | FC-15 | An interrupted run left a Docker network behind |
 
 ### Security, and worth a maintainer rather than a first-timer
@@ -100,7 +100,7 @@ design decision written down before the code.
 | SEC-06 | `expect.glob` escapes the workspace and turns the report into a host filesystem oracle | is `glob` rooted at the input, or is it a path pattern that must be contained? |
 | SEC-08 | The JSON report embeds 200 lines of every service's container log | how much log is worth the risk of somebody's data in a document people attach to bug reports? |
 | SEC-09 | A `sql` check's `file:` is unconstrained and opens arbitrary host paths | should `file:` accept anything but a `{{ .inputs.<name>.path }}` template? |
-| ARCH-09 | A killed run leaves a full copy of the user's backup in the temp directory, and nothing finds it | `restored doctor`, a startup sweep of stale workspaces, or both? |
+| ARCH-09 | A killed run leaves a full copy of the user's backup in the temp directory, and nothing finds it | `drillback doctor`, a startup sweep of stale workspaces, or both? |
 
 ### Architecture, for whoever picks up v0.2
 

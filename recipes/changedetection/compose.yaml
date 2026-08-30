@@ -1,20 +1,20 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   changedetection:
     image: dgtlmoon/changedetection.io:0.55.8
     environment:
-      BASE_URL: http://changedetection:${RESTORED_VAR_cd_port}
+      BASE_URL: http://changedetection:${DRILLBACK_VAR_cd_port}
       # The page this drill watches is the container next door, on a private address.
       # changedetection.io refuses those unless this is set, and names the variable in
       # the error it raises.
       ALLOW_IANA_RESTRICTED_ADDRESSES: "true"
     volumes:
-      - ${RESTORED_INPUT_datastore}:/datastore
-    networks: [restored]
+      - ${DRILLBACK_INPUT_datastore}:/datastore
+    networks: [drillback]
 
   # The page under observation. It exists so that a watch has something to watch that
   # is not somebody else's website: this stack has no route out, and a drill that
@@ -28,15 +28,15 @@ services:
         printf '%s' '<html><body><h1>drill canary page</h1><p>this line proves the restore</p></body></html>' \
           > /usr/share/nginx/html/index.html
         exec nginx -g 'daemon off;'
-    networks: [restored]
+    networks: [drillback]
 
-  # Started only by `restored recipe test`, via the "test" compose profile.
+  # Started only by `drillback recipe test`, via the "test" compose profile.
   seeder:
     image: curlimages/curl:8.10.1
     profiles: [test]
     command: ["sleep", "infinity"]
-    networks: [restored]
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

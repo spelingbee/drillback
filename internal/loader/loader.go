@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/sqlite"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/sqlite"
 )
 
 // Dump formats, as detected from the file rather than from its extension.

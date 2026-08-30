@@ -39,7 +39,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to
 the community leaders responsible for enforcement by opening a private report through
 GitHub: use **Security > Report a vulnerability** on
-<https://github.com/spelingbee/restored/security/advisories/new>, which reaches the
+<https://github.com/spelingbee/drillback/security/advisories/new>, which reaches the
 repository owner and nobody else. The form is labelled for security reports; it is the
 private channel this repository has, and a conduct report sent through it is welcome
 and will be treated as a conduct report.

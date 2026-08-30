@@ -2,7 +2,7 @@
 #
 # The demos stand in for a user's production system: they build a small stack with
 # docker compose, put real data in it, back that data up with restic, tear the stack
-# down, and then hand the backup to restored. Nothing here is part of the tool.
+# down, and then hand the backup to drillback. Nothing here is part of the tool.
 
 set -eu
 
@@ -37,7 +37,7 @@ require_docker() {
 
 require_restic() {
   command -v restic >/dev/null 2>&1 ||
-    die "restic is not on PATH; restored needs it to read the repository"
+    die "restic is not on PATH; drillback needs it to read the repository"
 }
 
 # The images the demos use, pinned so a demo that worked yesterday works today.
@@ -47,33 +47,33 @@ IMAGE_CURL=curlimages/curl:8.16.0
 
 # The password for the throwaway repository the demo creates and then deletes. It is
 # not a secret: the repository exists for about a minute inside a temporary directory.
-DEMO_RESTIC_PASSWORD=restored-demo
+DEMO_RESTIC_PASSWORD=drillback-demo
 
 # demo_start makes a scratch directory and arranges for everything to be removed
 # again, whatever happens. $DEMO is the scratch root, $SRV is the tree that stands in
 # for the user's filesystem, and $REPO is the restic repository.
 demo_start() {
   DEMO_NAME=$1
-  BIN=${RESTORED_BIN:-./bin/restored}
+  BIN=${DRILLBACK_BIN:-./bin/drillback}
   [ -x "$BIN" ] || BIN="$BIN.exe"
-  [ -x "$BIN" ] || die "no restored binary at ${RESTORED_BIN:-./bin/restored}; run make build"
+  [ -x "$BIN" ] || die "no drillback binary at ${DRILLBACK_BIN:-./bin/drillback}; run make build"
 
   # The scratch root is kept in the host's own path form from the start. Git Bash
   # understands C:/... perfectly well, and it means every path handed to docker or to
-  # restored is already the one they expect.
+  # drillback is already the one they expect.
   #
-  # RESTORED_DEMO_DIR pins it, so captured output does not churn on a random name
+  # DRILLBACK_DEMO_DIR pins it, so captured output does not churn on a random name
   # every time scripts/capture-demo.sh runs.
-  if [ -n "${RESTORED_DEMO_DIR:-}" ]; then
-    rm -rf "$RESTORED_DEMO_DIR"
-    mkdir -p "$RESTORED_DEMO_DIR"
-    DEMO=$(hostpath "$RESTORED_DEMO_DIR")
+  if [ -n "${DRILLBACK_DEMO_DIR:-}" ]; then
+    rm -rf "$DRILLBACK_DEMO_DIR"
+    mkdir -p "$DRILLBACK_DEMO_DIR"
+    DEMO=$(hostpath "$DRILLBACK_DEMO_DIR")
   else
-    DEMO=$(hostpath "$(mktemp -d 2>/dev/null || mktemp -d -t restored-demo)")
+    DEMO=$(hostpath "$(mktemp -d 2>/dev/null || mktemp -d -t drillback-demo)")
   fi
   SRV="$DEMO/srv"
   REPO="$DEMO/repo"
-  PROJECT="restored-demo-$DEMO_NAME-$$"
+  PROJECT="drillback-demo-$DEMO_NAME-$$"
   COMPOSE="$DEMO/compose.yaml"
   mkdir -p "$SRV" "$REPO"
   trap demo_cleanup EXIT INT TERM
@@ -134,7 +134,7 @@ restic_init_and_backup() {
 }
 
 run_check() {
-  say "restored check"
+  say "drillback check"
   RESTIC_PASSWORD="$DEMO_RESTIC_PASSWORD" "$BIN" check --from "$REPO" "$@"
 }
 

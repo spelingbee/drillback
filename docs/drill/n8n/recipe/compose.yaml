@@ -11,7 +11,7 @@ services:
     command: ["sh", "-c", "mkdir -p /home/node/.n8n && chown -R 1000:1000 /home/node/.n8n"]
     volumes:
       - n8n-data:/home/node/.n8n
-    networks: [restored]
+    networks: [drillback]
 
   restore:
     image: n8nio/n8n:2.36.8
@@ -32,9 +32,9 @@ services:
     environment:
       N8N_RUNNERS_ENABLED: "true"
     volumes:
-      - ${RESTORED_INPUT_export}:/restore:ro
+      - ${DRILLBACK_INPUT_export}:/restore:ro
       - n8n-data:/home/node/.n8n
-    networks: [restored]
+    networks: [drillback]
 
   n8n:
     image: n8nio/n8n:2.36.8
@@ -47,14 +47,14 @@ services:
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_RUNNERS_ENABLED: "true"
       N8N_SECURE_COOKIE: "false"
-      N8N_PORT: "${RESTORED_VAR_n8n_port}"
+      N8N_PORT: "${DRILLBACK_VAR_n8n_port}"
     volumes:
       - n8n-data:/home/node/.n8n
-    networks: [restored]
+    networks: [drillback]
 
 volumes:
   n8n-data:
 
 networks:
-  restored:
+  drillback:
     internal: true

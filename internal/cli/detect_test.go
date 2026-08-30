@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/recipe/safety"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe/safety"
 )
 
 const sqliteCompose = `services:
@@ -42,7 +42,7 @@ func TestDetectComposeReadsARealFile(t *testing.T) {
 	if d.DB.Name != "paperless" || d.DB.User != "paperless" {
 		t.Errorf("database name/user = %q/%q, want paperless/paperless", d.DB.Name, d.DB.User)
 	}
-	// The operator's own ${PAPERLESS_DB_PASSWORD} is not a value restored can use.
+	// The operator's own ${PAPERLESS_DB_PASSWORD} is not a value drillback can use.
 	if d.DB.Password != "" {
 		t.Errorf("a password read out of the operator's environment must not be carried over: %q", d.DB.Password)
 	}

@@ -14,7 +14,7 @@ Delete whichever section does not apply.
 
 ## Adding or changing a recipe
 
-- [ ] **`restored recipe test ./recipes/<name>` passes locally.** Paste the tail of the
+- [ ] **`drillback recipe test ./recipes/<name>` passes locally.** Paste the tail of the
       real output below — that is what makes this reviewable.
 - [ ] At least one check **fails** against an empty stack, and it is a check about
       *data*, not about the application starting. (Stage A proves this; if it says
@@ -24,12 +24,12 @@ Delete whichever section does not apply.
       ways the application is commonly deployed.
 - [ ] `metadata.maintainers` names a GitHub handle — yours, unless you say otherwise.
 - [ ] Nothing in `compose.yaml` publishes a port, uses a host namespace, or binds a
-      path outside the workspace. (`restored recipe validate --strict` checks this.)
+      path outside the workspace. (`drillback recipe validate --strict` checks this.)
 - [ ] Anything the round trip does **not** prove is stated in the README or in a
       comment on the step.
 
 ```text
-$ restored recipe test ./recipes/<name>
+$ drillback recipe test ./recipes/<name>
 
 <paste the real output, not a summary>
 ```

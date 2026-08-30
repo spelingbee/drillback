@@ -59,7 +59,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
 
       - name: build
-        run: go build -o bin/restored ./cmd/restored
+        run: go build -o bin/drillback ./cmd/drillback
 
       # --pull always, unlike recipes.yml: the point of the weekly run is to notice
       # that an upstream image moved, so it must not be answered from a stale cache.
@@ -77,7 +77,7 @@ jobs:
           # Nothing may follow this command. The step's own exit status has to be the
           # recipe's verdict, or `continue-on-error` would report every run as a
           # success and no issue would ever be opened.
-          ./bin/restored recipe test "./recipes/$RECIPE" \
+          ./bin/drillback recipe test "./recipes/$RECIPE" \
             --timeout 15m --pull always --log-level debug \
             --report recipe-test.json 2>&1 | tee recipe-test.log
 
@@ -113,7 +113,7 @@ jobs:
             --jq "[.[] | select(.title | startswith(\"$prefix\"))] | .[0].number // empty")
 
           body=$(cat <<EOF
-          \`restored recipe test ./recipes/${RECIPE}\` failed on the weekly run of ${today}.
+          \`drillback recipe test ./recipes/${RECIPE}\` failed on the weekly run of ${today}.
 
           A recipe almost always breaks because the application upstream changed - a new
           image tag, a renamed table, a moved endpoint - rather than because anything in
@@ -123,7 +123,7 @@ jobs:
           Reproduce it locally with exactly what CI ran:
 
           \`\`\`sh
-          restored recipe test ./recipes/${RECIPE} --timeout 15m --pull always
+          drillback recipe test ./recipes/${RECIPE} --timeout 15m --pull always
           \`\`\`
 
           Last 40 lines:
@@ -164,7 +164,7 @@ jobs:
           | while read -r number; do
               echo "closing issue #$number"
               gh issue close "$number" \
-                --comment "\`restored recipe test ./recipes/${RECIPE}\` passed again on the weekly run. [Run.](${RUN_URL})"
+                --comment "\`drillback recipe test ./recipes/${RECIPE}\` passed again on the weekly run. [Run.](${RUN_URL})"
             done
 
       - name: fail the job if the recipe failed

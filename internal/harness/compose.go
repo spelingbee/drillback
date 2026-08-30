@@ -8,15 +8,15 @@ import (
 )
 
 // withExportMount gives every service the harness's export directory, at /export and
-// under the environment variable $RESTORED_EXPORT.
+// under the environment variable $DRILLBACK_EXPORT.
 //
 // The name appears twice with two meanings, which is worth stating once: inside
-// compose.yaml, ${RESTORED_EXPORT} is interpolated by restored and is a *host* path,
+// compose.yaml, ${DRILLBACK_EXPORT} is interpolated by drillback and is a *host* path,
 // so a recipe can mount it somewhere of its own choosing. Inside a container,
-// $RESTORED_EXPORT is an ordinary environment variable and is /export. An export step
+// $DRILLBACK_EXPORT is an ordinary environment variable and is /export. An export step
 // writes to the second one.
 //
-// This runs only in the harness. During `restored check` no service sees /export at
+// This runs only in the harness. During `drillback check` no service sees /export at
 // all, so a recipe cannot come to depend on it for anything but its own test.
 func withExportMount(raw []byte, hostExport string) ([]byte, error) {
 	var doc map[string]any
@@ -34,7 +34,7 @@ func withExportMount(raw []byte, hostExport string) ([]byte, error) {
 			body = map[string]any{}
 		}
 		body["volumes"] = appendVolume(body["volumes"], bind)
-		body["environment"] = setEnv(body["environment"], "RESTORED_EXPORT", exportMount)
+		body["environment"] = setEnv(body["environment"], "DRILLBACK_EXPORT", exportMount)
 		services[name] = body
 	}
 	doc["services"] = services

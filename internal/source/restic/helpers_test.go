@@ -3,7 +3,7 @@ package restic
 import (
 	"path/filepath"
 
-	"github.com/spelingbee/restored/internal/source"
+	"github.com/spelingbee/drillback/internal/source"
 )
 
 // snapshotAlias keeps the test readable without importing internal/source in every

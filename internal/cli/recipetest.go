@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/spelingbee/restored/internal/harness"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/report"
+	"github.com/spelingbee/drillback/internal/harness"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/report"
 )
 
 func newRecipeTest(g *globals) *cobra.Command {
@@ -32,11 +32,11 @@ func newRecipeTest(g *globals) *cobra.Command {
 			"data-sensitive check\".\n\n" +
 			"Stage B, \"positive\": start a fresh stack, run test.seed, run test.export, back\n" +
 			"the resulting input tree up into a throwaway restic repository, tear everything\n" +
-			"down, then run a normal `restored check` against that repository and require that\n" +
+			"down, then run a normal `drillback check` against that repository and require that\n" +
 			"ALL checks PASS.",
-		Example: "  restored recipe test ./recipes/gitea\n" +
-			"  restored recipe test ./recipes/gitea --stage a --keep\n" +
-			"  restored recipe test ./recipes/* --json --report ./recipe-test.json",
+		Example: "  drillback recipe test ./recipes/gitea\n" +
+			"  drillback recipe test ./recipes/gitea --stage a --keep\n" +
+			"  drillback recipe test ./recipes/* --json --report ./recipe-test.json",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch stage {
@@ -53,7 +53,7 @@ func newRecipeTest(g *globals) *cobra.Command {
 			started := time.Now()
 			rep := &harness.Report{
 				SchemaVersion: harness.SchemaVersion,
-				Tool:          harness.Tool{Name: "restored", Version: Version, Commit: Commit},
+				Tool:          harness.Tool{Name: "drillback", Version: Version, Commit: Commit},
 				StartedAt:     started.UTC().Format(time.RFC3339),
 			}
 			worst := ExitPass
@@ -85,7 +85,7 @@ func newRecipeTest(g *globals) *cobra.Command {
 			}
 			if err := rep.WriteTTY(human, report.Options{
 				Color: colourEnabled(g, human),
-				ASCII: os.Getenv("RESTORED_ASCII") != "",
+				ASCII: os.Getenv("DRILLBACK_ASCII") != "",
 			}); err != nil {
 				return fail(ExitError, "%v", err)
 			}
@@ -121,7 +121,7 @@ Exit codes:
   2  tool error, or stage A found no data-sensitive check, which makes the recipe
      invalid rather than failing
 
-Docs: https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md
+Docs: https://github.com/spelingbee/drillback/blob/main/CONTRIBUTING.md
 `)
 	return cmd
 }

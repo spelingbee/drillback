@@ -8,7 +8,7 @@ import (
 
 var recipeName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
 
-// scaffold renders the three files `restored recipe init` writes. The result validates
+// scaffold renders the three files `drillback recipe init` writes. The result validates
 // against the schema and the safety rules, so a contributor's first command after
 // init succeeds and their second one is about their application rather than about
 // YAML.
@@ -25,7 +25,7 @@ func scaffold(name, db, image string, dirs []string) (map[string]string, error) 
 
 	var recipeYAML, composeServices strings.Builder
 
-	fmt.Fprintf(&recipeYAML, `apiVersion: restored/v1
+	fmt.Fprintf(&recipeYAML, `apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -34,7 +34,7 @@ metadata:
   description: >
     Verifies that a %s backup restores: the application serves its own pages and the
     data that was backed up is still there. Replace this with what your checks prove.
-  # Put your GitHub handle here. restored does not guess it.
+  # Put your GitHub handle here. drillback does not guess it.
   maintainers: []
   tags: []
 
@@ -54,7 +54,7 @@ inputs:
     default_path: /srv/%s/%s
     required: true
     mount:
-      env: RESTORED_INPUT_%s
+      env: DRILLBACK_INPUT_%s
       into: app:/%s
 `, d, d, name, d, d, d)
 	}
@@ -139,25 +139,25 @@ checks:
     image: %s
     environment:
       # Whatever the application needs in order to start without its usual host.
-      APP_PORT: "${RESTORED_VAR_app_port}"
+      APP_PORT: "${DRILLBACK_VAR_app_port}"
     volumes:
 `, image)
 	for _, d := range dirs {
-		fmt.Fprintf(&composeServices, "      - ${RESTORED_INPUT_%s}:/%s\n", d, d)
+		fmt.Fprintf(&composeServices, "      - ${DRILLBACK_INPUT_%s}:/%s\n", d, d)
 	}
-	composeServices.WriteString("    networks: [restored]\n")
+	composeServices.WriteString("    networks: [drillback]\n")
 
 	if db == "postgres-dump" {
 		composeServices.WriteString(`
   db:
     image: postgres:16.4-alpine
     environment:
-      POSTGRES_DB: ${RESTORED_VAR_db_name}
-      POSTGRES_USER: ${RESTORED_VAR_db_user}
-      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+      POSTGRES_DB: ${DRILLBACK_VAR_db_name}
+      POSTGRES_USER: ${DRILLBACK_VAR_db_user}
+      POSTGRES_PASSWORD: ${DRILLBACK_VAR_db_password}
     volumes:
       - db-data:/var/lib/postgresql/data
-    networks: [restored]
+    networks: [drillback]
 
 volumes:
   db-data:
@@ -165,16 +165,16 @@ volumes:
 	}
 	composeServices.WriteString(`
 networks:
-  restored:
+  drillback:
     internal: true
 `)
 
-	compose := `# Rendered by restored before ` + "`docker compose up`" + `. The ${RESTORED_INPUT_*} values
-# are absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from vars:
+	compose := `# Rendered by drillback before ` + "`docker compose up`" + `. The ${DRILLBACK_INPUT_*} values
+# are absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from vars:
 # plus any --set overrides.
 #
 # Do not add ports:, privileged:, network_mode:, pid:, ipc:, or a bind mount to any
-# path outside the workspace. ` + "`restored recipe validate`" + ` rejects all of them.
+# path outside the workspace. ` + "`drillback recipe validate`" + ` rejects all of them.
 ` + composeServices.String()
 
 	readme := fmt.Sprintf(`# %s
@@ -188,7 +188,7 @@ What this recipe assumes about your backup.
 %s
 If your paths differ, point the inputs at yours:
 
-    restored check --recipe ./recipes/%s --input %s=/your/path
+    drillback check --recipe ./recipes/%s --input %s=/your/path
 
 ## What the checks prove
 
@@ -207,7 +207,7 @@ fail if the backup were empty?** If the answer is "none", the recipe is not fini
 			"vars:\n  app_port: 8080\n  db_name: "+name+"\n  db_user: "+name+"\n"+
 				"  # Not a secret. This database exists for about ninety seconds on an internal\n"+
 				"  # network with no published ports, and is destroyed with `compose down -v`.\n"+
-				"  db_password: restored-throwaway\n", 1)
+				"  db_password: drillback-throwaway\n", 1)
 	}
 	return out, nil
 }

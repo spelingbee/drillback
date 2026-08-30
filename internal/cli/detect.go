@@ -237,7 +237,7 @@ func detectPort(svc composeService) int {
 }
 
 // containerPort takes the right-hand side of a published port, which is the one that
-// exists inside the network. restored publishes nothing, so the left-hand side, which
+// exists inside the network. drillback publishes nothing, so the left-hand side, which
 // is the only part the operator chose, is exactly the part to discard.
 func containerPort(p any) int {
 	switch t := p.(type) {

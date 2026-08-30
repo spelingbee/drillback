@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spelingbee/restored/internal/observe"
-	"github.com/spelingbee/restored/internal/recipe"
+	"github.com/spelingbee/drillback/internal/observe"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 // Observation and Failure live in internal/observe, which imports nothing. They are

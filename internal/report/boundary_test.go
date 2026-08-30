@@ -20,7 +20,7 @@ func TestReportDependsOnNoExecutionPackage(t *testing.T) {
 	if err != nil {
 		t.Skip("no go toolchain on PATH, so the import graph cannot be read")
 	}
-	out, err := exec.Command(go_, "list", "-deps", "github.com/spelingbee/restored/internal/report").Output()
+	out, err := exec.Command(go_, "list", "-deps", "github.com/spelingbee/drillback/internal/report").Output()
 	if err != nil {
 		t.Skipf("go list failed, so the import graph cannot be read: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestReportDependsOnNoExecutionPackage(t *testing.T) {
 	for _, dep := range deps {
 		dep = strings.TrimSpace(dep)
 		for _, bad := range forbidden {
-			if dep == "github.com/spelingbee/restored/"+bad {
+			if dep == "github.com/spelingbee/drillback/"+bad {
 				t.Errorf("internal/report depends on %s.\n"+
 					"SPEC.md 13.1 says it never reaches back into an execution package: the\n"+
 					"report's JSON is a public contract, and a wire type defined inside a\n"+

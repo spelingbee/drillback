@@ -2,7 +2,7 @@
 #
 # The Uptime Kuma round trip: stand up a real Uptime Kuma, put a user, a monitor and
 # a heartbeat in it, back the data directory up with restic, destroy the stack, and
-# ask restored whether the backup would come back.
+# ask drillback whether the backup would come back.
 #
 # Needs docker and restic. Idempotent, and it cleans up after itself.
 

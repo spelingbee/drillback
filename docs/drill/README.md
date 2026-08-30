@@ -1,7 +1,7 @@
 # The official-docs restore drill
 
 For each popular self-hosted application: follow its **own backup documentation
-literally**, take the backup that documentation describes, restore it with `restored`,
+literally**, take the backup that documentation describes, restore it with `drillback`,
 and record whether the application comes back with its data.
 
 The finding is never "application X loses data". It is "if you follow the documentation

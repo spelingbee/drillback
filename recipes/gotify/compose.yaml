@@ -1,8 +1,8 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   gotify:
     image: gotify/server:3.1.0
@@ -10,21 +10,21 @@ services:
       # Documented configuration keys. They are applied only when the database is
       # created, so on a restored database the account comes from the backup and these
       # are ignored - which is what makes account-authenticates a real check.
-      GOTIFY_DEFAULTUSER_NAME: ${RESTORED_VAR_drill_user}
-      GOTIFY_DEFAULTUSER_PASS: ${RESTORED_VAR_drill_password}
+      GOTIFY_DEFAULTUSER_NAME: ${DRILLBACK_VAR_drill_user}
+      GOTIFY_DEFAULTUSER_PASS: ${DRILLBACK_VAR_drill_password}
     volumes:
-      - ${RESTORED_INPUT_data}:/app/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/app/data
+    networks: [drillback]
 
-  # Started only by `restored recipe test`, via the "test" compose profile.
+  # Started only by `drillback recipe test`, via the "test" compose profile.
   seeder:
     image: curlimages/curl:8.10.1
     profiles: [test]
     command: ["sleep", "infinity"]
     volumes:
-      - ${RESTORED_TEST_ASSETS}:/seed:ro
-    networks: [restored]
+      - ${DRILLBACK_TEST_ASSETS}:/seed:ro
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

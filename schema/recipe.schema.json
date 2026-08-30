@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/spelingbee/restored/schema/recipe.schema.json",
-  "title": "restored recipe",
+  "$id": "https://github.com/spelingbee/drillback/schema/recipe.schema.json",
+  "title": "drillback recipe",
   "type": "object",
   "additionalProperties": false,
   "required": ["apiVersion", "kind", "metadata", "inputs", "checks"],
   "properties": {
-    "apiVersion": { "const": "restored/v1" },
+    "apiVersion": { "const": "drillback/v1" },
     "kind": { "const": "Recipe" },
 
     "metadata": {
@@ -52,7 +52,7 @@
             "additionalProperties": false,
             "required": ["env", "into"],
             "properties": {
-              "env": { "type": "string", "pattern": "^RESTORED_INPUT_[a-z][a-z0-9_]*$" },
+              "env": { "type": "string", "pattern": "^DRILLBACK_INPUT_[a-z][a-z0-9_]*$" },
               "into": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*:/[^\\s:]*$" }
             }
           },

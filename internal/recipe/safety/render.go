@@ -12,7 +12,7 @@ import (
 // that is written to the workspace and handed to `docker compose`.
 //
 // Interpolate on its own is not safe to run and then trust. The safety schema is
-// checked against the file *as written*, with the ${RESTORED_*} placeholders intact
+// checked against the file *as written*, with the ${DRILLBACK_*} placeholders intact
 // (ADR-039), so anything a substituted value adds to the document arrives after the
 // only structural check has already passed. A `vars` value of
 //

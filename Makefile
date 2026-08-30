@@ -1,8 +1,8 @@
 GO ?= go
-BIN := bin/restored
-LDFLAGS := -X github.com/spelingbee/restored/internal/cli.Version=$(VERSION) \
-           -X github.com/spelingbee/restored/internal/cli.Commit=$(COMMIT) \
-           -X github.com/spelingbee/restored/internal/cli.Date=$(DATE)
+BIN := bin/drillback
+LDFLAGS := -X github.com/spelingbee/drillback/internal/cli.Version=$(VERSION) \
+           -X github.com/spelingbee/drillback/internal/cli.Commit=$(COMMIT) \
+           -X github.com/spelingbee/drillback/internal/cli.Date=$(DATE)
 
 VERSION ?= 0.1.0-dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -16,7 +16,7 @@ RECIPES := $(shell ls -d recipes/*/ 2>/dev/null | grep -v TEMPLATE | sed 's#/$$#
         docs recipes-index recipe-test check-generated clean
 
 build:
-	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/restored
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/drillback
 
 test:
 	$(GO) test ./... -race
@@ -42,7 +42,7 @@ demo: build
 	./scripts/demo.sh
 
 # demo-broken demonstrates a broken backup, so it exits 1 on success. The negation is
-# deliberate: `make demo-broken` passes when restored correctly says RESTORE UNUSABLE.
+# deliberate: `make demo-broken` passes when drillback correctly says RESTORE UNUSABLE.
 demo-broken: build
 	! ./scripts/demo-broken.sh
 

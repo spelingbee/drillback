@@ -7,7 +7,7 @@
 #   2. put a user, a repository and a commit in them,
 #   3. dump the database and back the data directory and the dump up with restic,
 #   4. destroy the stack, so nothing but the backup is left,
-#   5. ask restored whether that backup would actually come back.
+#   5. ask drillback whether that backup would actually come back.
 #
 # Expected result: PASS, exit 0. Idempotent, and it cleans up after itself.
 

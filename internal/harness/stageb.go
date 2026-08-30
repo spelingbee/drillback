@@ -13,24 +13,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/check"
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/probe"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/recipe/safety"
-	"github.com/spelingbee/restored/internal/report"
-	"github.com/spelingbee/restored/internal/runner"
-	"github.com/spelingbee/restored/internal/workspace"
+	"github.com/spelingbee/drillback/internal/check"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/probe"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe/safety"
+	"github.com/spelingbee/drillback/internal/report"
+	"github.com/spelingbee/drillback/internal/runner"
+	"github.com/spelingbee/drillback/internal/workspace"
 )
 
-// exportMount is where ${RESTORED_EXPORT} appears inside every service during stage
+// exportMount is where ${DRILLBACK_EXPORT} appears inside every service during stage
 // B. A step writes its artifact there; the harness collects it from the host side.
 const exportMount = "/export"
 
 // stageB is the round trip: start a fresh stack with empty inputs, let the
 // application create its own world, seed it, export what a backup would have taken,
 // put that into a throwaway restic repository, tear everything down, and then run the
-// ordinary `restored check` against the repository.
+// ordinary `drillback check` against the repository.
 //
 // Step 8 is the point of the design: the stage ends by running exactly the code path
 // a user runs, so the harness cannot pass while the real path is broken.
@@ -59,7 +59,7 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 		File:    ws.ComposeFile(),
 		RunID:   ws.RunID,
 		// The "test" profile is what makes a recipe's seeder service exist here and
-		// nowhere else. `restored check` never activates it.
+		// nowhere else. `drillback check` never activates it.
 		Profiles: []string{"test"},
 		Debug:    debug,
 	}
@@ -236,7 +236,7 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 	// used to answer "no such file or directory" for everyone who pasted it. The one
 	// below rebuilds the whole stage, which is what a contributor actually wants.
 	// See ADR-061.
-	st.Command = fmt.Sprintf("restored recipe test %s --stage b --keep", recipeRef(o.Recipe))
+	st.Command = fmt.Sprintf("drillback recipe test %s --stage b --keep", recipeRef(o.Recipe))
 
 	checkStart := time.Now()
 	var rep *report.Report
@@ -304,7 +304,7 @@ func roundTripFailure(rep *report.Report) string {
 		rep.Summary.ChecksFailed, rep.Summary.ChecksTotal, failedIDs(rep))
 }
 
-// stageTestAssets copies the recipe's test/ directory into ${RESTORED_TEST_ASSETS}.
+// stageTestAssets copies the recipe's test/ directory into ${DRILLBACK_TEST_ASSETS}.
 // It works for a recipe on disk and for one compiled into the binary.
 func stageTestAssets(r *recipe.Recipe, dest string) error {
 	src, err := r.FS()
@@ -403,7 +403,7 @@ func collect(ctx context.Context, cli *compose.Client, res *recipe.Resolved, exp
 		produced := filepath.Join(exportDir, path.Base(in.BackupPath))
 		if _, err := os.Stat(produced); err != nil {
 			return fmt.Errorf("no export step produced input %q: a step with `produces: %s` must "+
-				"leave its artifact at $RESTORED_EXPORT/%s", in.Name, in.Name, path.Base(in.BackupPath))
+				"leave its artifact at $DRILLBACK_EXPORT/%s", in.Name, in.Name, path.Base(in.BackupPath))
 		}
 		if err := workspace.CopyTree(produced, dest); err != nil {
 			return fmt.Errorf("staging input %q: %w", in.Name, err)
@@ -490,7 +490,7 @@ func (o Options) backup(ctx context.Context, cli *compose.Client, repoDir, stagi
 }
 
 // containerUser is the uid:gid the restic container runs as. On Linux the repository
-// has to belong to the caller, because the `restored check` that follows runs as the
+// has to belong to the caller, because the `drillback check` that follows runs as the
 // caller and restic takes a lock. On Windows the daemon does not map ownership and
 // the flag is not meaningful.
 func containerUser() string {

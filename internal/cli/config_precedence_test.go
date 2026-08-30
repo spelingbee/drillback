@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spelingbee/restored/internal/config"
+	"github.com/spelingbee/drillback/internal/config"
 )
 
 // The load-bearing claim of ADR-068: a flag beats the config only when the user
@@ -159,7 +159,7 @@ func TestRunAllInterruptedIsUnprovenNotClean(t *testing.T) {
 func writePrecedenceConfig(t *testing.T) *config.Config {
 	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "restored.yaml")
+	path := filepath.Join(dir, "drillback.yaml")
 	body := `
 version: 1
 defaults:

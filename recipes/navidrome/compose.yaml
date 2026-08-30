@@ -1,8 +1,8 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   navidrome:
     image: deluan/navidrome:0.63.2
@@ -16,19 +16,19 @@ services:
       ND_SCANSCHEDULE: "0"
       ND_SCANONSTARTUP: "false"
     volumes:
-      - ${RESTORED_INPUT_data}:/data
+      - ${DRILLBACK_INPUT_data}:/data
       # Empty during `check`; this recipe's own test/ directory, holding one small
       # generated MP3, during `recipe test`.
-      - ${RESTORED_TEST_ASSETS}:/music:ro
-    networks: [restored]
+      - ${DRILLBACK_TEST_ASSETS}:/music:ro
+    networks: [drillback]
 
-  # Started only by `restored recipe test`, via the "test" compose profile.
+  # Started only by `drillback recipe test`, via the "test" compose profile.
   seeder:
     image: curlimages/curl:8.10.1
     profiles: [test]
     command: ["sleep", "infinity"]
-    networks: [restored]
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

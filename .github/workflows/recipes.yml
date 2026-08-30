@@ -127,7 +127,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
 
       - name: build
-        run: go build -o bin/restored ./cmd/restored
+        run: go build -o bin/drillback ./cmd/drillback
 
       # RECIPE reaches the script through the environment, never through GitHub
       # expression interpolation into the script text. Interpolation happens before
@@ -136,7 +136,7 @@ jobs:
       - name: validate
         env:
           RECIPE: ${{ matrix.recipe }}
-        run: ./bin/restored recipe validate "./recipes/$RECIPE" --strict
+        run: ./bin/drillback recipe validate "./recipes/$RECIPE" --strict
 
       # The whole point of the round trip: nothing here needs a secret. The throwaway
       # restic repository's password is a literal, it lives inside the run workspace,
@@ -148,7 +148,7 @@ jobs:
         env:
           RECIPE: ${{ matrix.recipe }}
         run: |
-          ./bin/restored recipe test "./recipes/$RECIPE" \
+          ./bin/drillback recipe test "./recipes/$RECIPE" \
             --timeout 15m \
             --log-level debug \
             --report recipe-test.json \
@@ -169,8 +169,8 @@ jobs:
       - name: nothing was left behind
         if: always()
         run: |
-          leftover=$(docker ps -aq --filter "label=com.restored.run" | wc -l)
-          echo "containers labelled com.restored.run: $leftover"
+          leftover=$(docker ps -aq --filter "label=com.drillback.run" | wc -l)
+          echo "containers labelled com.drillback.run: $leftover"
           test "$leftover" -eq 0
 
   # The fallback for a change that touches more than twenty recipes: slower, but it
@@ -191,7 +191,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends restic
 
       - name: build
-        run: go build -o bin/restored ./cmd/restored
+        run: go build -o bin/drillback ./cmd/drillback
 
       - name: round trip, every selected recipe
         env:
@@ -199,7 +199,7 @@ jobs:
         run: |
           set -o pipefail
           dirs=$(printf '%s' "$SELECTED" | jq -r '.[]' | sed 's#^#./recipes/#')
-          ./bin/restored recipe test $dirs \
+          ./bin/drillback recipe test $dirs \
             --timeout 15m --report recipe-test.json 2>&1 | tee recipe-test.log
 
       - name: upload the logs

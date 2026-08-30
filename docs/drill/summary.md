@@ -4,7 +4,7 @@ Fifteen popular self-hosted applications. For each one: read its own backup
 documentation, take the backup that documentation describes, restore it, and check
 whether the application comes back with its data in it.
 
-Every verdict below was produced by `restored check` against a restic repository, and
+Every verdict below was produced by `drillback check` against a restic repository, and
 every FAIL and PARTIAL was reproduced twice from an empty scratch directory. The reports
 are in each application's folder. Nothing has been filed anywhere: the `upstream-issue.md`
 drafts are for a human to review.

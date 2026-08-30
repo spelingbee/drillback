@@ -15,7 +15,7 @@ import (
 // re-implementation of them.
 //
 // Each script stands up the application the way its users run it, puts real data in
-// it, backs that data up with restic, destroys the stack, and then runs `restored
+// it, backs that data up with restic, destroys the stack, and then runs `drillback
 // check`. That whole sequence is the thing worth testing, and having one copy of it
 // means the scripts a contributor runs and the scripts CI runs cannot drift apart.
 func TestBundledRecipesRoundTrip(t *testing.T) {
@@ -38,7 +38,7 @@ func TestBundledRecipesRoundTrip(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cmd := exec.Command("sh", tc.script)
 			cmd.Dir = root
-			cmd.Env = append(os.Environ(), "RESTORED_BIN="+bin)
+			cmd.Env = append(os.Environ(), "DRILLBACK_BIN="+bin)
 			out, err := cmd.CombinedOutput()
 
 			got := 0
@@ -51,7 +51,7 @@ func TestBundledRecipesRoundTrip(t *testing.T) {
 			if got != tc.want {
 				t.Fatalf("%s exited %d, want %d\n%s", tc.script, got, tc.want, out)
 			}
-			if !strings.Contains(string(out), "restored check") {
+			if !strings.Contains(string(out), "drillback check") {
 				t.Errorf("%s never reached the check stage\n%s", tc.script, out)
 			}
 		})
@@ -85,8 +85,8 @@ func repoRoot(t *testing.T) string {
 // working tree rather than whatever happens to be in bin/.
 func buildBinary(t *testing.T, root string) string {
 	t.Helper()
-	out := filepath.Join(t.TempDir(), "restored")
-	cmd := exec.Command("go", "build", "-o", out, "./cmd/restored")
+	out := filepath.Join(t.TempDir(), "drillback")
+	cmd := exec.Command("go", "build", "-o", out, "./cmd/drillback")
 	cmd.Dir = root
 	if b, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("building the binary: %v\n%s", err, b)

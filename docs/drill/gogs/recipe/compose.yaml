@@ -21,9 +21,9 @@ services:
         ls -la /data /data/gogs 2>&1
         exit 0
     volumes:
-      - ${RESTORED_INPUT_archive}:/backup:ro
+      - ${DRILLBACK_INPUT_archive}:/backup:ro
       - gogs-data:/data
-    networks: [restored]
+    networks: [drillback]
 
   gogs:
     image: gogs/gogs:0.14.3
@@ -35,11 +35,11 @@ services:
       RUN_CROND: "false"
     volumes:
       - gogs-data:/data
-    networks: [restored]
+    networks: [drillback]
 
 volumes:
   gogs-data:
 
 networks:
-  restored:
+  drillback:
     internal: true

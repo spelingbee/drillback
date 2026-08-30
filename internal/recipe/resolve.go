@@ -58,7 +58,7 @@ type Options struct {
 	Vars map[string]string
 	// InputsDir is the workspace directory that will hold the materialised inputs.
 	InputsDir string
-	// TestAssetsDir and ExportDir back ${RESTORED_TEST_ASSETS} and ${RESTORED_EXPORT}.
+	// TestAssetsDir and ExportDir back ${DRILLBACK_TEST_ASSETS} and ${DRILLBACK_EXPORT}.
 	// They are always defined, even for a plain `check` where no harness service
 	// starts, because docker compose interpolates the whole file regardless of which
 	// profiles are active.
@@ -271,15 +271,15 @@ func (r *Resolved) renderRecipe() error {
 	return renderValue(reflect.ValueOf(r.Recipe).Elem(), ctx, skip)
 }
 
-// ComposeEnv is the environment restored defines for compose.yaml interpolation.
+// ComposeEnv is the environment drillback defines for compose.yaml interpolation.
 func (r *Resolved) ComposeEnv() map[string]string {
 	env := map[string]string{
-		"RESTORED_RUN_ID":      r.RunID,
-		"RESTORED_TEST_ASSETS": ComposePath(r.testAssetsDir),
-		"RESTORED_EXPORT":      ComposePath(r.exportDir),
+		"DRILLBACK_RUN_ID":      r.RunID,
+		"DRILLBACK_TEST_ASSETS": ComposePath(r.testAssetsDir),
+		"DRILLBACK_EXPORT":      ComposePath(r.exportDir),
 	}
 	for k, v := range r.Vars {
-		env["RESTORED_VAR_"+k] = toString(v)
+		env["DRILLBACK_VAR_"+k] = toString(v)
 	}
 	for _, in := range r.Inputs {
 		if in.Mount == nil {

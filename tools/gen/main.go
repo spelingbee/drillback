@@ -16,8 +16,8 @@ import (
 	"sort"
 	"strings"
 
-	restored "github.com/spelingbee/restored"
-	"github.com/spelingbee/restored/internal/recipe"
+	drillback "github.com/spelingbee/drillback"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 func main() {
@@ -98,7 +98,7 @@ func (s *schema) additional() *schema {
 }
 
 func writeRecipeSpec(w io.Writer) error {
-	raw, err := restored.Schemas.ReadFile("schema/recipe.schema.json")
+	raw, err := drillback.Schemas.ReadFile("schema/recipe.schema.json")
 	if err != nil {
 		return err
 	}
@@ -381,14 +381,14 @@ func writeRecipesIndex(w io.Writer) error {
 
 const indexPreamble = "Every recipe here has passed the round-trip harness: its checks fail against an\n" +
 	"empty stack, and pass after its data has been seeded, backed up, restored, and\n" +
-	"checked by the same `restored check` a user runs.\n\n" +
-	"    restored check --recipe <name> --source restic --from /srv/backups/restic\n\n" +
+	"checked by the same `drillback check` a user runs.\n\n" +
+	"    drillback check --recipe <name> --source restic --from /srv/backups/restic\n\n" +
 	"Each directory has a README saying which of your directories each input is.\n\n"
 
 const indexFooter = "Yours is not here? [`recipes/TEMPLATE`](TEMPLATE/) is the skeleton, and\n" +
 	"[CONTRIBUTING.md](../CONTRIBUTING.md#add-a-recipe-in-10-minutes) is the ten-minute\n" +
 	"walk-through. If you already have a compose file for the application, start with\n\n" +
-	"    restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml\n\n" +
+	"    drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml\n\n" +
 	"which turns it into a draft that already validates.\n"
 
 // Markers around the recipe table in README.md. The same shape scripts/capture-demo.sh

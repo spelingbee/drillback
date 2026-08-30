@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/spelingbee/restored/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 func TestBudgetsAreSharesOfTheTotal(t *testing.T) {
@@ -67,7 +67,7 @@ func TestWriteEmptyShapes(t *testing.T) {
 }
 
 // stageBRecipe covers the three cases emptyInputs has to tell apart.
-const stageBRecipe = `apiVersion: restored/v1
+const stageBRecipe = `apiVersion: drillback/v1
 kind: Recipe
 metadata:
   name: shapes
@@ -80,7 +80,7 @@ inputs:
     title: Data
     default_path: /srv/shapes/data
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: app:/data
   db:
     kind: sqlite
@@ -209,12 +209,12 @@ func TestWithExportMountHandlesBothEnvironmentSyntaxes(t *testing.T) {
 		}
 		switch env := svc.Environment.(type) {
 		case map[string]any:
-			if env["RESTORED_EXPORT"] != exportMount {
-				t.Errorf("service %q: mapping environment did not get RESTORED_EXPORT: %v", name, env)
+			if env["DRILLBACK_EXPORT"] != exportMount {
+				t.Errorf("service %q: mapping environment did not get DRILLBACK_EXPORT: %v", name, env)
 			}
 		case []any:
-			if len(env) == 0 || env[len(env)-1] != "RESTORED_EXPORT="+exportMount {
-				t.Errorf("service %q: list environment did not get RESTORED_EXPORT: %v", name, env)
+			if len(env) == 0 || env[len(env)-1] != "DRILLBACK_EXPORT="+exportMount {
+				t.Errorf("service %q: list environment did not get DRILLBACK_EXPORT: %v", name, env)
 			}
 		default:
 			t.Errorf("service %q: unexpected environment type %T", name, svc.Environment)

@@ -2,21 +2,21 @@ services:
   kuma:
     image: louislam/uptime-kuma:1.23.16-alpine
     environment:
-      UPTIME_KUMA_PORT: "${RESTORED_VAR_kuma_port}"
+      UPTIME_KUMA_PORT: "${DRILLBACK_VAR_kuma_port}"
     volumes:
-      - ${RESTORED_INPUT_data}:/app/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/app/data
+    networks: [drillback]
 
-  # Started only by `restored recipe test`, via the "test" compose profile.
+  # Started only by `drillback recipe test`, via the "test" compose profile.
   seeder:
     image: keinos/sqlite3:3.46.0
     profiles: [test]
     volumes:
-      - ${RESTORED_INPUT_data}:/app/data
-      - ${RESTORED_TEST_ASSETS}:/seed:ro
+      - ${DRILLBACK_INPUT_data}:/app/data
+      - ${DRILLBACK_TEST_ASSETS}:/seed:ro
     command: ["sleep", "infinity"]
-    networks: [restored]
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

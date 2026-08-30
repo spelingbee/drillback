@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/recipe/safety"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe/safety"
 )
 
 // A scaffolded recipe has to validate as it comes out. A contributor whose first

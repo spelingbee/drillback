@@ -5,7 +5,7 @@
 **Do not open a public issue.**
 
 Use GitHub's private reporting: **Security > Report a vulnerability** on
-<https://github.com/spelingbee/restored/security/advisories/new>. That opens a private
+<https://github.com/spelingbee/drillback/security/advisories/new>. That opens a private
 advisory only the maintainers can see.
 
 **If that page is not there,** private vulnerability reporting has not been enabled on
@@ -29,7 +29,7 @@ Credit in the advisory and the release notes unless you would rather not be name
 
 ## What counts as a vulnerability here
 
-`restored` runs somebody else's backup — data of unknown provenance — inside
+`drillback` runs somebody else's backup — data of unknown provenance — inside
 containers, on a machine that also holds things that backup should never touch. The
 isolation is the product. Anything that gets through it is a vulnerability.
 
@@ -37,11 +37,11 @@ isolation is the product. Anything that gets through it is a vulnerability.
 
 - **Escape from the run workspace.** Anything that lets a recipe, a compose file, or
   the *contents of a backup* read, write, or delete a path outside
-  `<tmp>/restored-<runid>`. The archived-symlink case is the obvious one, and it is
+  `<tmp>/drillback-<runid>`. The archived-symlink case is the obvious one, and it is
   why `internal/workspace.Sanitise` exists.
 - **Escape from the run's isolation.** A recipe that reaches the host network,
   publishes a port, obtains the host PID or IPC namespace, gains a capability, or gets
-  a privileged container, without `restored recipe validate` refusing it. The rules are
+  a privileged container, without `drillback recipe validate` refusing it. The rules are
   in `schema/compose-safety.schema.json` and `internal/recipe/safety`; a way round any
   of them is a bug in scope.
 - **Command injection.** A recipe field that reaches a shell. Recipes are data:
@@ -53,7 +53,7 @@ isolation is the product. Anything that gets through it is a vulnerability.
   environment is passed through and is never parsed or logged; a leak is a bug.
 - **Path traversal in a restored tree.** `..` components or absolute paths in an
   archive escaping the extraction directory.
-- **Anything that makes `restored` write outside its workspace**, including the
+- **Anything that makes `drillback` write outside its workspace**, including the
   `--report`, `--workspace` and `--hints` flags being made to write somewhere they
   should not.
 - **A malicious recipe from a pull request** doing any of the above while passing
@@ -61,8 +61,8 @@ isolation is the product. Anything that gets through it is a vulnerability.
 
 **Out of scope**, deliberately, and documented in SPEC.md § 9.4:
 
-- **The docker socket is root-equivalent.** `restored` needs the daemon, and anyone who
-  can run `restored` can already run `docker run -v /:/host`. `restored` does not, and
+- **The docker socket is root-equivalent.** `drillback` needs the daemon, and anyone who
+  can run `drillback` can already run `docker run -v /:/host`. `drillback` does not, and
   cannot, protect a machine from its own operator.
 - **A recipe you wrote yourself, running on your own machine.** The isolation rules
   protect you from *other people's* recipes and *other people's* backup contents. They
@@ -70,10 +70,10 @@ isolation is the product. Anything that gets through it is a vulnerability.
 - **Denial of service by a large backup.** A restore drill on a 900 GB snapshot will
   fill the disk. Use `--workspace` to point at somewhere with room.
 - **The images a recipe pulls.** A recipe naming a malicious upstream image is a supply
-  chain problem for that image, not a flaw in `restored` — though a recipe pinning an
+  chain problem for that image, not a flaw in `drillback` — though a recipe pinning an
   image by digest instead of a tag is always better, and `--strict` says so.
-- **The throwaway credentials in the bundled recipes.** `restored-throwaway` and
-  `restored-recipe-test` are literals in a public repository on purpose. They belong to
+- **The throwaway credentials in the bundled recipes.** `drillback-throwaway` and
+  `drillback-recipe-test` are literals in a public repository on purpose. They belong to
   databases that exist for ninety seconds, on an internal network, with no published
   port, and are destroyed with `compose down -v`. If one of them ever protects
   something real, that is the bug.

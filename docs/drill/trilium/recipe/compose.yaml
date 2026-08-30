@@ -23,9 +23,9 @@ services:
         chown -R 1000:1000 /home/node/trilium-data
         ls -la /home/node/trilium-data
     volumes:
-      - ${RESTORED_INPUT_backups}:/backup:ro
+      - ${DRILLBACK_INPUT_backups}:/backup:ro
       - trilium-data:/home/node/trilium-data
-    networks: [restored]
+    networks: [drillback]
 
   trilium:
     image: triliumnext/trilium:v0.105.0
@@ -33,14 +33,14 @@ services:
       restore:
         condition: service_completed_successfully
     environment:
-      TRILIUM_PORT: "${RESTORED_VAR_trilium_port}"
+      TRILIUM_PORT: "${DRILLBACK_VAR_trilium_port}"
     volumes:
       - trilium-data:/home/node/trilium-data
-    networks: [restored]
+    networks: [drillback]
 
 volumes:
   trilium-data:
 
 networks:
-  restored:
+  drillback:
     internal: true

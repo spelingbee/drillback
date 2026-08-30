@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/spelingbee/restored/internal/source"
+	"github.com/spelingbee/drillback/internal/source"
 )
 
 // Source is the restic implementation of source.Source. Everything restic-specific

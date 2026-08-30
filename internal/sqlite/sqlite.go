@@ -58,7 +58,7 @@ func Query(ctx context.Context, file, query string) ([][]string, error) {
 	return out, rows.Err()
 }
 
-// dsn opens the file read-only. restored never writes to a restored database: a check
+// dsn opens the file read-only. drillback never writes to a restored database: a check
 // that mutates the thing it is checking is not a check.
 func dsn(file string) string {
 	u := url.URL{Scheme: "file", Opaque: filepath.ToSlash(file)}

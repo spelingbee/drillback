@@ -23,7 +23,7 @@ type Workspace struct {
 	Root  string
 }
 
-// New allocates a run id and creates <parent>/restored-<runid> with its subdirectories.
+// New allocates a run id and creates <parent>/drillback-<runid> with its subdirectories.
 // parent may be empty, in which case the OS temp directory is used.
 func New(parent string) (*Workspace, error) {
 	id, err := NewRunID()
@@ -42,7 +42,7 @@ func NewWithID(parent, id string) (*Workspace, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolving workspace parent %q: %w", parent, err)
 	}
-	root := filepath.Join(abs, "restored-"+id)
+	root := filepath.Join(abs, "drillback-"+id)
 	// 0700, not 0755. The workspace holds a restored copy of somebody's backup, in a
 	// directory that is usually world-traversable, and the harness deliberately makes
 	// the input trees inside it world-writable so that a container running as its own
@@ -65,7 +65,7 @@ func NewWithID(parent, id string) (*Workspace, error) {
 }
 
 // NewRunID returns the short, lower-case, collision-resistant identifier that names
-// the workspace, the compose project, and every label restored sets.
+// the workspace, the compose project, and every label drillback sets.
 func NewRunID() (string, error) {
 	b := make([]byte, 5)
 	if _, err := rand.Read(b); err != nil {
@@ -84,19 +84,19 @@ func (w *Workspace) RestoreDir() string { return filepath.Join(w.Root, "restore"
 // LogsDir holds captured service logs and the debug log.
 func (w *Workspace) LogsDir() string { return filepath.Join(w.Root, "logs") }
 
-// TestAssetsDir backs ${RESTORED_TEST_ASSETS}. During `check` it is empty, because no
+// TestAssetsDir backs ${DRILLBACK_TEST_ASSETS}. During `check` it is empty, because no
 // harness service starts; it exists so that compose can interpolate a recipe that
 // declares one without reaching outside the workspace.
 func (w *Workspace) TestAssetsDir() string { return filepath.Join(w.Root, "test-assets") }
 
-// ExportDir backs ${RESTORED_EXPORT}, where the harness collects what it exported.
+// ExportDir backs ${DRILLBACK_EXPORT}, where the harness collects what it exported.
 func (w *Workspace) ExportDir() string { return filepath.Join(w.Root, "export") }
 
-// ComposeFile is the interpolated compose file restored writes and runs.
+// ComposeFile is the interpolated compose file drillback writes and runs.
 func (w *Workspace) ComposeFile() string { return filepath.Join(w.Root, "compose.yaml") }
 
 // ProjectName is the compose project for this run.
-func (w *Workspace) ProjectName() string { return "restored-" + w.RunID }
+func (w *Workspace) ProjectName() string { return "drillback-" + w.RunID }
 
 // Remove deletes the whole workspace. It is idempotent.
 //

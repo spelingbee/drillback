@@ -11,7 +11,7 @@ import (
 func sampleRun(verdict string, ms int64, passed, total int, errStr string) *Report {
 	r := &Report{
 		SchemaVersion: SchemaVersion,
-		Tool:          Tool{Name: "restored", Version: "0.1.0-test"},
+		Tool:          Tool{Name: "drillback", Version: "0.1.0-test"},
 		Verdict:       verdict,
 		Run:           Run{ID: "testrun", DurationMS: ms, WorkspaceRemoved: true},
 		Summary:       Summary{ChecksTotal: total, ChecksPassed: passed, ChecksFailed: total - passed},

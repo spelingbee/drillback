@@ -88,7 +88,7 @@ func TestJobMergesDefaultsAndTarget(t *testing.T) {
 	if j.Inputs["db"] != "/srv/gitea/dumps/gitea.sql" {
 		t.Errorf("inputs = %v", j.Inputs)
 	}
-	if want := "RESTIC_PASSWORD_FILE=/etc/restored/nas.pass"; !contains(j.Env, want) {
+	if want := "RESTIC_PASSWORD_FILE=/etc/drillback/nas.pass"; !contains(j.Env, want) {
 		t.Errorf("env %v missing %q", j.Env, want)
 	}
 
@@ -236,7 +236,7 @@ func TestDiscoverHonoursTheSearchOrder(t *testing.T) {
 		t.Errorf("the refusal should name what it searched for: %v", err)
 	}
 
-	xdgFile := filepath.Join(xdg, "restored", FileName)
+	xdgFile := filepath.Join(xdg, "drillback", FileName)
 	if err := os.MkdirAll(filepath.Dir(xdgFile), 0o755); err != nil {
 		t.Fatal(err)
 	}

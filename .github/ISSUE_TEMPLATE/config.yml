@@ -1,16 +1,16 @@
 blank_issues_enabled: true
 contact_links:
   - name: Question, or an idea that is not a request yet
-    url: https://github.com/spelingbee/restored/discussions
+    url: https://github.com/spelingbee/drillback/discussions
     about: >
       Discussions is the right place for "does this fit my setup?", "is my backup the
       right shape for a recipe?", and anything you are still thinking through.
   - name: Add a recipe in 10 minutes
-    url: https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes
+    url: https://github.com/spelingbee/drillback/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes
     about: >
       Two YAML files and no Go. If you run the application, you can write the recipe
       faster than you can describe it in an issue.
   - name: Report a security vulnerability
-    url: https://github.com/spelingbee/restored/security/advisories/new
+    url: https://github.com/spelingbee/drillback/security/advisories/new
     about: >
       Privately, never as a public issue. SECURITY.md says what is in scope.

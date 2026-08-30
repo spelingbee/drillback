@@ -1,29 +1,29 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   memos:
     image: neosmemo/memos:0.30.0
     environment:
-      MEMOS_PORT: "${RESTORED_VAR_memos_port}"
+      MEMOS_PORT: "${DRILLBACK_VAR_memos_port}"
       MEMOS_DRIVER: sqlite
       # Left empty on purpose: the documentation gives that as the setting for a
       # private deployment, and this one has no route out.
       MEMOS_INSTANCE_URL: ""
     volumes:
-      - ${RESTORED_INPUT_data}:/var/opt/memos
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/var/opt/memos
+    networks: [drillback]
 
-  # Started only by `restored recipe test`, via the "test" compose profile. The memos
+  # Started only by `drillback recipe test`, via the "test" compose profile. The memos
   # image carries the server and not much else, so the seeding runs from here.
   seeder:
     image: curlimages/curl:8.10.1
     profiles: [test]
     command: ["sleep", "infinity"]
-    networks: [restored]
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const twoInputRecipe = `apiVersion: restored/v1
+const twoInputRecipe = `apiVersion: drillback/v1
 kind: Recipe
 metadata:
   name: sample
@@ -20,7 +20,7 @@ inputs:
     title: The data directory
     default_path: /srv/sample/data
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: app:/data
   db:
     kind: sqlite
@@ -189,11 +189,11 @@ func TestComposeEnv(t *testing.T) {
 	env := res.ComposeEnv()
 
 	want := map[string]string{
-		"RESTORED_VAR_port":    "8080",
-		"RESTORED_RUN_ID":      "testrun",
-		"RESTORED_INPUT_data":  "/ws/inputs/data",
-		"RESTORED_TEST_ASSETS": "/ws/test-assets",
-		"RESTORED_EXPORT":      "/ws/export",
+		"DRILLBACK_VAR_port":    "8080",
+		"DRILLBACK_RUN_ID":      "testrun",
+		"DRILLBACK_INPUT_data":  "/ws/inputs/data",
+		"DRILLBACK_TEST_ASSETS": "/ws/test-assets",
+		"DRILLBACK_EXPORT":      "/ws/export",
 	}
 	for k, v := range want {
 		if env[k] != v {
@@ -202,7 +202,7 @@ func TestComposeEnv(t *testing.T) {
 	}
 	// A sqlite input has no mount, so it contributes no placeholder: a compose file
 	// that refers to one is a recipe bug and validation says so.
-	if _, ok := env["RESTORED_INPUT_db"]; ok {
+	if _, ok := env["DRILLBACK_INPUT_db"]; ok {
 		t.Error("an input without a mount must not define a placeholder")
 	}
 }

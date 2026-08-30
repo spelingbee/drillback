@@ -1,4 +1,4 @@
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -30,7 +30,7 @@ inputs:
     default_path: /opt/open-webui
     required: true
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: open-webui:/app/backend/data
 
   db:

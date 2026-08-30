@@ -2,17 +2,17 @@
 #
 #     cp -r recipes/TEMPLATE recipes/myapp
 #     $EDITOR recipes/myapp/recipe.yaml recipes/myapp/compose.yaml
-#     restored recipe validate ./recipes/myapp --strict
-#     restored recipe test ./recipes/myapp          # this is what CI runs
+#     drillback recipe validate ./recipes/myapp --strict
+#     drillback recipe test ./recipes/myapp          # this is what CI runs
 #
 # If you already have a docker-compose.yml for the application, start from it instead
-# and let restored do the first draft:
+# and let drillback do the first draft:
 #
-#     restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+#     drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml
 #
 # Everything below marked TODO is yours to decide. Everything not marked TODO is
 # working as written and can usually be left alone.
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -27,7 +27,7 @@ metadata:
     Verifies that a Template backup restores: the application serves its own pages and
     the rows that only a real installation has are still in the database.
   # TODO: your GitHub handle, so a maintainer knows who to ask when the recipe breaks.
-  # restored does not guess it and never reads your git config.
+  # drillback does not guess it and never reads your git config.
   maintainers: ["@your-handle"]
   # TODO: the upstream project.
   upstream: https://github.com/example/template
@@ -43,7 +43,7 @@ vars:
 # where they live. The user owns the paths; the recipe owns the names. Somebody whose
 # backup is laid out differently runs
 #
-#     restored check --recipe ./recipes/myapp --input data=/their/path
+#     drillback check --recipe ./recipes/myapp --input data=/their/path
 #
 # and nothing else has to change.
 inputs:
@@ -59,13 +59,13 @@ inputs:
       keeps one on disk. On a default docker compose install this is the host side of
       /data.
     # TODO: where it usually lives in a backup. A guess is fine - it is a default, not
-    # a requirement, and `restored recipe show --inputs-only` prints it for the user.
+    # a requirement, and `drillback recipe show --inputs-only` prints it for the user.
     default_path: /srv/template/data
     required: true
     mount:
       # The environment variable compose.yaml refers to. It is always
-      # RESTORED_INPUT_<input name>.
-      env: RESTORED_INPUT_data
+      # DRILLBACK_INPUT_<input name>.
+      env: DRILLBACK_INPUT_data
       # service:path - which service sees this input, and where. `file` checks and the
       # harness's automatic export both read it.
       into: app:/data
@@ -83,7 +83,7 @@ inputs:
     within: data
     required: true
     load:
-      # SQLite needs no loading; restored runs PRAGMA integrity_check on it.
+      # SQLite needs no loading; drillback runs PRAGMA integrity_check on it.
       integrity_check: true
 
   # A postgres-dump input looks like this instead. Delete whichever you do not need -
@@ -121,7 +121,7 @@ ready:
 # failed, so the report shows every way the restore fell short rather than the first.
 #
 # AT LEAST ONE of them must FAIL against an empty application. That is not a style
-# rule: `restored recipe test` starts your stack with empty inputs and rejects the
+# rule: `drillback recipe test` starts your stack with empty inputs and rejects the
 # recipe if everything passes, because a recipe whose checks pass against an empty
 # database manufactures confidence, which is worse than having no recipe at all.
 checks:
@@ -174,12 +174,12 @@ checks:
       not_empty: true
 
 # test drives the round-trip harness, which is what proves the two halves of the claim
-# a recipe makes. `restored recipe test`:
+# a recipe makes. `drillback recipe test`:
 #
 #   stage A  starts your stack with EMPTY inputs and requires that a check FAILS
 #   stage B  starts a fresh stack, runs seed, runs export, backs the result up into a
 #            throwaway restic repository, tears everything down, and then runs an
-#            ordinary `restored check` against that repository, which must PASS
+#            ordinary `drillback check` against that repository, which must PASS
 #
 # Stage B ends by running the command a user runs. There is no test-only path.
 test:
@@ -205,9 +205,9 @@ test:
     # the container named by its mount.into. Only an input the application has to
     # serialise for itself needs a step here.
     #
-    # $RESTORED_EXPORT is mounted at /export in every service, and only by the
-    # harness. It does not exist during `restored check`. A step with `produces: db`
-    # must leave its artifact at $RESTORED_EXPORT/<basename of the db input's
+    # $DRILLBACK_EXPORT is mounted at /export in every service, and only by the
+    # harness. It does not exist during `drillback check`. A step with `produces: db`
+    # must leave its artifact at $DRILLBACK_EXPORT/<basename of the db input's
     # default_path>.
     []
     #
@@ -217,6 +217,6 @@ test:
     #   command:
     #     - sh
     #     - -c
-    #     - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+    #     - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$DRILLBACK_EXPORT/db.sql"'
     #   timeout: 5m
     #   produces: db

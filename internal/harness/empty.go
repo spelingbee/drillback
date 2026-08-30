@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spelingbee/restored/internal/recipe"
-	dirsource "github.com/spelingbee/restored/internal/source/dir"
+	"github.com/spelingbee/drillback/internal/recipe"
+	dirsource "github.com/spelingbee/drillback/internal/source/dir"
 )
 
 // emptyDump is what an empty postgres-dump input contains. psql loads it as a no-op,
@@ -22,7 +22,7 @@ const emptyDump = "-- intentionally empty\n"
 // which is exactly the thing stage A has to distinguish a real restore from.
 // Empty inputs are created world-writable, and that is deliberate. An application in
 // a container runs as whatever uid its image chose - Gitea is 1000, Nextcloud is 33,
-// Paperless is 1000 - and none of them is the uid running restored. On Linux a bind
+// Paperless is 1000 - and none of them is the uid running drillback. On Linux a bind
 // mount carries the host's permissions straight through, so a 0755 directory owned by
 // the caller is a directory the application cannot write, and stage B never gets a
 // stack that starts. On Windows the mode is ignored.
@@ -65,7 +65,7 @@ func writeEmpty(kind, p string) error {
 }
 
 // emptyTree builds a tree of empty inputs under root, laid out at the paths the
-// recipe says they occupy in a backup. `restored check --source dir --from <root>`
+// recipe says they occupy in a backup. `drillback check --source dir --from <root>`
 // then walks the real restore path against nothing at all.
 func emptyTree(root string, res *recipe.Resolved) error {
 	for _, in := range res.Inputs {

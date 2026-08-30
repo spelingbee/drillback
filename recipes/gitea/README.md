@@ -16,11 +16,11 @@ nobody can reach.
 
 **The docker-compose.yml from Gitea's own docs** mounts `./gitea` at `/data`:
 
-    restored check --recipe gitea --input data=/opt/gitea/gitea
+    drillback check --recipe gitea --input data=/opt/gitea/gitea
 
 **A named volume** (`gitea:/data`):
 
-    restored check --recipe gitea --input data=/var/lib/docker/volumes/gitea/_data
+    drillback check --recipe gitea --input data=/var/lib/docker/volumes/gitea/_data
 
 **A package install** (not docker) splits what the container keeps in one place:
 repositories under `/var/lib/gitea/data/gitea-repositories`, config in
@@ -53,7 +53,7 @@ first and fails the second, which is exactly the report you want.
 
 ## Round trip
 
-    restored recipe test ./recipes/gitea
+    drillback recipe test ./recipes/gitea
 
 The harness creates an admin user with `gitea admin user create` and a repository
 through the API, both of which are things a person does through Gitea's own front door.

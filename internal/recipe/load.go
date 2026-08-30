@@ -17,7 +17,7 @@ import (
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v3"
 
-	restored "github.com/spelingbee/restored"
+	drillback "github.com/spelingbee/drillback"
 )
 
 // Load reads a recipe from a path: a directory containing recipe.yaml, or the
@@ -46,7 +46,7 @@ func Load(path string) (*Recipe, error) {
 
 // LoadBundled reads one of the recipes compiled into the binary.
 func LoadBundled(name string) (*Recipe, error) {
-	raw, err := restored.Recipes.ReadFile("recipes/" + name + "/recipe.yaml")
+	raw, err := drillback.Recipes.ReadFile("recipes/" + name + "/recipe.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("no bundled recipe named %q (bundled: %s)",
 			name, strings.Join(BundledNames(), ", "))
@@ -71,14 +71,14 @@ func LoadAny(ref string) (*Recipe, error) {
 
 // BundledNames lists the recipes compiled into the binary.
 func BundledNames() []string {
-	entries, err := restored.Recipes.ReadDir("recipes")
+	entries, err := drillback.Recipes.ReadDir("recipes")
 	if err != nil {
 		return nil
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		// recipes/TEMPLATE is the skeleton a contributor copies, not a recipe: it
-		// ships in the binary so `restored recipe init` and CONTRIBUTING.md can point
+		// ships in the binary so `drillback recipe init` and CONTRIBUTING.md can point
 		// at the same file, but it names no application and must never appear in the
 		// registry. A directory whose name is not a legal recipe name is not one.
 		if e.IsDir() && bundledName.MatchString(e.Name()) {
@@ -95,7 +95,7 @@ var bundledName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
 // ReadFile returns a file from the recipe directory, from disk or from the bundle.
 func (r *Recipe) ReadFile(name string) ([]byte, error) {
 	if r.Bundled {
-		b, err := restored.Recipes.ReadFile("recipes/" + r.Metadata.Name + "/" + name)
+		b, err := drillback.Recipes.ReadFile("recipes/" + r.Metadata.Name + "/" + name)
 		if err != nil {
 			return nil, fmt.Errorf("reading %s for bundled recipe %q: %w", name, r.Metadata.Name, err)
 		}
@@ -112,7 +112,7 @@ func (r *Recipe) ReadFile(name string) ([]byte, error) {
 // inside the binary. The harness walks it to stage a recipe's test/ assets.
 func (r *Recipe) FS() (fs.FS, error) {
 	if r.Bundled {
-		sub, err := fs.Sub(restored.Recipes, "recipes/"+r.Metadata.Name)
+		sub, err := fs.Sub(drillback.Recipes, "recipes/"+r.Metadata.Name)
 		if err != nil {
 			return nil, fmt.Errorf("reading bundled recipe %q: %w", r.Metadata.Name, err)
 		}
@@ -183,7 +183,7 @@ func inputOrder(raw []byte) ([]string, error) {
 var recipeSchema = mustCompile("schema/recipe.schema.json")
 
 func mustCompile(path string) *jsonschema.Schema {
-	b, err := restored.Schemas.ReadFile(path)
+	b, err := drillback.Schemas.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}

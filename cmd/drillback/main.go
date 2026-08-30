@@ -7,7 +7,7 @@ package main
 import (
 	"os"
 
-	"github.com/spelingbee/restored/internal/cli"
+	"github.com/spelingbee/drillback/internal/cli"
 )
 
 func main() {

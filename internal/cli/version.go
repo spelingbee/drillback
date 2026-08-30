@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/recipe"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 func newVersion(g *globals) *cobra.Command {
@@ -38,7 +38,7 @@ func newVersion(g *globals) *cobra.Command {
 				})
 			}
 
-			fmt.Fprintf(w, "restored %s\n", Version)
+			fmt.Fprintf(w, "drillback %s\n", Version)
 			fmt.Fprintf(w, "  commit:    %s\n", orUnknown(Commit))
 			fmt.Fprintf(w, "  built:     %s\n", orUnknown(Date))
 			fmt.Fprintf(w, "  go:        %s\n", runtime.Version())
@@ -54,7 +54,7 @@ func newVersion(g *globals) *cobra.Command {
 	return cmd
 }
 
-// dockerLine keeps docker and compose on one line, the way `restored version` is meant
+// dockerLine keeps docker and compose on one line, the way `drillback version` is meant
 // to be pasted into a bug report.
 func dockerLine(v compose.Versions) string {
 	if v.Docker == "" {

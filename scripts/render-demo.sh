@@ -19,12 +19,12 @@
 #   FROM ghcr.io/charmbracelet/vhs:latest
 #   RUN apt-get update -qq && apt-get install -y --no-install-recommends #         docker-cli docker-compose restic ca-certificates
 #   EOF
-#   docker build -t restored-vhs -f /tmp/vhs.Dockerfile /tmp
+#   docker build -t drillback-vhs -f /tmp/vhs.Dockerfile /tmp
 #
 #   # The workspace must be a path the daemon and the container both resolve, for the
 #   # reason docs/docker.md calls the same-path rule.
-#   sudo mkdir -p /var/lib/restored-demo
-#   docker run --rm -u 0 #     -v /var/run/docker.sock:/var/run/docker.sock #     -v /var/lib/restored-demo:/var/lib/restored-demo #     -v "$PWD:/work" -e TMPDIR=/var/lib/restored-demo -w /work #     --entrypoint sh restored-vhs -c 'vhs docs/demo/demo.tape'
+#   sudo mkdir -p /var/lib/drillback-demo
+#   docker run --rm -u 0 #     -v /var/run/docker.sock:/var/run/docker.sock #     -v /var/lib/drillback-demo:/var/lib/drillback-demo #     -v "$PWD:/work" -e TMPDIR=/var/lib/drillback-demo -w /work #     --entrypoint sh drillback-vhs -c 'vhs docs/demo/demo.tape'
 #
 # It takes several minutes. It stands up Gitea and PostgreSQL twice, takes two real
 # restic backups, throws both stacks away, and restores them.
@@ -41,9 +41,9 @@ have restic || die "restic is not installed. The demo takes a real backup with i
 have docker || die "docker is not installed."
 docker info >/dev/null 2>&1 || die "the docker daemon is not reachable. Start it and try again."
 
-[ -x bin/restored ] || {
-  printf 'building bin/restored first...\n'
-  go build -o bin/restored ./cmd/restored
+[ -x bin/drillback ] || {
+  printf 'building bin/drillback first...\n'
+  go build -o bin/drillback ./cmd/drillback
 }
 
 printf 'Rendering docs/demo/demo.gif. This runs two real restore drills and takes a few minutes.\n'

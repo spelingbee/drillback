@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/spelingbee/restored/internal/source"
+	"github.com/spelingbee/drillback/internal/source"
 )
 
 // Options are the repository and snapshot filters for one run.
@@ -30,7 +30,7 @@ type Options struct {
 	Tags     []string
 	Host     string
 	// Env is extra KEY=VALUE entries appended to the process environment for every
-	// restic invocation: RESTIC_PASSWORD_FILE and friends from a restored.yaml
+	// restic invocation: RESTIC_PASSWORD_FILE and friends from a drillback.yaml
 	// source block. Later entries win over the inherited environment.
 	Env []string
 	// Debug receives restic's stderr and the command lines. Never its environment.

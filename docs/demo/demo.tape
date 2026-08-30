@@ -16,7 +16,7 @@
 #
 # Requirements this tape assumes, all of which render-demo.sh checks first:
 #   - the working directory is the repository root
-#   - bin/restored is built
+#   - bin/drillback is built
 #   - `docker info` succeeds
 #   - `restic version` succeeds
 
@@ -63,7 +63,7 @@ Enter
 # explain, both acts wait out a measured budget.
 #
 # demo.sh stands up Gitea and PostgreSQL, seeds them, dumps and backs up with restic,
-# destroys the stack, and asks restored. Measured at 49s on the machine that rendered
+# destroys the stack, and asks drillback. Measured at 49s on the machine that rendered
 # the committed GIF; 110 is that with room. If it ever runs longer, the GIF ends
 # mid-drill and the fix is to raise the number - which is visible immediately, because
 # the last thing on screen will not be a verdict.

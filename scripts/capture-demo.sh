@@ -5,7 +5,7 @@
 # Nothing in docs/demo/ is ever written by hand. Everything the README shows as
 # terminal output comes from here, from a real run against a real backup. The only
 # processing is mechanical: the demo's own progress lines are dropped and the report
-# that follows the "== restored check" marker is kept verbatim.
+# that follows the "== drillback check" marker is kept verbatim.
 
 set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -13,8 +13,8 @@ cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 mkdir -p docs/demo
 
 # A pinned scratch directory, so re-capturing changes the numbers and not the paths.
-RESTORED_DEMO_DIR=${RESTORED_DEMO_DIR:-${TMPDIR:-/tmp}/restored-demo}
-export RESTORED_DEMO_DIR
+DRILLBACK_DEMO_DIR=${DRILLBACK_DEMO_DIR:-${TMPDIR:-/tmp}/drillback-demo}
+export DRILLBACK_DEMO_DIR
 
 capture() {
   script=$1
@@ -33,9 +33,9 @@ capture() {
   fi
 
   printf '%s\n' "$out" |
-    sed -n '/^== restored check$/,$p' |
+    sed -n '/^== drillback check$/,$p' |
     sed '1d' |
-    sed '/^== restored exited /d' |
+    sed '/^== drillback exited /d' |
     sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}' >"$dest"
 }
 

@@ -1,12 +1,12 @@
 # TEMPLATE
 
 This directory is the skeleton to copy, not a recipe. It is not in the registry:
-`restored check --recipe TEMPLATE` will tell you there is no such thing.
+`drillback check --recipe TEMPLATE` will tell you there is no such thing.
 
     cp -r recipes/TEMPLATE recipes/myapp
     $EDITOR recipes/myapp/recipe.yaml recipes/myapp/compose.yaml
-    restored recipe validate ./recipes/myapp --strict
-    restored recipe test ./recipes/myapp
+    drillback recipe validate ./recipes/myapp --strict
+    drillback recipe test ./recipes/myapp
 
 The full walk-through is [CONTRIBUTING.md](../../CONTRIBUTING.md), under
 **Add a recipe in 10 minutes**.
@@ -14,7 +14,7 @@ The full walk-through is [CONTRIBUTING.md](../../CONTRIBUTING.md), under
 If you already have a `docker-compose.yml` for the application, do not start here.
 Start from what you have:
 
-    restored recipe init myapp --compose ~/docker/myapp/docker-compose.yml
+    drillback recipe init myapp --compose ~/docker/myapp/docker-compose.yml
 
 That reads your file, turns its volumes into inputs, recognises a PostgreSQL or SQLite
 service, takes the container side of your published port for the ready probe, and

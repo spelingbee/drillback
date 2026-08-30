@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/report"
+	"github.com/spelingbee/drillback/internal/report"
 )
 
 // SchemaVersion is the harness report's stability contract, separate from the check
@@ -19,7 +19,7 @@ import (
 // for a reason nothing in either output explained. See docs/review/ux.md UX-06.
 const SchemaVersion = 1
 
-// Report is what `restored recipe test --json` writes: one document for the whole
+// Report is what `drillback recipe test --json` writes: one document for the whole
 // invocation, however many recipes it covered.
 type Report struct {
 	SchemaVersion int      `json:"schema_version"`

@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 #
-# restored installer.
+# drillback installer.
 #
-#   curl -fsSL https://raw.githubusercontent.com/spelingbee/restored/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/spelingbee/drillback/main/install.sh | sh
 #
 # What it does, in order: work out the OS and the architecture, download the matching
 # release archive and the release checksum file, verify the archive against the
@@ -21,8 +21,8 @@
 #   --help
 set -eu
 
-REPO="spelingbee/restored"
-BINARY="restored"
+REPO="spelingbee/drillback"
+BINARY="drillback"
 VERSION=""
 DIR=""
 SYSTEM=0
@@ -125,7 +125,7 @@ fi
 ARCHIVE="${BINARY}_${NUM}_${OS}_${ARCH}.tar.gz"
 BASE="https://github.com/$REPO/releases/download/$VERSION"
 
-TMP="$(mktemp -d 2>/dev/null || mktemp -d -t restored)"
+TMP="$(mktemp -d 2>/dev/null || mktemp -d -t drillback)"
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 

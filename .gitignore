@@ -4,8 +4,8 @@
 # to dist/homebrew/Casks/ is generated per release and never committed.
 /dist/
 /bin/
-/restored
-/restored.exe
+/drillback
+/drillback.exe
 
 # Go
 *.test
@@ -15,18 +15,18 @@
 vendor/
 
 # Local configuration and secrets — never commit these
-/restored.yaml
-/restored.local.yaml
+/drillback.yaml
+/drillback.local.yaml
 *.pass
 *.key
 .env
 .env.*
 !.env.example
 
-# Run artifacts. `restored` always works inside a temporary workspace, but
+# Run artifacts. `drillback` always works inside a temporary workspace, but
 # --workspace . and --report ./x.json can drop these in the tree.
-/.restored/
-/restored-*.json
+/.drillback/
+/drillback-*.json
 /recipe-test.json
 
 # Captured demo output is committed on purpose (docs/demo/*.txt) — the raw

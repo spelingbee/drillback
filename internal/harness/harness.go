@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/report"
-	"github.com/spelingbee/restored/internal/runner"
-	resticsource "github.com/spelingbee/restored/internal/source/restic"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/report"
+	"github.com/spelingbee/drillback/internal/runner"
+	resticsource "github.com/spelingbee/drillback/internal/source/restic"
 )
 
 // Fixed properties of the throwaway restic repository. None of them is configurable,
@@ -29,9 +29,9 @@ import (
 // contribute a recipe. The password is not a secret: the repository is created inside
 // the run workspace and is destroyed with it. See SPEC.md section 7.3.
 const (
-	repoPassword = "restored-recipe-test"
-	repoTag      = "restored-recipe-test"
-	repoHost     = "restored-harness"
+	repoPassword = "drillback-recipe-test"
+	repoTag      = "drillback-recipe-test"
+	repoHost     = "drillback-harness"
 )
 
 // DefaultResticImage drives the throwaway repository. It is pinned, and it is used
@@ -68,7 +68,7 @@ const (
 	StatusSkipped = "skipped"
 )
 
-// Options is one `restored recipe test` invocation, for one recipe.
+// Options is one `drillback recipe test` invocation, for one recipe.
 type Options struct {
 	Recipe *recipe.Recipe
 
@@ -119,7 +119,7 @@ type Stage struct {
 	// unless --keep was passed, so a command naming one of them is a command that
 	// answers "no such file or directory". See ADR-061.
 	Command string `json:"command,omitempty"`
-	// Check is the report from the `restored check` this stage ran, when there was
+	// Check is the report from the `drillback check` this stage ran, when there was
 	// one. It carries the per-check query, expectation and observation, the service
 	// logs and the hint - which is to say, everything a contributor needs to know
 	// what went wrong, and all of which used to be computed and thrown away. It is
@@ -177,7 +177,7 @@ func (o *Options) applyDefaults() {
 }
 
 func resticImage() string {
-	if v := os.Getenv("RESTORED_RESTIC_IMAGE"); v != "" {
+	if v := os.Getenv("DRILLBACK_RESTIC_IMAGE"); v != "" {
 		return v
 	}
 	return DefaultResticImage
@@ -298,7 +298,7 @@ func (o Options) stageA(ctx context.Context, budget time.Duration) (st Stage, ke
 	if parent == "" {
 		parent = os.TempDir()
 	}
-	tree, mkErr := os.MkdirTemp(parent, "restored-empty-*")
+	tree, mkErr := os.MkdirTemp(parent, "drillback-empty-*")
 	if mkErr != nil {
 		st.Status = StatusError
 		st.Error = mkErr.Error()
@@ -318,7 +318,7 @@ func (o Options) stageA(ctx context.Context, budget time.Duration) (st Stage, ke
 	// `tree` is deleted by the deferred cleanup above unless --keep was passed, so a
 	// command naming it is a command that answers "no such file or directory". This
 	// one rebuilds the stage. See ADR-061.
-	st.Command = fmt.Sprintf("restored recipe test %s --stage a --keep", recipeRef(o.Recipe))
+	st.Command = fmt.Sprintf("drillback recipe test %s --stage a --keep", recipeRef(o.Recipe))
 
 	phaseStart := time.Now()
 	rep, innerKept, runErr := runner.Run(ctx, runner.Options{

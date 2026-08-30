@@ -1,4 +1,4 @@
-apiVersion: restored/v1
+apiVersion: drillback/v1
 kind: Recipe
 
 metadata:
@@ -19,7 +19,7 @@ vars:
   db_user: nextcloud
   # Not a secret. This database exists for about three minutes on an internal network
   # with no published ports, and is destroyed with `compose down -v`.
-  db_password: restored-throwaway
+  db_password: drillback-throwaway
 
 inputs:
   data:
@@ -32,7 +32,7 @@ inputs:
     default_path: /srv/nextcloud/data
     required: true
     mount:
-      env: RESTORED_INPUT_data
+      env: DRILLBACK_INPUT_data
       into: nextcloud:/var/www/html/data
 
   config:
@@ -47,7 +47,7 @@ inputs:
     default_path: /srv/nextcloud/config
     required: true
     mount:
-      env: RESTORED_INPUT_config
+      env: DRILLBACK_INPUT_config
       into: nextcloud:/var/www/html/config
 
   db:
@@ -183,18 +183,18 @@ test:
     - name: dump the database into the staging tree
       kind: exec
       service: db
-      # $RESTORED_EXPORT is mounted into every service by the harness, and only by the
-      # harness. It does not exist during `restored check`.
+      # $DRILLBACK_EXPORT is mounted into every service by the harness, and only by the
+      # harness. It does not exist during `drillback check`.
       #
       # --no-owner --no-acl is load-bearing here. Nextcloud's installer notices that
       # it was given a superuser and creates a dedicated role, oc_<admin user>, which
       # then owns every table. A plain dump carries ALTER ... OWNER TO oc_drilluser
       # into a database where that role does not exist, and psql stops. Your own
       # backup has the same shape; if you restore it and see
-      # `role "oc_..." does not exist`, restored's hint says what to re-dump with.
+      # `role "oc_..." does not exist`, drillback's hint says what to re-dump with.
       command:
         - sh
         - -c
-        - 'pg_dump --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+        - 'pg_dump --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$DRILLBACK_EXPORT/db.sql"'
       timeout: 5m
       produces: db

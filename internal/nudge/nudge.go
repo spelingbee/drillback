@@ -1,7 +1,7 @@
 // Package nudge builds the one-sentence invitation printed after a recipe that is not
 // in the bundled registry has just proved a restore.
 //
-// restored never opens a browser, never writes to the clipboard, and never sends
+// drillback never opens a browser, never writes to the clipboard, and never sends
 // anything anywhere. It prints four lines and stops - not a URL: see ADR-066 for why
 // the prefilled GitHub link was removed.
 package nudge
@@ -14,7 +14,7 @@ import (
 )
 
 // Repo is the project this build invites contributions to.
-const Repo = "https://github.com/spelingbee/restored"
+const Repo = "https://github.com/spelingbee/drillback"
 
 // Input is everything the invitation needs.
 type Input struct {
@@ -60,10 +60,10 @@ func Build(in Input) string {
 	fmt.Fprintf(&b, "Adding it is a fork and a\n  four-line pull request:\n\n")
 	fmt.Fprintf(&b, "    1. fork  %s\n", Repo)
 	fmt.Fprintf(&b, "    2. cp -r %s recipes/%s\n", dir, in.Name)
-	fmt.Fprintf(&b, "    3. restored recipe test ./recipes/%s     # this is what CI runs\n", in.Name)
+	fmt.Fprintf(&b, "    3. drillback recipe test ./recipes/%s     # this is what CI runs\n", in.Name)
 	fmt.Fprintf(&b, "    4. open a PR\n\n")
-	fmt.Fprintf(&b, "  restored does not touch your clipboard. Your recipe is at %s.\n\n", dir)
-	fmt.Fprintf(&b, "  (silence this with --no-nudge, or `nudge: false` in restored.yaml)\n")
+	fmt.Fprintf(&b, "  drillback does not touch your clipboard. Your recipe is at %s.\n\n", dir)
+	fmt.Fprintf(&b, "  (silence this with --no-nudge, or `nudge: false` in drillback.yaml)\n")
 	fmt.Fprintf(&b, "  %s\n", rule)
 	return b.String()
 }
@@ -71,7 +71,7 @@ func Build(in Input) string {
 // FoldOverrides writes the run's --set and --input values back into the recipe, so the
 // recipe that is offered for submission is the one that actually worked.
 //
-// metadata.maintainers is left exactly as it is: restored does not guess the
+// metadata.maintainers is left exactly as it is: drillback does not guess the
 // contributor's GitHub handle and does not read git config for it.
 func FoldOverrides(raw []byte, vars map[string]string, inputPaths map[string]string) ([]byte, error) {
 	if len(vars) == 0 && len(inputPaths) == 0 {

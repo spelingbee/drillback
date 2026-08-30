@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/check"
-	"github.com/spelingbee/restored/internal/recipe"
+	"github.com/spelingbee/drillback/internal/check"
+	"github.com/spelingbee/drillback/internal/recipe"
 )
 
 // Result is one probe, retried until it succeeded or ran out of time.

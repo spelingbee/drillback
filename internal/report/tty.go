@@ -49,7 +49,7 @@ func (r *Report) WriteTTY(w io.Writer, o Options) error {
 	g := o.glyphs()
 	b := &strings.Builder{}
 
-	fmt.Fprintf(b, "restored %s %s recipe %s %s run %s\n\n",
+	fmt.Fprintf(b, "drillback %s %s recipe %s %s run %s\n\n",
 		r.Tool.Version, g.dot, r.Recipe.Name, g.dot, r.Run.ID)
 
 	if r.Source.Kind != "" {

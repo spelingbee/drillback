@@ -27,7 +27,7 @@ search box, so it is treated as required.
 
 so the host paths are under `/var/lib/docker/volumes/`:
 
-    restored check --recipe paperless-ngx \
+    drillback check --recipe paperless-ngx \
       --input media=/var/lib/docker/volumes/paperless_media/_data \
       --input data=/var/lib/docker/volumes/paperless_data/_data \
       --input db=/srv/backups/paperless/db.sql
@@ -35,7 +35,7 @@ so the host paths are under `/var/lib/docker/volumes/`:
 **A bind-mount install** points the same two at directories you chose, which is the
 easy case:
 
-    restored check --recipe paperless-ngx \
+    drillback check --recipe paperless-ngx \
       --input media=/opt/paperless/media --input data=/opt/paperless/data
 
 **If you use `document_exporter`** instead of `pg_dump`, this recipe is the wrong
@@ -47,7 +47,7 @@ a different recipe, and a good one to contribute: see CONTRIBUTING.md.
 
     docker compose exec -T db pg_dump -U paperless paperless > /srv/backups/paperless/db.sql
 
-Custom format works too; `restored` detects it from the file's magic bytes rather than
+Custom format works too; `drillback` detects it from the file's magic bytes rather than
 its extension:
 
     docker compose exec -T db pg_dump -Fc -U paperless paperless > /srv/backups/paperless/db.dump
@@ -82,7 +82,7 @@ takes.
 
 ## Round trip
 
-    restored recipe test ./recipes/paperless-ngx
+    drillback recipe test ./recipes/paperless-ngx
 
 Measured on the development machine: **3m11s**, both stages. Paperless's first-start
 migrations are most of it.

@@ -1,13 +1,13 @@
 name: Feature
-description: Something restored should be able to do and cannot
+description: Something drillback should be able to do and cannot
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Before writing: [DECISIONS.md](https://github.com/spelingbee/restored/blob/main/DECISIONS.md)
+        Before writing: [DECISIONS.md](https://github.com/spelingbee/drillback/blob/main/DECISIONS.md)
         records the decisions already made and why, and
-        [docs/roadmap.md](https://github.com/spelingbee/restored/blob/main/docs/roadmap.md)
+        [docs/roadmap.md](https://github.com/spelingbee/drillback/blob/main/docs/roadmap.md)
         records what is already wanted. If your idea is in either, adding your case to
         the existing thread is worth more than a new issue.
 

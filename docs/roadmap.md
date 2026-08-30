@@ -8,14 +8,14 @@ this file is cheaper than an idea in the code.
 - **A `--dry-run` for `check`.** Resolve, validate, and print what would happen
   without starting anything. `recipe show --inputs-only` answers most of it already.
 - **A size ratio warning.** The broken-backup demo is recognisable at a glance because
-  the dump is 489 bytes next to a 102 KiB data directory. restored has both numbers in
+  the dump is 489 bytes next to a 102 KiB data directory. drillback has both numbers in
   the report and could say so without a hint rule firing.
-- **`restored doctor`.** Already on the v0.2 roadmap in SPEC.md; session 2 produced
+- **`drillback doctor`.** Already on the v0.2 roadmap in SPEC.md; session 2 produced
   three environment failures (no docker daemon, no restic, no C toolchain for `-race`)
   that a doctor command would have named in one line.
 - **Detecting an application that rebuilt its own schema.** When the dump carries
   nothing and the application migrates an empty database, the tables exist and are
-  empty. restored could compare the dump's size and statement count against what the
+  empty. drillback could compare the dump's size and statement count against what the
   application produced and say which of the two it is looking at.
 - **A per-check `retries` key.** Deliberately not added: checks run once, on purpose,
   and a check that needs a retry is a ready probe wearing a disguise.
@@ -34,14 +34,14 @@ this file is cheaper than an idea in the code.
 - **Multipart upload as a step or check kind.** The reason several document and photo
   applications cannot be seeded through their own front door.
 - **A `mysql-dump` input kind.** `recipe init --compose` already recognises a MySQL or
-  MariaDB service and says, in the file it writes, that restored cannot restore it
+  MariaDB service and says, in the file it writes, that drillback cannot restore it
   yet. That message is a promise to somebody.
 - **A recipe-level `prepare` hook.** The Nextcloud recipe declares a compose service
   that chowns the restored tree and lays down a config overlay before the application
   starts. It works, and it is exactly what a person does by hand - but every recipe
   for an application that is fussy about ownership will now copy it, and a copied
   twenty-line service is a convention rather than a mechanism.
-- **`restored check --all` reading `restored.yaml`.** Session 4's job, and the reason
+- **`drillback check --all` reading `drillback.yaml`.** Session 4's job, and the reason
   the nudge reads `defaults.nudge` out of that file through a deliberately narrow
   one-key reader rather than through `internal/config`, which does not exist yet.
 - **A `smoke.yml` workflow.** SPEC.md section 11.3 specifies a fresh-clone smoke test

@@ -1,5 +1,5 @@
 name: Bug
-description: restored did something wrong
+description: drillback did something wrong
 labels: ["bug"]
 body:
   - type: markdown
@@ -9,7 +9,7 @@ body:
         the tool.
 
         The most valuable bug report against this project is a **false verdict**:
-        `restored` said RESTORE UNUSABLE about a backup that was fine, or said PASS
+        `drillback` said RESTORE UNUSABLE about a backup that was fine, or said PASS
         about one that was not. Both destroy the only thing the tool sells, so say so
         in the title if that is what happened.
 
@@ -37,8 +37,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: restored version
-      description: The output of `restored version`.
+      label: drillback version
+      description: The output of `drillback version`.
     validations:
       required: true
 

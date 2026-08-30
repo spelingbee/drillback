@@ -55,8 +55,8 @@ so this comes before the repository is public and before any issue is filed.
 ## 3. Make the repository public
 
 **Stop point 4.** After this, everything in the repository is quotable and every link
-in it resolves. `docs/name-check.md` still recommends `drillback` over `restored`, and
-ADR-036 records that the rename is one `grep -rl spelingbee/restored | xargs sed -i`
+in it resolves. `docs/name-check.md` still recommends `drillback` over `drillback`, and
+ADR-036 records that the rename is one `grep -rl spelingbee/drillback | xargs sed -i`
 plus a `go mod edit` - *until something is published*. This step is the last cheap
 moment to change the name.
 
@@ -67,7 +67,7 @@ moment to change the name.
 **Stop point 1.** Work through SPEC.md 12.6 first, then:
 
 ```sh
-git tag -a v0.1.0 -m "restored v0.1.0"
+git tag -a v0.1.0 -m "drillback v0.1.0"
 git push origin v0.1.0
 ```
 
@@ -79,12 +79,12 @@ Before publishing the draft, and this is checklist item 12.6.4:
 ```sh
 # download the draft's own linux asset and install it with the script users will use
 ./install.sh --version v0.1.0
-restored version
-restored recipe validate ./recipes/*/ --strict
+drillback version
+drillback recipe validate ./recipes/*/ --strict
 ```
 
 Then publish the draft in the GitHub UI. **Stop point 6** - that is the moment
-`restored` becomes downloadable.
+`drillback` becomes downloadable.
 
 ---
 
@@ -94,19 +94,19 @@ Then publish the draft in the GitHub UI. **Stop point 6** - that is the moment
 on purpose. To publish one:
 
 ```sh
-docker build -t ghcr.io/spelingbee/restored:0.1.0 -t ghcr.io/spelingbee/restored:latest \
+docker build -t ghcr.io/spelingbee/drillback:0.1.0 -t ghcr.io/spelingbee/drillback:latest \
   --build-arg VERSION=0.1.0 --build-arg COMMIT="$(git rev-parse HEAD)" \
   --build-arg DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" .
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u spelingbee --password-stdin
-docker push ghcr.io/spelingbee/restored:0.1.0
-docker push ghcr.io/spelingbee/restored:latest
+docker push ghcr.io/spelingbee/drillback:0.1.0
+docker push ghcr.io/spelingbee/drillback:latest
 ```
 
 Then, in the GitHub UI:
 
-- **Package visibility: public.** Packages > restored > Package settings > Change
+- **Package visibility: public.** Packages > drillback > Package settings > Change
   visibility. A package under a public repository is **private by default**, and
-  `docs/docker.md` tells people to `docker run ghcr.io/spelingbee/restored:0.1.0`. If
+  `docs/docker.md` tells people to `docker run ghcr.io/spelingbee/drillback:0.1.0`. If
   this is missed, every reader gets `denied` and concludes the project is broken.
 - **Link the package to this repository**, so the package page shows the README and
   inherits the licence.
@@ -124,8 +124,8 @@ Then, in the GitHub UI:
 3. create a fine-grained token with contents read/write **on `homebrew-tap` only**, and
    add it here as the Actions secret `HOMEBREW_TAP_GITHUB_TOKEN`;
 4. flip `homebrew_casks[0].skip_upload` from `true` to `false` in `.goreleaser.yaml`;
-5. re-run the release, or push the cask by hand from `dist/homebrew/Casks/restored.rb`;
-6. verify: `brew install spelingbee/tap/restored && restored version`.
+5. re-run the release, or push the cask by hand from `dist/homebrew/Casks/drillback.rb`;
+6. verify: `brew install spelingbee/tap/drillback && drillback version`.
 
 Until step 4, tagging writes the cask into `dist/` and pushes nothing. That is
 deliberate: a tag should never be the thing that publishes to a package manager by

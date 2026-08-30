@@ -125,12 +125,12 @@ A recipe teaches \`restored\` how to stand this application up from a backup and
 tell whether the restore actually worked. It is two YAML files, it needs no Go, and if
 you run $name yourself you are the best-placed person to write it.
 
-**Start here:** [Add a recipe in 10 minutes](https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes)
+**Start here:** [Add a recipe in 10 minutes](https://github.com/spelingbee/drillback/blob/main/CONTRIBUTING.md#add-a-recipe-in-10-minutes)
 
 If you already have a \`docker-compose.yml\` for it, the first draft is one command:
 
 \`\`\`sh
-restored recipe init $name --compose ~/docker/$name/docker-compose.yml
+drillback recipe init $name --compose ~/docker/$name/docker-compose.yml
 \`\`\`
 
 That turns your volumes into inputs, recognises a PostgreSQL or SQLite service, and
@@ -144,7 +144,7 @@ directory, an API listing that comes back empty on day one. "The home page loads
 not it - that works against an empty database, which is exactly the failure this tool
 exists to catch.
 
-\`restored recipe test\` enforces that mechanically: it starts your stack with empty
+\`drillback recipe test\` enforces that mechanically: it starts your stack with empty
 inputs and rejects the recipe if every check still passes.
 
 ### What CI will do

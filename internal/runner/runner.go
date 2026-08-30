@@ -13,25 +13,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spelingbee/restored/internal/check"
-	"github.com/spelingbee/restored/internal/compose"
-	"github.com/spelingbee/restored/internal/hints"
-	"github.com/spelingbee/restored/internal/loader"
-	"github.com/spelingbee/restored/internal/probe"
-	"github.com/spelingbee/restored/internal/recipe"
-	"github.com/spelingbee/restored/internal/recipe/safety"
-	"github.com/spelingbee/restored/internal/report"
-	"github.com/spelingbee/restored/internal/source"
-	dirsource "github.com/spelingbee/restored/internal/source/dir"
-	resticsource "github.com/spelingbee/restored/internal/source/restic"
-	"github.com/spelingbee/restored/internal/workspace"
+	"github.com/spelingbee/drillback/internal/check"
+	"github.com/spelingbee/drillback/internal/compose"
+	"github.com/spelingbee/drillback/internal/hints"
+	"github.com/spelingbee/drillback/internal/loader"
+	"github.com/spelingbee/drillback/internal/probe"
+	"github.com/spelingbee/drillback/internal/recipe"
+	"github.com/spelingbee/drillback/internal/recipe/safety"
+	"github.com/spelingbee/drillback/internal/report"
+	"github.com/spelingbee/drillback/internal/source"
+	dirsource "github.com/spelingbee/drillback/internal/source/dir"
+	resticsource "github.com/spelingbee/drillback/internal/source/restic"
+	"github.com/spelingbee/drillback/internal/workspace"
 )
 
 // DefaultHelperImage is the throwaway container every HTTP and TCP check runs from.
-// It is pinned, and it is the only image restored itself introduces into a run.
+// It is pinned, and it is the only image drillback itself introduces into a run.
 const DefaultHelperImage = "curlimages/curl:8.16.0"
 
-// Options is one invocation of `restored check`.
+// Options is one invocation of `drillback check`.
 type Options struct {
 	Recipe *recipe.Recipe
 
@@ -41,7 +41,7 @@ type Options struct {
 	Tags       []string
 	Host       string
 	// SourceEnv is extra KEY=VALUE entries for the source's child processes: a
-	// restored.yaml source's password settings and env block. Never logged.
+	// drillback.yaml source's password settings and env block. Never logged.
 	SourceEnv []string
 
 	InputPaths map[string]string
@@ -77,7 +77,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 
 	rep = &report.Report{
 		SchemaVersion: report.SchemaVersion,
-		Tool:          report.Tool{Name: "restored", Version: o.Version, Commit: o.Commit},
+		Tool:          report.Tool{Name: "drillback", Version: o.Version, Commit: o.Commit},
 		Verdict:       report.VerdictError,
 		ExitCode:      2,
 		Recipe: report.RecipeInfo{
@@ -310,7 +310,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 			switch {
 			case errors.Is(ctxErr, context.DeadlineExceeded):
 				rep.Error = fmt.Sprintf(
-					"restored ran out of its --timeout budget of %s during the %s stage. "+
+					"drillback ran out of its --timeout budget of %s during the %s stage. "+
 						"Nothing is known about the backup: the drill did not finish. "+
 						"Re-run with a longer --timeout.", o.Timeout, stage)
 			default:
@@ -477,7 +477,7 @@ func (o *Options) applyDefaults() {
 }
 
 func helperImage() string {
-	if v := os.Getenv("RESTORED_HELPER_IMAGE"); v != "" {
+	if v := os.Getenv("DRILLBACK_HELPER_IMAGE"); v != "" {
 		return v
 	}
 	return DefaultHelperImage
@@ -661,7 +661,7 @@ func (o *Options) materialise(ctx context.Context, ws *workspace.Workspace, res 
 						"  A recipe default path is a guess at your layout. Point this input\n"+
 						"  at the path your backup actually uses:\n"+
 						"      --input %s=/your/path\n"+
-						"  `restored recipe show %s --inputs-only` lists every input this recipe wants",
+						"  `drillback recipe show %s --inputs-only` lists every input this recipe wants",
 					in.Name, in.BackupPath, in.Name, res.Recipe.Metadata.Name)
 			}
 			continue
@@ -845,6 +845,6 @@ func newSource(o *Options) (source.Source, error) {
 	case "dir":
 		return dirsource.New(o.From), nil
 	default:
-		return nil, fmt.Errorf("unknown source %q: restored reads restic or dir", o.SourceKind)
+		return nil, fmt.Errorf("unknown source %q: drillback reads restic or dir", o.SourceKind)
 	}
 }

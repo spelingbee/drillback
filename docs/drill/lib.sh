@@ -4,7 +4,7 @@
 # Every app folder under docs/drill/ has a run.sh that sources this file. The job of
 # the drill is to follow an application's own backup documentation literally, put what
 # that documentation produces into a restic repository, and then hand the repository to
-# `restored check`. Nothing here improves on the documented backup; that is the point.
+# `drillback check`. Nothing here improves on the documented backup; that is the point.
 #
 # Usage, from the repository root:
 #
@@ -12,7 +12,7 @@
 #
 # Environment:
 #   DRILL_WORK   scratch directory for deployments, backups and restic repositories
-#                (default: $TMPDIR/restored-drill)
+#                (default: $TMPDIR/drillback-drill)
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 
 DRILL_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$DRILL_LIB_DIR/../.." && pwd)
-DRILL_WORK=${DRILL_WORK:-"${TMPDIR:-/tmp}/restored-drill"}
+DRILL_WORK=${DRILL_WORK:-"${TMPDIR:-/tmp}/drillback-drill"}
 
 RESTIC_IMAGE=restic/restic:0.19.1
 CURL_IMAGE=curlimages/curl:8.10.1
@@ -39,7 +39,7 @@ drill_init() {
   PROJECT="drill-$APP"
   WORK="$DRILL_WORK/$APP"
   BACKUP="$WORK/backup"      # what the documented backup produces
-  REPO="$WORK/restic"        # the restic repository handed to `restored check`
+  REPO="$WORK/restic"        # the restic repository handed to `drillback check`
   # A previous run of this app leaves a compose project and its volumes behind if it
   # was interrupted. The drill starts from nothing, every time.
   docker compose -p "$PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -114,14 +114,14 @@ drill_check() {
   export RESTIC_PASSWORD="$DRILL_REPO_PASSWORD"
   unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE || true
   set +e
-  "$REPO_ROOT/bin/restored.exe" check \
+  "$REPO_ROOT/bin/drillback.exe" check \
     --recipe "$APP_DIR/recipe" \
     --source restic --from "$REPO" \
     --report "$APP_DIR/result.json" \
     "$@" 2>&1 | tee "$APP_DIR/result.txt"
   DRILL_VERDICT=${PIPESTATUS[0]}
   set -e
-  echo "-- restored check exit: $DRILL_VERDICT"
+  echo "-- drillback check exit: $DRILL_VERDICT"
   return 0
 }
 
@@ -146,11 +146,11 @@ drill_check() {
   export RESTIC_PASSWORD=$DRILL_REPO_PASSWORD
   unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE || true
   set +e
-  "$REPO_ROOT/bin/restored.exe" check \
+  "$REPO_ROOT/bin/drillback.exe" check \
     --recipe "$(docker_path "$1")" \
     --source restic --from "$(docker_path "$2")" \
     --report "$(docker_path "$3")" 2>&1 | tee "$4"
   local code=${PIPESTATUS[0]}
   set -e
-  echo "-- restored check exit: $code"
+  echo "-- drillback check exit: $code"
 }

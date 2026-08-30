@@ -1,8 +1,8 @@
-# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
-# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+# Rendered by drillback before `docker compose up`. The ${DRILLBACK_INPUT_*} values are
+# absolute paths inside the run workspace, and ${DRILLBACK_VAR_*} come from `vars:`.
 #
 # Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
-# to any path outside the workspace. `restored recipe validate` rejects all of them.
+# to any path outside the workspace. `drillback recipe validate` rejects all of them.
 services:
   # A backup records the uids of the machine it came from, and restic restores them
   # faithfully; a tar or a `docker cp` through a filesystem without uids does not record
@@ -23,8 +23,8 @@ services:
         [ -f /home/node/.n8n/config ] && chmod 600 /home/node/.n8n/config
         exit 0
     volumes:
-      - ${RESTORED_INPUT_data}:/home/node/.n8n
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/home/node/.n8n
+    networks: [drillback]
 
   n8n:
     image: n8nio/n8n:2.36.8
@@ -36,7 +36,7 @@ services:
       TZ: "Etc/UTC"
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_RUNNERS_ENABLED: "true"
-      N8N_PORT: "${RESTORED_VAR_n8n_port}"
+      N8N_PORT: "${DRILLBACK_VAR_n8n_port}"
       # The auth cookie is Secure by default, and every check here speaks plain HTTP on
       # an internal network. Without this the seed step that creates the owner gets a
       # session it can never send back.
@@ -46,11 +46,11 @@ services:
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
       N8N_DIAGNOSTICS_ENABLED: "false"
     volumes:
-      - ${RESTORED_INPUT_data}:/home/node/.n8n
+      - ${DRILLBACK_INPUT_data}:/home/node/.n8n
       # Empty during `check`; the recipe's own test/ directory during `recipe test`.
-      - ${RESTORED_TEST_ASSETS}:/seed:ro
-    networks: [restored]
+      - ${DRILLBACK_TEST_ASSETS}:/seed:ro
+    networks: [drillback]
 
 networks:
-  restored:
+  drillback:
     internal: true

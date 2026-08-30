@@ -74,7 +74,7 @@ UX-10|ux||Raw OS and Go plumbing errors reach the user in five places
 UX-11|ux||check --help dropped the Environment block and every --input example
 UX-12|ux||The ASCII fallback is undocumented, unreachable by flag, and incomplete
 FC-07|fresh-clone||docs/recipe-spec.md drops item-level constraints, so a recipe written from it does not validate
-FC-08|fresh-clone||The --compose scaffold loses the only documentation of profiles: [test] and RESTORED_TEST_ASSETS
+FC-08|fresh-clone||The --compose scaffold loses the only documentation of profiles: [test] and DRILLBACK_TEST_ASSETS
 FC-09|fresh-clone||The generated recipe README omits an input and names the database after the service
 FC-10|fresh-clone||The contribution link is missing for a commented recipe, and its fallback cp is wrong on Windows
 FC-13|fresh-clone||Every documented command goes through make, with no fallback for a host without it
@@ -130,14 +130,14 @@ printf '%s\n' "$ISSUES" | while IFS='|' read -r id review labels title; do
   body="Found by the independent reviews before the first public release.
 
 **The finding, with the file:line, a reproduction and a proposed fix, is in
-[\`docs/review/$review.md\`](https://github.com/spelingbee/restored/blob/main/docs/review/$review.md)
+[\`docs/review/$review.md\`](https://github.com/spelingbee/drillback/blob/main/docs/review/$review.md)
 under \`$id\`.** Read that first; it is more use than this issue body.
 
 This is a good thing to pick up. If any part of it is unclear, or the finding turns out
 to be wrong, say so on this issue - a reviewer being wrong is a normal outcome and
 closing this as \"not a bug, and here is why\" is a real contribution.
 
-See [CONTRIBUTING.md](https://github.com/spelingbee/restored/blob/main/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/spelingbee/drillback/blob/main/CONTRIBUTING.md)
 to get set up. \`go test ./...\` is green with neither Docker nor restic installed."
 
   label_args="--label 'help wanted'"

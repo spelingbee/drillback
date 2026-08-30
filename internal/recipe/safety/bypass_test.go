@@ -19,11 +19,11 @@ func TestTopLevelVolumeCannotBindAHostPath(t *testing.T) {
   app:
     image: example/app:1.0.0
     volumes:
-      - ${RESTORED_INPUT_data}:/data
+      - ${DRILLBACK_INPUT_data}:/data
       - hostroot:/host
-    networks: [restored]
+    networks: [drillback]
 networks:
-  restored:
+  drillback:
     internal: true
 volumes:
   hostroot:
@@ -37,11 +37,11 @@ volumes:
   app:
     image: example/app:1.0.0
     volumes:
-      - ${RESTORED_INPUT_data}:/data
+      - ${DRILLBACK_INPUT_data}:/data
       - sock:/sock
-    networks: [restored]
+    networks: [drillback]
 networks:
-  restored:
+  drillback:
     internal: true
 volumes:
   sock:
@@ -55,11 +55,11 @@ volumes:
   app:
     image: example/app:1.0.0
     volumes:
-      - ${RESTORED_INPUT_data}:/data
+      - ${DRILLBACK_INPUT_data}:/data
       - borrowed:/borrowed
-    networks: [restored]
+    networks: [drillback]
 networks:
-  restored:
+  drillback:
     internal: true
 volumes:
   borrowed:
@@ -82,11 +82,11 @@ func TestTopLevelNamedVolumeIsAccepted(t *testing.T) {
   app:
     image: example/app:1.0.0
     volumes:
-      - ${RESTORED_INPUT_data}:/data
+      - ${DRILLBACK_INPUT_data}:/data
       - scratch:/scratch
-    networks: [restored]
+    networks: [drillback]
 networks:
-  restored:
+  drillback:
     internal: true
 volumes:
   scratch:
@@ -118,9 +118,9 @@ func TestServiceBodyIsAnAllowList(t *testing.T) {
 			doc := `services:
   app:
     image: example/app:1.0.0
-    networks: [restored]
+    networks: [drillback]
 ` + line + `networks:
-  restored:
+  drillback:
     internal: true
 `
 			if err := ValidateSchema([]byte(doc)); err == nil {
@@ -137,9 +137,9 @@ func TestTopLevelConfigsAndSecretsAreRejected(t *testing.T) {
 			doc := `services:
   app:
     image: example/app:1.0.0
-    networks: [restored]
+    networks: [drillback]
 networks:
-  restored:
+  drillback:
     internal: true
 ` + key + `:
   leak:
@@ -163,23 +163,23 @@ func TestVariableCannotInjectYAML(t *testing.T) {
   app:
     image: example/app:1.0.0
     environment:
-      APP_PORT: ${RESTORED_VAR_port}
+      APP_PORT: ${DRILLBACK_VAR_port}
     volumes:
-      - ${RESTORED_INPUT_data}:/data
-    networks: [restored]
+      - ${DRILLBACK_INPUT_data}:/data
+    networks: [drillback]
 networks:
-  restored:
+  drillback:
     internal: true
 `
 	env := map[string]string{
-		"RESTORED_INPUT_data": "/ws/inputs/data",
-		"RESTORED_VAR_port":   "8080\n    privileged: true\n    network_mode: host\n    pid: host",
+		"DRILLBACK_INPUT_data": "/ws/inputs/data",
+		"DRILLBACK_VAR_port":   "8080\n    privileged: true\n    network_mode: host\n    pid: host",
 	}
 	if _, err := Render([]byte(doc), env); err == nil {
 		t.Fatal("rendered a compose file with privileged, network_mode and pid injected through a variable")
 	}
 	// The same value with the line breaks taken out is an ordinary value.
-	env["RESTORED_VAR_port"] = "8080"
+	env["DRILLBACK_VAR_port"] = "8080"
 	if _, err := Render([]byte(doc), env); err != nil {
 		t.Fatalf("rejected an ordinary variable value: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestCheckInterpolationShape(t *testing.T) {
     image: example/app:1.0.0
     environment:
       PORT: PLACEHOLDER
-    networks: [restored]
+    networks: [drillback]
 `
 	cases := map[string]struct {
 		after string
@@ -210,26 +210,26 @@ func TestCheckInterpolationShape(t *testing.T) {
     environment:
       PORT: 8080
     privileged: true
-    networks: [restored]
+    networks: [drillback]
 `},
 		"a key is removed": {after: `services:
   app:
     image: example/app:1.0.0
-    networks: [restored]
+    networks: [drillback]
 `},
 		"a scalar becomes a list": {after: `services:
   app:
     image: example/app:1.0.0
     environment:
       PORT: [8080, 8081]
-    networks: [restored]
+    networks: [drillback]
 `},
 		"a list grows": {after: `services:
   app:
     image: example/app:1.0.0
     environment:
       PORT: 8080
-    networks: [restored, other]
+    networks: [drillback, other]
 `},
 	}
 
