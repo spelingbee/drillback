@@ -1,0 +1,28 @@
+restored 0.1.0-dev · recipe n8n · run amvoojzr
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/n8n/restic-dotn8n
+  snapshot   649d6bab  2026-08-30 11:20:05  host=drill  tags=[drill]
+  inputs     data  /home/node/.n8n                    5.4 MiB  7 files
+             db    /home/node/.n8n/database.sqlite    1.4 MiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          2.0s   2 services
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         18.7s   n8n reports itself ready
+
+  CHECKS
+  ✔  healthz                 n8n answers its own health endpoint         0.57s
+  ✔  db-integrity            The SQLite database passes PRAGMA           0.02s
+                             integrity_check → ok
+  ✔  users-present           At least one real user account survived     0.01s
+                             the restore → 1
+  ✔  owner-account-restored  The instance still has its owner, so        0.59s
+                             somebody can log in
+  ✔  workflows-present       The workflows are in the restored            3.2s
+                             instance
+  ✔  credential-decryptable  A restored credential can still be           3.0s
+                             decrypted with the restored key
+
+  PASS  6/6 checks  ·  total 30.3s  ·  teardown ok
+
+This backup boots.

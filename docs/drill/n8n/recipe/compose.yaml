@@ -1,0 +1,60 @@
+# The restore side of the drill, written the way n8n's own documentation says to put a
+# backup back: `n8n import:workflow --separate --input=<dir>` and the matching
+# `import:credentials`, against the directory `--backup` wrote.
+#
+# Nothing here improves on those commands. The `prepare` service exists only because a
+# fresh named volume mounted over /home/node/.n8n arrives owned by root, and the image
+# runs as uid 1000; it is plumbing, not a fix for anything the documentation says.
+services:
+  prepare:
+    image: alpine:3.20
+    command: ["sh", "-c", "mkdir -p /home/node/.n8n && chown -R 1000:1000 /home/node/.n8n"]
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks: [restored]
+
+  restore:
+    image: n8nio/n8n:2.36.8
+    depends_on:
+      prepare:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/sh", "-c"]
+    # The two documented import commands, in the order the documentation gives them,
+    # against the one directory the documented export commands wrote.
+    #
+    # `|| true` on the second is not a workaround: import:credentials aborts on this
+    # directory (SQLITE_CONSTRAINT: NOT NULL constraint failed: credentials_entity.data,
+    # see result.md) and that failure IS the finding. Swallowing its exit code is what
+    # lets the drill go on to ask what else did or did not come back, instead of ending
+    # at "the stack would not start". The error stays in this service's log.
+    command:
+      - "n8n import:workflow --separate --input=/restore; n8n import:credentials --separate --input=/restore || true"
+    environment:
+      N8N_RUNNERS_ENABLED: "true"
+    volumes:
+      - ${RESTORED_INPUT_export}:/restore:ro
+      - n8n-data:/home/node/.n8n
+    networks: [restored]
+
+  n8n:
+    image: n8nio/n8n:2.36.8
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      GENERIC_TIMEZONE: "Etc/UTC"
+      TZ: "Etc/UTC"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_SECURE_COOKIE: "false"
+      N8N_PORT: "${RESTORED_VAR_n8n_port}"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks: [restored]
+
+volumes:
+  n8n-data:
+
+networks:
+  restored:
+    internal: true

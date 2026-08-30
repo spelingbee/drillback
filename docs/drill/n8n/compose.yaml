@@ -1,0 +1,27 @@
+# n8n, deployed the way https://docs.n8n.io/deploy/host-n8n/install-options/install-with-docker
+# says to deploy it: the n8nio/n8n image with a named volume on /home/node/.n8n and the
+# three environment variables the page sets.
+#
+# Two deviations from the documented command, both recorded in steps.md and neither one
+# touching what gets backed up:
+#
+#  1. The drill does not publish 5678 on the host. It drives the instance from a curl
+#     container attached to this project's network instead, so nothing the drill runs is
+#     reachable from outside the machine.
+#  2. N8N_SECURE_COOKIE=false. n8n's auth cookie is Secure by default, so a client on
+#     plain HTTP is never given a session and every /rest call answers 401. n8n's own
+#     configuration reference documents this variable for exactly this case.
+services:
+  n8n:
+    image: n8nio/n8n:2.36.8
+    environment:
+      GENERIC_TIMEZONE: "Etc/UTC"
+      TZ: "Etc/UTC"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_SECURE_COOKIE: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

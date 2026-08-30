@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "started_at": "2026-08-30T11:17:26Z",
+  "finished_at": "2026-08-30T11:18:50Z",
+  "duration_ms": 83463,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "errored": 0
+  },
+  "recipes": [
+    {
+      "recipe": "n8n",
+      "title": "n8n (SQLite)",
+      "dir": "recipes\\n8n",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "title": "negative: the checks must fail against an empty stack",
+          "status": "pass",
+          "reason": "4 of 6 checks failed against an empty stack: users-present, owner-account-restored, workflows-present, credential-decryptable",
+          "duration_ms": 23705,
+          "phases": [
+            {
+              "name": "check against empty inputs",
+              "status": "pass",
+              "duration_ms": 23702,
+              "note": "4 of 6 checks failed"
+            }
+          ],
+          "command": "restored recipe test recipes\\n8n --stage a --keep"
+        },
+        {
+          "name": "B",
+          "title": "round trip: seed, export, back up, restore, check",
+          "status": "pass",
+          "reason": "the round trip restored and all 6 checks passed",
+          "duration_ms": 59236,
+          "phases": [
+            {
+              "name": "up",
+              "status": "pass",
+              "duration_ms": 1956,
+              "note": "2 services, test profile active"
+            },
+            {
+              "name": "ready",
+              "status": "pass",
+              "duration_ms": 11872,
+              "note": "n8n reports itself ready"
+            },
+            {
+              "name": "seed",
+              "status": "pass",
+              "duration_ms": 7288,
+              "note": "3 steps"
+            },
+            {
+              "name": "export",
+              "status": "pass",
+              "duration_ms": 441,
+              "note": "7 files, 5689024 bytes staged"
+            },
+            {
+              "name": "restic",
+              "status": "pass",
+              "duration_ms": 5066,
+              "note": "throwaway repository, 1 snapshot"
+            },
+            {
+              "name": "down",
+              "status": "pass",
+              "duration_ms": 968,
+              "note": "stack and volumes removed"
+            },
+            {
+              "name": "check",
+              "status": "pass",
+              "duration_ms": 31590,
+              "note": "6 of 6 checks passed"
+            }
+          ],
+          "command": "restored recipe test recipes\\n8n --stage b --keep"
+        }
+      ],
+      "duration_ms": 83461
+    }
+  ]
+}

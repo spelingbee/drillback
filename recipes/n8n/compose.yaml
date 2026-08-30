@@ -1,0 +1,56 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  # A backup records the uids of the machine it came from, and restic restores them
+  # faithfully; a tar or a `docker cp` through a filesystem without uids does not record
+  # them at all. Either way the restored tree does not belong to uid 1000, which is who
+  # the n8n image runs as. This is the `chown -R node:node` a person does by hand.
+  #
+  # The mode on `config` matters as much as the owner: with
+  # N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS the server refuses to start over a
+  # world-readable settings file, and that file is where the encryption key is.
+  prepare:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        chown -R 1000:1000 /home/node/.n8n
+        [ -f /home/node/.n8n/config ] && chmod 600 /home/node/.n8n/config
+        exit 0
+    volumes:
+      - ${RESTORED_INPUT_data}:/home/node/.n8n
+    networks: [restored]
+
+  n8n:
+    image: n8nio/n8n:2.36.8
+    depends_on:
+      prepare:
+        condition: service_completed_successfully
+    environment:
+      GENERIC_TIMEZONE: "Etc/UTC"
+      TZ: "Etc/UTC"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_PORT: "${RESTORED_VAR_n8n_port}"
+      # The auth cookie is Secure by default, and every check here speaks plain HTTP on
+      # an internal network. Without this the seed step that creates the owner gets a
+      # session it can never send back.
+      N8N_SECURE_COOKIE: "false"
+      # Nothing in this drill talks to the internet, and the version check is a request
+      # that will hang for its whole timeout on an internal network.
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    volumes:
+      - ${RESTORED_INPUT_data}:/home/node/.n8n
+      # Empty during `check`; the recipe's own test/ directory during `recipe test`.
+      - ${RESTORED_TEST_ASSETS}:/seed:ro
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true

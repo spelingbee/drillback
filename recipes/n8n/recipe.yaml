@@ -1,0 +1,183 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: n8n
+  title: n8n (SQLite)
+  description: >
+    Verifies that an n8n backup restores: the server answers its health endpoint, the
+    instance still knows its owner account, the workflows are in it, and a credential
+    that was encrypted with the instance key can still be decrypted.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/n8n-io/n8n
+  tags: [automation, workflow, sqlite]
+
+vars:
+  n8n_port: 5678
+
+inputs:
+  data:
+    kind: dir
+    title: The n8n home directory
+    description: >
+      /home/node/.n8n in the container, which n8n's installation page tells you to keep
+      on a persistent volume. It holds database.sqlite AND the file called `config`,
+      which is where the instance's encryption key lives. Without that file every
+      credential in the database is a string nobody can decrypt, so a backup of the
+      database alone is not a backup of an n8n.
+    default_path: /home/node/.n8n
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: n8n:/home/node/.n8n
+
+  db:
+    kind: sqlite
+    title: The n8n SQLite database
+    description: >
+      database.sqlite, inside the home directory. Declared separately so that a
+      truncated database, or one whose -wal companion was left out of the backup, is
+      reported here instead of as an inexplicably empty instance.
+    default_path: /home/node/.n8n/database.sqlite
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  # /healthz/readiness, and nothing else. n8n puts up a placeholder server while it is
+  # starting, and that server answers /healthz AND /rest/settings with 200 - and, worse,
+  # answers a POST to /rest/owner/setup with 200 as well, without creating anything.
+  # /healthz/readiness is 503 for that whole window and turns 200 only when the real
+  # server has taken over. Measured on 2.36.8: /rest/settings answered 200 from t+4s,
+  # readiness from t+10s.
+  - name: n8n reports itself ready
+    kind: http
+    url: http://n8n:{{ .vars.n8n_port }}/healthz/readiness
+    expect_status: 200
+    timeout: 300s
+    interval: 3s
+
+checks:
+  - id: healthz
+    title: n8n answers its own health endpoint
+    kind: http
+    url: http://n8n:{{ .vars.n8n_port }}/healthz
+    expect:
+      status: 200
+      body_matches: '"status"\s*:\s*"ok"'
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: At least one real user account survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    # `WHERE email IS NOT NULL` is the whole point of this check. A brand new n8n
+    # already has a row in `user`: it creates an empty shell for the owner at first
+    # boot and fills it in when somebody completes the setup screen. Counting rows
+    # would therefore pass against a database that has never had a user in it.
+    query: "SELECT count(*) FROM user WHERE email IS NOT NULL;"
+    expect:
+      scalar_int_min: 1
+
+  - id: owner-account-restored
+    title: The instance still has its owner, so somebody can log in
+    kind: http
+    url: http://n8n:{{ .vars.n8n_port }}/rest/settings
+    expect:
+      status: 200
+      # true here means n8n is showing the first-run owner-setup screen, which is what
+      # an n8n with no users looks like: whoever reaches it first becomes the owner.
+      body_matches: '"showSetupOnFirstLoad"\s*:\s*false'
+
+  - id: workflows-present
+    title: The workflows are in the restored instance
+    kind: exec
+    service: n8n
+    timeout: 180s
+    command: ["n8n", "list:workflow"]
+    expect:
+      exit_code: 0
+      stdout_matches: "drill-canary-workflow"
+
+  - id: credential-decryptable
+    title: A restored credential can still be decrypted with the restored key
+    kind: exec
+    service: n8n
+    timeout: 180s
+    # This is the check that says the `config` file came back with the database. With
+    # the database but not the key, the credential is listed and cannot be read.
+    command:
+      - sh
+      - -c
+      - "n8n export:credentials --all --decrypted --output=/tmp/decrypted.json && grep -q drill-secret-value /tmp/decrypted.json"
+    expect:
+      exit_code: 0
+
+test:
+  seed:
+    # n8n has no CLI command that creates the first user, so the owner is made through
+    # the one endpoint that needs no session: the first-run setup call the browser makes.
+    #
+    # It is an exec step rather than an http one, and it retries, because /rest/settings
+    # starts answering before /rest/owner/setup is mounted - a POST sent in that window
+    # gets a 404 that looks exactly like "this instance is already set up". Seed steps
+    # are not retried by the harness on purpose, so the retry lives here.
+    - name: create the owner account
+      kind: exec
+      service: n8n
+      timeout: 180s
+      command:
+        - node
+        - -e
+        - |
+          const body = JSON.stringify({
+            email: 'drill@example.invalid', firstName: 'Drill',
+            lastName: 'Operator', password: 'Drill-Password-1',
+          });
+          (async () => {
+            for (let i = 0; i < 60; i++) {
+              try {
+                const r = await fetch('http://127.0.0.1:5678/rest/owner/setup', {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body,
+                });
+                const answer = await r.text();
+                // Not `r.status === 200`: the placeholder server answers 200 to a POST
+                // it does nothing with. The account is only real if the response is the
+                // user document, with the address that was asked for in it.
+                if (r.status === 200 && answer.includes('drill@example.invalid')) {
+                  console.log('owner account created'); return;
+                }
+                console.log('owner/setup answered', r.status, '- retrying');
+              } catch (e) { console.log('owner/setup:', e.message, '- retrying'); }
+              await new Promise((s) => setTimeout(s, 2000));
+            }
+            throw new Error('owner/setup never answered 200');
+          })();
+
+    - name: import a workflow
+      kind: exec
+      service: n8n
+      command: ["n8n", "import:workflow", "--input=/seed/workflow.json"]
+      timeout: 180s
+
+    # Imported from plain text, which is what import:credentials does with a `data`
+    # object: n8n encrypts it with this instance's key on the way in. That is what makes
+    # credential-decryptable meaningful - the value can only come back if the key does.
+    - name: import a credential
+      kind: exec
+      service: n8n
+      command: ["n8n", "import:credentials", "--input=/seed/credential.json"]
+      timeout: 180s
+  export: []

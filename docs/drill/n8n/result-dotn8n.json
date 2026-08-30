@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "amvoojzr",
+    "compose_project": "restored-amvoojzr",
+    "started_at": "2026-08-30T11:21:16Z",
+    "finished_at": "2026-08-30T11:21:46Z",
+    "duration_ms": 30271,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-amvoojzr"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "n8n",
+    "title": "n8n (SQLite)",
+    "source": "path",
+    "digest": "sha256:98d48bdebffa0af820b0f1ba66d0a0c8dc73f71d208f3fa41ddff6a8efc44fdc"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/n8n/restic-dotn8n",
+    "snapshot": {
+      "id": "649d6bab4e606e877f33a9b67b64a2c606e7e0b05231b871baf361199eec25d0",
+      "short_id": "649d6bab",
+      "time": "2026-08-30T11:20:05.072422415Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/home/node/.n8n"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/home/node/.n8n",
+      "bytes": 5690959,
+      "files": 7,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/home/node/.n8n/database.sqlite",
+      "bytes": 1519616,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1691,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1977,
+      "services": [
+        "prepare",
+        "n8n"
+      ],
+      "note": "2 services"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 11,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 18691,
+      "probes": [
+        {
+          "name": "n8n reports itself ready",
+          "status": "ok",
+          "attempts": 6,
+          "duration_ms": 18691,
+          "error": "http://n8n:5678/healthz/readiness answered 503, expected 200"
+        }
+      ],
+      "note": "n8n reports itself ready"
+    }
+  ],
+  "checks": [
+    {
+      "id": "healthz",
+      "title": "n8n answers its own health endpoint",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 573,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"status\"\\s*:\\s*\"ok\""
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 15,
+        "matched": true
+      },
+      "url": "http://n8n:5678/healthz"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 23,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "At least one real user account survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 13,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM user WHERE email IS NOT NULL;"
+    },
+    {
+      "id": "owner-account-restored",
+      "title": "The instance still has its owner, so somebody can log in",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 594,
+      "expect": {
+        "status": 200,
+        "body_matches": "\"showSetupOnFirstLoad\"\\s*:\\s*false"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 476,
+        "matched": true
+      },
+      "url": "http://n8n:5678/rest/settings"
+    },
+    {
+      "id": "workflows-present",
+      "title": "The workflows are in the restored instance",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 3190,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "drill-canary-workflow"
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    },
+    {
+      "id": "credential-decryptable",
+      "title": "A restored credential can still be decrypted with the restored key",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 3016,
+      "expect": {
+        "exit_code": 0
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 6,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

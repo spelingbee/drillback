@@ -1,0 +1,87 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: n8n-documented-export
+  title: n8n, restored from the backup its documentation describes
+  description: >
+    The drill recipe for n8n. Its input is not a data directory: it is the directory
+    that `n8n export:workflow --backup` and `n8n export:credentials --backup` write,
+    because that pair of commands is the only thing n8n's documentation calls a backup.
+    The checks ask what a person actually gets back from it - the workflows, the login,
+    and a credential that can still be decrypted.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/n8n-io/n8n
+  tags: [automation, sqlite, drill]
+
+vars:
+  n8n_port: 5678
+
+inputs:
+  export:
+    kind: dir
+    title: The directory `n8n export:... --backup` wrote
+    description: >
+      One JSON file per workflow and one per credential, which is what --backup means
+      (it "Sets --all --pretty --separate for backups"). The credential files hold the
+      `data` field still encrypted with the instance's key.
+    default_path: /home/node/backups/latest
+    required: true
+    mount:
+      env: RESTORED_INPUT_export
+      into: restore:/restore
+
+ready:
+  # /healthz/readiness, and nothing else. n8n puts up a placeholder server while it is
+  # starting, and that server answers /healthz AND /rest/settings with 200 - and, worse,
+  # answers a POST to /rest/owner/setup with 200 as well, without creating anything.
+  # /healthz/readiness is 503 for that whole window and turns 200 only when the real
+  # server has taken over. Measured on 2.36.8: /rest/settings answered 200 from t+4s,
+  # readiness from t+10s.
+  - name: n8n reports itself ready
+    kind: http
+    url: http://n8n:{{ .vars.n8n_port }}/healthz/readiness
+    expect_status: 200
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: healthz
+    title: n8n answers its own health endpoint
+    kind: http
+    url: http://n8n:{{ .vars.n8n_port }}/healthz
+    expect:
+      status: 200
+      body_matches: '"status"\s*:\s*"ok"'
+
+  - id: workflow-restored
+    title: The workflow that was backed up is in the restored instance
+    kind: exec
+    service: n8n
+    command: ["n8n", "list:workflow"]
+    timeout: 180s
+    expect:
+      exit_code: 0
+      stdout_matches: "drill-canary-workflow"
+
+  - id: owner-account-restored
+    title: The instance still has its owner account, so somebody can log in
+    kind: http
+    url: http://n8n:{{ .vars.n8n_port }}/rest/settings
+    expect:
+      status: 200
+      # true means n8n is showing the first-run owner-setup screen: the restored
+      # instance has no users at all, and the first person to reach it becomes owner.
+      body_matches: '"showSetupOnFirstLoad"\s*:\s*false'
+
+  - id: credential-decryptable
+    title: A restored credential can still be decrypted
+    kind: exec
+    service: n8n
+    timeout: 180s
+    command:
+      - sh
+      - -c
+      - "n8n export:credentials --all --decrypted --output=/tmp/decrypted.json && grep -q drill-secret-value /tmp/decrypted.json"
+    expect:
+      exit_code: 0

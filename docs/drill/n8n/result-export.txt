@@ -1,0 +1,27 @@
+restored 0.1.0-dev · recipe n8n-documented-export · run ycuaux3v
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/n8n/restic-export
+  snapshot   af70d8e8  2026-08-30 11:19:59  host=drill  tags=[drill]
+  inputs     export  /home/node/backups/latest    1.9 KiB  2 files
+
+  restore    ok          1.7s   1 input
+  compose    ok         15.7s   3 services
+  ready      ok          8.5s   n8n reports itself ready
+
+  CHECKS
+  ✔  healthz                 n8n answers its own health endpoint         0.54s
+  ✔  workflow-restored       The workflow that was backed up is in the    3.3s
+                             restored instance
+  ✘  owner-account-restored  The instance still has its owner account,   0.68s
+                             so somebody can log in
+                               expect  body_matches: "showSetupOnFirstLoad"\s*:\s*false
+                               got     {"data":{"settingsMode":"public","defaultLocale":"en","userManagement":{"authenticationMethod":"email","showSetupOnFirstLoad":true,"smtpSetup":false,"passwordMinLength":8},"sso":{"saml":{"loginEnabled":false},"ldap":{"loginEnabled":false,"loginLabel":""},"oidc":{"loginEnabled":false,"loginUrl":"http...
+  ✘  credential-decryptable  A restored credential can still be           3.2s
+                             decrypted
+                               expect  exit_code: 0
+                               got     exit_code: 1
+
+  RESTORE UNUSABLE  2/4 checks  ·  total 35.5s  ·  teardown ok
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.
