@@ -1,0 +1,154 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: convertx
+  title: ConvertX (SQLite)
+  description: >
+    Verifies that a ConvertX backup restores: the service is served, the SQLite database
+    passes an integrity check, the account and its conversion jobs are in it, the
+    uploaded files those jobs refer to are on disk, and the account can still sign in.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/C4illin/ConvertX
+  tags: [files, sqlite]
+
+vars:
+  convertx_port: 3000
+  drill_email: drill@example.invalid
+  drill_password: Drill-Password-1
+
+inputs:
+  data:
+    kind: dir
+    title: The ConvertX data directory
+    description: >
+      /app/data, the only volume the README mounts. It holds mydb.sqlite with the
+      accounts and the conversion jobs, and two directories of files those jobs refer
+      to - uploads/<user>/<job>/ and output/<user>/<job>/.
+    default_path: /app/data
+    required: true
+    mount:
+      env: RESTORED_INPUT_data
+      into: convertx:/app/data
+
+  db:
+    kind: sqlite
+    title: The ConvertX SQLite database
+    description: >
+      mydb.sqlite, inside the data directory. Declared separately because it runs in
+      WAL mode: on this instance the database was 20 KiB and its -wal was 16 KiB, so a
+      copy of the .db alone is a copy of some of it.
+    default_path: /app/data/mydb.sqlite
+    within: data
+    required: true
+    load:
+      integrity_check: true
+
+ready:
+  # 302: an unauthenticated request to / is redirected, both on a restored instance
+  # (to the login page) and on an empty one (to the setup page). The readiness question
+  # is only whether the server is answering.
+  - name: ConvertX is serving
+    kind: http
+    url: http://convertx:{{ .vars.convertx_port }}/
+    expect_status: 302
+    timeout: 180s
+    interval: 2s
+
+checks:
+  - id: serves
+    title: The service answers
+    kind: http
+    url: http://convertx:{{ .vars.convertx_port }}/
+    expect:
+      status_in: [200, 302]
+
+  - id: db-integrity
+    title: The SQLite database passes PRAGMA integrity_check
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "PRAGMA integrity_check;"
+    expect:
+      scalar_equals: "ok"
+
+  - id: users-present
+    title: The account survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM users;"
+    expect:
+      scalar_int_min: 1
+
+  - id: jobs-present
+    title: The conversion history survived the restore
+    kind: sql
+    driver: sqlite
+    file: "{{ .inputs.db.path }}"
+    query: "SELECT count(*) FROM jobs;"
+    expect:
+      scalar_int_min: 1
+
+  - id: uploaded-file-on-disk
+    title: The file a job refers to is on disk, not just in the database
+    kind: file
+    service: convertx
+    # The pair. `jobs` is a table of work; the files are under uploads/ and output/,
+    # named by user and job id. A backup of mydb.sqlite alone leaves every job pointing
+    # at a directory that is not there.
+    path: /app/data/uploads
+    expect:
+      exists: true
+      glob: "*/*/*"
+      glob_min_count: 1
+
+  - id: signin-works
+    title: The restored account can still sign in
+    kind: exec
+    service: convertx
+    # An exec check rather than an http one: ConvertX's login is a form post, and the
+    # http check kind can only send JSON. curl is in the image.
+    #
+    # 302 is a successful sign-in; a wrong password or an unknown address is 403, which
+    # is what an empty restore answers.
+    command:
+      - sh
+      - -c
+      - |
+        code=`curl -s -o /dev/null -w '%{http_code}' -X POST \
+          http://127.0.0.1:3000/login \
+          -d 'email=drill@example.invalid&password=Drill-Password-1'`
+        echo "login status: $code"
+        test "$code" = "302"
+    timeout: 120s
+    expect:
+      exit_code: 0
+      stdout_matches: "login status: 302"
+
+test:
+  seed:
+    - name: create the first account and upload a file for conversion
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://convertx:3000
+          J=/tmp/jar
+          # The first account is created through the setup page, which is what the
+          # README means by "visit http://localhost:3000 and create your account".
+          curl -sS -f -c $J -b $J -o /dev/null -w 'register: %{http_code}' -X POST "$B/register" \
+            -d 'email=drill@example.invalid&password=Drill-Password-1'
+          # ConvertX creates the job when the page is loaded, and the upload lands in
+          # uploads/<user>/<job>/. Going straight from register to upload writes nothing.
+          curl -sS -f -c $J -b $J -o /dev/null "$B/"
+          curl -sS -f -c $J -b $J -o /dev/null -w 'upload: %{http_code}' -X POST "$B/upload" \
+            -F 'file=@/seed/drill-canary.png;type=image/png'
+          curl -sS -c $J -b $J -o /dev/null -w 'convert: %{http_code}' -X POST "$B/convert" \
+            -F 'file_names=drill-canary.png' -F 'convert_to=jpg,imagemagick' || true
+          echo "seeded one account and one conversion job"
+  export: []

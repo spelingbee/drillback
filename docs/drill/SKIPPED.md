@@ -1,6 +1,7 @@
 # What the drill did not test, and why
 
-The session aimed at fifteen applications and finished fourteen. A skip is data. This page records every application from `docs/recipes-wanted.txt` that
+The session aimed at fifteen applications and finished fifteen, though not the fifteen
+it set out to test. A skip is data. This page records every application from `docs/recipes-wanted.txt` that
 the drill passed over on its way down the list, and which of three reasons applies. It
 is deliberately blunt about the third one.
 
@@ -58,11 +59,11 @@ ran out of session, not out of capability. They are the obvious next legs, in th
 | karakeep | 28,665 | App, Chrome, Meilisearch. |
 | ArchiveBox | 28,205 | A single container over a large data directory. |
 | linkwarden | 19,629 | App plus PostgreSQL plus a file store: the exact shape that produced the listmonk finding. |
-| ConvertX, docuseal, audiobookshelf, mealie's neighbours in the 13-19k range | - | All single-container SQLite applications; each is about twenty minutes. |
+| docuseal, audiobookshelf, linkwarden's neighbours in the 13-19k range | - | All single-container SQLite applications; each is about twenty minutes. ConvertX was one of these and was tested in the end, after Stirling-PDF could not be. |
 
 ## What this means for the numbers
 
-Every count in [summary.md](summary.md) is over the fourteen applications actually
+Every count in [summary.md](summary.md) is over the fifteen applications actually
 tested. It is not a random sample of self-hosted software: it is the top of a
 popularity list, filtered by what fits in a small budget, which skews it towards
 single-container applications with SQLite databases. The findings that repeat across

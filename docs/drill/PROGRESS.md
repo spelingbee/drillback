@@ -11,9 +11,9 @@ Resume point for the official-docs restore drill. Updated after every applicatio
   in CI-class resources are recorded as SKIPPED with the reason and the drill moves on.
 - **Target:** 15 tested applications, extending toward 30 if the per-application budget
   (about 20 minutes) allows.
-- **Reached:** 14. The fifteenth (Stirling-PDF) was deployed and abandoned when its
-  login could not be scripted inside the budget; the reason is in
-  [SKIPPED.md](SKIPPED.md), and no verdict was invented for it.
+- **Reached:** 15. Stirling-PDF was deployed and abandoned when its login could not be
+  scripted inside the budget - the reason is in [SKIPPED.md](SKIPPED.md), and no verdict
+  was invented for it - so ConvertX took the fifteenth slot instead.
 
 ## Done
 
@@ -32,6 +32,7 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | 12 | mealie | PASS (the documented "best way") | `recipes/mealie`, passes `recipe test` | Integrated backup zip untested, reason recorded. |
 | 13 | FreshRSS | PASS (both readings) | `recipes/freshrss`, passes `recipe test` | The best backup page in the drill; both of its claims hold. |
 | 14 | siyuan | PASS (both readings) | `recipes/siyuan`, passes `recipe test` | 37 of 38 MB of the workspace are bundled themes. |
+| 15 | ConvertX | PASS (the data directory) / FAIL (mydb.sqlite alone) | `recipes/convertx`, passes `recipe test` | The db-only restore answers 403 at the login page. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next

@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "ogf4esum",
+    "compose_project": "restored-ogf4esum",
+    "started_at": "2026-08-30T14:51:21Z",
+    "finished_at": "2026-08-30T14:51:26Z",
+    "duration_ms": 5189,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-ogf4esum"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "convertx",
+    "title": "ConvertX (SQLite)",
+    "source": "path",
+    "digest": "sha256:eebf63bc0521b1884161bb775443790079213c181e3739135a7a4d7120c17a6f"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/convertx/restic-all",
+    "snapshot": {
+      "id": "12550984b2bd34c01f94b990f492864e087917c0f32da3133cd296ebe8ba7016",
+      "short_id": "12550984",
+      "time": "2026-08-30T14:51:20.283192484Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/app/data"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/app/data",
+      "bytes": 69830,
+      "files": 4,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/app/data/mydb.sqlite",
+      "bytes": 20480,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1726,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1237,
+      "services": [
+        "convertx"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 10,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 562,
+      "probes": [
+        {
+          "name": "ConvertX is serving",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 562
+        }
+      ],
+      "note": "ConvertX is serving"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves",
+      "title": "The service answers",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 542,
+      "expect": {
+        "status_in": [
+          200,
+          302
+        ]
+      },
+      "observed": {
+        "status": 302,
+        "body_bytes": 0
+      },
+      "url": "http://convertx:3000/"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 13,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "The account survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 9,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM users;"
+    },
+    {
+      "id": "jobs-present",
+      "title": "The conversion history survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 10,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM jobs;"
+    },
+    {
+      "id": "uploaded-file-on-disk",
+      "title": "The file a job refers to is on disk, not just in the database",
+      "kind": "file",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "glob": "*/*/*",
+        "glob_min_count": 1
+      },
+      "observed": {
+        "count": 1,
+        "entries": 1,
+        "exists": true,
+        "is_dir": true
+      }
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "exec",
+      "status": "pass",
+      "duration_ms": 574,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "login status: 302"
+      },
+      "observed": {
+        "exit_code": 0
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 6,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

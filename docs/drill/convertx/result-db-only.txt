@@ -1,0 +1,58 @@
+restored 0.1.0-dev · recipe convertx · run qgmibb3a
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/convertx/restic-db-only
+  snapshot   2e7a4bd2  2026-08-30 14:51:51  host=drill  tags=[drill]
+  inputs     data  /app/data               20.0 KiB  1 file
+             db    /app/data/mydb.sqlite   20.0 KiB  1 file
+
+  restore    ok          1.5s   2 inputs
+  compose    ok          1.2s   1 service
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.54s   ConvertX is serving
+
+  CHECKS
+  ✔  serves                 The service answers                          0.55s
+  ✔  db-integrity           The SQLite database passes PRAGMA            0.01s
+                            integrity_check → ok
+  ✘  users-present          The account survived the restore             0.01s
+                              query   SELECT count(*) FROM users;
+                              expect  scalar_int_min: 1
+                              got     0
+  ✘  jobs-present           The conversion history survived the          0.01s
+                            restore
+                              query   SELECT count(*) FROM jobs;
+                              expect  scalar_int_min: 1
+                              got     0
+  ✘  uploaded-file-on-disk  The file a job refers to is on disk, not     0.00s
+                            just in the database
+                              expect  exists: true
+                              got     exists: false
+                              expect  glob_min_count: 1 for */*/*
+                              got     - matches
+  ✘  signin-works           The restored account can still sign in       0.46s
+                              expect  exit_code: 0
+                              got     exit_code: 1
+                              expect  stdout_matches: login status: 302
+                              got     login status: 403
+
+  RESTORE UNUSABLE  2/6 checks  ·  total 5.1s  ·  teardown ok
+
+  LIKELY CAUSE
+    The application's tables are there, but they are empty
+
+    Every table the checks read exists and holds nothing. Two causes produce
+    exactly this. Either the dump was taken from the wrong database, or with
+    `pg_dump --schema-only`, or narrowed with `--table`, so it carried a
+    schema and none of the rows. Or the dump carried nothing at all and the
+    application rebuilt an empty schema for itself on start, which is what
+    an application with automatic migrations does the moment it meets an
+    empty database. Compare the size of the dump with the size of the data
+    directory in the report above: a forge with repositories on disk and a
+    half-kilobyte dump is not a backup.
+
+      grep -c 'INSERT INTO' /app/data/mydb.sqlite
+      ls -l /app/data/mydb.sqlite
+                                                      (hint: db/tables-empty)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

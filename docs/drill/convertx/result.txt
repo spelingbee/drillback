@@ -1,0 +1,26 @@
+restored 0.1.0-dev · recipe convertx · run ogf4esum
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/convertx/restic-all
+  snapshot   12550984  2026-08-30 14:51:20  host=drill  tags=[drill]
+  inputs     data  /app/data               68.2 KiB  4 files
+             db    /app/data/mydb.sqlite   20.0 KiB  1 file
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.2s   1 service
+  load db    ok         0.01s   db: sqlite integrity_check, 0 stderr lines
+  ready      ok         0.56s   ConvertX is serving
+
+  CHECKS
+  ✔  serves                 The service answers                          0.54s
+  ✔  db-integrity           The SQLite database passes PRAGMA            0.01s
+                            integrity_check → ok
+  ✔  users-present          The account survived the restore → 1         0.01s
+  ✔  jobs-present           The conversion history survived the          0.01s
+                            restore → 1
+  ✔  uploaded-file-on-disk  The file a job refers to is on disk, not     0.00s
+                            just in the database → 1 match for */*/*
+  ✔  signin-works           The restored account can still sign in       0.57s
+
+  PASS  6/6 checks  ·  total 5.2s  ·  teardown ok
+
+This backup boots.

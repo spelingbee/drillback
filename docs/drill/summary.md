@@ -1,6 +1,6 @@
 # The official-docs restore drill - summary
 
-Fourteen popular self-hosted applications. For each one: read its own backup
+Fifteen popular self-hosted applications. For each one: read its own backup
 documentation, take the backup that documentation describes, restore it, and check
 whether the application comes back with its data in it.
 
@@ -11,17 +11,17 @@ drafts are for a human to review.
 
 ## Totals
 
-**14 applications tested.** The verdict is on the *primary* documented reading - what a
+**15 applications tested.** The verdict is on the *primary* documented reading - what a
 person following the documentation most obviously ends up with.
 
 | Verdict | Count | Applications |
 |---|---|---|
-| **PASS** | 9 | changedetection.io, File Browser, FreshRSS, Gotify, Mealie, Memos, SiYuan, Trilium, Beszel |
+| **PASS** | 10 | Beszel, changedetection.io, ConvertX, File Browser, FreshRSS, Gotify, Mealie, Memos, SiYuan, Trilium |
 | **PARTIAL** - it boots, something is missing | 2 | n8n, listmonk |
 | **FAIL** - nothing came back | 2 | Gogs, Navidrome |
 | **SKIPPED** - not decidable on this host | 1 | Open WebUI (its backup contains symlinks restic cannot recreate on Windows without privilege; the same backup minus the model cache passes) |
 
-Secondary readings were tested wherever the documentation could be read two ways. Four
+Secondary readings were tested wherever the documentation could be read two ways. Five
 more failed:
 
 | App | The second reading | Verdict |
@@ -30,16 +30,17 @@ more failed:
 | Beszel | "the database" = `data.db` | **PARTIAL** - empty hub, and you can still log in |
 | File Browser | the files without `/database` | **PARTIAL** - files back, every user and share gone |
 | Gotify | `gotify.db` without `images/` | **PARTIAL** - icons gone |
+| ConvertX | "the database" = `mydb.sqlite` | **FAIL** - login answers 403 |
 
 And the documentation itself:
 
-- **7 of 14 have no page about backups.** n8n, File Browser, Memos, listmonk, Gotify,
-  Beszel, SiYuan. In File Browser's case the word does not appear anywhere in the
-  documentation at all.
+- **8 of 15 have no page about backups.** n8n, File Browser, Memos, listmonk, Gotify,
+  Beszel, SiYuan, ConvertX. In File Browser's and ConvertX's case the word does not
+  appear anywhere in the documentation at all.
 - **6 have a page whose subject is backups**: Open WebUI, Navidrome, Trilium, Mealie,
   FreshRSS, and changedetection.io (a wiki page about restoring, plus the feature in the
   application). Gogs has a section on its CLI reference page.
-- **7 describe a restore at all**: n8n, Gogs, Navidrome, Trilium, changedetection.io,
+- **7 of the 15 describe a restore at all**: n8n, Gogs, Navidrome, Trilium, changedetection.io,
   Mealie and FreshRSS. The drill followed five of those procedures step by step, and
   **three of the five did not work as written**: Gogs' `restore` cannot run in its own
   image, Navidrome's reports success and restores nothing, and n8n's
@@ -89,9 +90,9 @@ finds nothing there.
 
 ## The patterns, in order of how often they came up
 
-**1. The database is not the data.** Five applications keep something a person would
-call their data outside the database, and the documentation of every one of them points
-only at the database:
+**1. The database is not the data.** Six applications keep something a person would call
+their data outside the database, and the documentation of every one of them points only
+at the database:
 
 | App | What is outside it |
 |---|---|
@@ -100,8 +101,9 @@ only at the database:
 | File Browser | the reverse - the files are what people back up, and `/database` holds every user, permission and share link |
 | n8n | the encryption key, in `.n8n/config`; without it a restored credential is a base64 string |
 | Gogs | avatars and attachments under `gogs/data` - in the archive, as it happens, but in neither the database dump nor the repositories |
+| ConvertX | the uploaded and converted files, under `uploads/<user>/<job>/` and `output/<user>/<job>/`; the `jobs` rows point at them by id |
 
-**2. The `-wal` is where the data is.** Four applications keep SQLite in WAL mode, and
+**2. The `-wal` is where the data is.** Five applications keep SQLite in WAL mode, and
 the split is not subtle on a young instance:
 
 | App | `.db` | `-wal` | What a copy of the `.db` alone gets you |
@@ -110,8 +112,9 @@ the split is not subtle on a young instance:
 | Beszel | 4 KiB | 700 KiB | nothing - tested, PARTIAL |
 | n8n | 1.5 MB | 4.1 MB | not tested separately |
 | Open WebUI | 632 KiB | 160 KiB | not tested separately; here the main file holds most of it |
+| ConvertX | 20 KiB | 16 KiB | nothing - tested, FAIL |
 
-The two that were tested came back completely empty. The other two are listed to show
+The three that were tested came back completely empty. The other two are listed to show
 that the split is normal rather than exotic, not to claim a failure that was not
 measured: on Open WebUI in particular the main file held most of the data, so a `.db`
 copy would have lost the newest writes rather than everything.
@@ -121,13 +124,15 @@ restore procedure. Nobody else mentions they exist.
 
 **3. An empty restore looks healthy.** This is what makes the two patterns above
 dangerous rather than merely annoying. In every case where the restore came back empty -
-Memos, Beszel, File Browser, Gogs, Navidrome - the application started, answered its
-health endpoint, passed an integrity check where there was one to pass, and offered to
-create the first account. There is no error anywhere. The signal that something is wrong
+Memos, Beszel, File Browser, Gogs, Navidrome, ConvertX - the application started,
+answered its health endpoint, passed an integrity check where there was one to pass, and
+offered to create the first account. ConvertX is the closest thing to an exception, and
+only just: the login answers 403 rather than letting you in, so at least something says
+no - and what it then offers is the setup page. There is no error anywhere. The signal that something is wrong
 is a screen that looks exactly like a new installation, on a day when you are not in the
 mood to notice.
 
-**4. Backup pages are about backing up.** Seven of the fourteen describe a restore at
+**4. Backup pages are about backing up.** Seven of the fifteen describe a restore at
 all. The drill followed five of those procedures step by step and three did not work as
 written. Backing up is the half that gets exercised - by cron, nightly, for years.
 Restoring is the half nobody runs until the day it matters, and it shows.
@@ -145,9 +150,9 @@ FreshRSS rebuilds it."
 
 ## Three headline options for a launch post
 
-Numbers only as measured, over the fourteen applications tested.
+Numbers only as measured, over the fifteen applications tested.
 
-1. **"We followed fourteen self-hosted apps' own backup instructions. Seven of them have
+1. **"We followed fifteen self-hosted apps' own backup instructions. Eight of them have
    no backup page at all, and of the five documented restore procedures we could follow
    step by step, three did not work as written."**
 
@@ -156,15 +161,16 @@ Numbers only as measured, over the fourteen applications tested.
    run inside Gogs' own Docker image. Both projects' backups are fine. It is the other
    half that nobody runs.
 
-3. **"On two of fourteen apps, the file called 'the database' was 4 KiB and the file
-   next to it held everything."** - Memos' `-wal` was 160 KiB and Beszel's was 700 KiB.
+3. **"On three of fifteen apps, copying the file called 'the database' restored
+   nothing."** - Memos' `.db` was 4 KiB against a 160 KiB `-wal`, Beszel's 4 KiB against
+   700 KiB, ConvertX's 20 KiB against 16 KiB.
    Restore the `.db` alone and the application starts, passes its own integrity check,
    and asks you to create your first account. One project out of fourteen tells you
    those files exist.
 
 ## Caveats a reader is owed
 
-- **Fourteen applications, not a survey.** They are the top of a popularity list,
+- **Fifteen applications, not a survey.** They are the top of a popularity list,
   filtered by what fits in a twenty-minute budget, which skews the set towards
   single-container applications with SQLite databases. See [SKIPPED.md](SKIPPED.md) for
   everything passed over and why - including immich, which has good backup documentation

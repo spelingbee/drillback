@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "qgmibb3a",
+    "compose_project": "restored-qgmibb3a",
+    "started_at": "2026-08-30T14:51:52Z",
+    "finished_at": "2026-08-30T14:51:57Z",
+    "duration_ms": 5146,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-qgmibb3a"
+  },
+  "verdict": "RESTORE_UNUSABLE",
+  "exit_code": 1,
+  "recipe": {
+    "name": "convertx",
+    "title": "ConvertX (SQLite)",
+    "source": "path",
+    "digest": "sha256:eebf63bc0521b1884161bb775443790079213c181e3739135a7a4d7120c17a6f"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/convertx/restic-db-only",
+    "snapshot": {
+      "id": "2e7a4bd2089baa4a7c37d37554d3307e923d51be1a6823365fa308e41683631c",
+      "short_id": "2e7a4bd2",
+      "time": "2026-08-30T14:51:51.217143481Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/app/data"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "data",
+      "kind": "dir",
+      "backup_path": "/app/data",
+      "bytes": 20480,
+      "files": 1,
+      "source": "recipe_default"
+    },
+    {
+      "name": "db",
+      "kind": "sqlite",
+      "backup_path": "/app/data/mydb.sqlite",
+      "bytes": 20480,
+      "files": 1,
+      "source": "within"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1464,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1224,
+      "services": [
+        "convertx"
+      ],
+      "note": "1 service"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 7,
+      "detail": {
+        "db": {
+          "loader": "sqlite integrity_check",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: sqlite integrity_check, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 537,
+      "probes": [
+        {
+          "name": "ConvertX is serving",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 537
+        }
+      ],
+      "note": "ConvertX is serving"
+    }
+  ],
+  "checks": [
+    {
+      "id": "serves",
+      "title": "The service answers",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 545,
+      "expect": {
+        "status_in": [
+          200,
+          302
+        ]
+      },
+      "observed": {
+        "status": 302,
+        "body_bytes": 0
+      },
+      "url": "http://convertx:3000/"
+    },
+    {
+      "id": "db-integrity",
+      "title": "The SQLite database passes PRAGMA integrity_check",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 8,
+      "expect": {
+        "scalar_equals": "ok"
+      },
+      "observed": {
+        "value": "ok",
+        "rows": 1
+      },
+      "query": "PRAGMA integrity_check;"
+    },
+    {
+      "id": "users-present",
+      "title": "The account survived the restore",
+      "kind": "sql",
+      "status": "fail",
+      "duration_ms": 7,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "0",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM users;",
+      "failures": [
+        {
+          "expect": "scalar_int_min: 1",
+          "got": "0"
+        }
+      ]
+    },
+    {
+      "id": "jobs-present",
+      "title": "The conversion history survived the restore",
+      "kind": "sql",
+      "status": "fail",
+      "duration_ms": 7,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "0",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM jobs;",
+      "failures": [
+        {
+          "expect": "scalar_int_min: 1",
+          "got": "0"
+        }
+      ]
+    },
+    {
+      "id": "uploaded-file-on-disk",
+      "title": "The file a job refers to is on disk, not just in the database",
+      "kind": "file",
+      "status": "fail",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "glob": "*/*/*",
+        "glob_min_count": 1
+      },
+      "observed": {
+        "exists": false
+      },
+      "failures": [
+        {
+          "expect": "exists: true",
+          "got": "exists: false"
+        },
+        {
+          "expect": "glob_min_count: 1 for */*/*",
+          "got": "- matches"
+        }
+      ]
+    },
+    {
+      "id": "signin-works",
+      "title": "The restored account can still sign in",
+      "kind": "exec",
+      "status": "fail",
+      "duration_ms": 458,
+      "expect": {
+        "exit_code": 0,
+        "stdout_matches": "login status: 302"
+      },
+      "observed": {
+        "exit_code": 1
+      },
+      "failures": [
+        {
+          "expect": "exit_code: 0",
+          "got": "exit_code: 1"
+        },
+        {
+          "expect": "stdout_matches: login status: 302",
+          "got": "login status: 403"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 2,
+    "checks_failed": 4,
+    "checks_skipped": 0
+  },
+  "hint": {
+    "id": "db/tables-empty",
+    "matched_on": "checks[2].failures",
+    "title": "The application's tables are there, but they are empty",
+    "text": "Every table the checks read exists and holds nothing. Two causes produce exactly this. Either the dump was taken from the wrong database, or with `pg_dump --schema-only`, or narrowed with `--table`, so it carried a schema and none of the rows. Or the dump carried nothing at all and the application rebuilt an empty schema for itself on start, which is what an application with automatic migrations does the moment it meets an empty database. Compare the size of the dump with the size of the data directory in the report above: a forge with repositories on disk and a half-kilobyte dump is not a backup.\n",
+    "commands": [
+      "grep -c 'INSERT INTO' /app/data/mydb.sqlite",
+      "ls -l /app/data/mydb.sqlite"
+    ]
+  },
+  "logs": {
+    "convertx": [
+      "ConvertX v0.18.0",
+      "🦊 Elysia is running at http://localhost:3000",
+      "Debian GNU/Linux forky/sid",
+      "pandoc 3.9.0.2",
+      "resvg v0.46.0",
+      "XeTeX 3.141592653-2.6-0.999998 (TeX Live 2026/Debian)",
+      "djxl v0.11.2 [AVX3_DL,AVX2,SSE4,SSE2]",
+      "assimp Version 6.0 -debug -shared -st (GIT commit 0)",
+      "GraphicsMagick 1.3.46 2025-10-29 Q16 http://www.GraphicsMagick.org/",
+      "ImageMagick 7.1.2-24 Q16 x86_64 24116 https://imagemagick.org",
+      "dasel is not installed.",
+      "Usage: dasel \u003ccommand\u003e [flags]",
+      "potrace 1.16. Copyright (C) 2001-2019 Peter Selinger.",
+      "msgconvert (libemail-outlook-message-perl) is not installed",
+      "Bun v1.2.2",
+      "libheif v1.21.2",
+      "vips-8.18.3",
+      "ffmpeg version 8.1.1-4 Copyright (c) 2000-2026 the FFmpeg developers",
+      "Inkscape 1.4.3 (0d15f75042, 2025-12-25)",
+      "LibreOffice 26.2.4.2 620(Build:2)",
+      "ebook-convert (calibre 9.9.0)"
+    ]
+  }
+}

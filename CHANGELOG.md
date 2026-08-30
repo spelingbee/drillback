@@ -10,11 +10,11 @@ report and the harness report, and within a major version fields are only ever a
 
 ### Added
 
-- **Fourteen more recipes**, one for each application in the official-docs restore
-  drill: `beszel`, `changedetection`, `filebrowser`, `freshrss`, `gogs`, `gotify`,
-  `listmonk`, `mealie`, `memos`, `n8n`, `navidrome`, `open-webui`, `siyuan`, `trilium`.
-  Every one passes both stages of `restored recipe test`, which brings the registry to
-  nineteen.
+- **Fifteen more recipes**, one for each application in the official-docs restore
+  drill: `beszel`, `changedetection`, `convertx`, `filebrowser`, `freshrss`, `gogs`,
+  `gotify`, `listmonk`, `mealie`, `memos`, `n8n`, `navidrome`, `open-webui`, `siyuan`,
+  `trilium`. Every one passes both stages of `restored recipe test`, which brings the
+  registry to twenty.
 - **`docs/drill/`** - the drill itself. For each application: the official backup
   documentation quoted as written, the commands that were run, the reports the tool
   produced, the root cause of every failure, and a draft issue that has not been filed.

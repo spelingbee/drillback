@@ -1,0 +1,17 @@
+# ConvertX, deployed the way its README's Deployment section says to: the image with one
+# volume on /app/data and JWT_SECRET set.
+#
+# Deviations, recorded in steps.md: no published port, and HTTP_ALLOWED=true, which the
+# README's own warning says is needed when the service is not reached over localhost or
+# https - the drill reaches it from a container on this project's network.
+services:
+  convertx:
+    image: ghcr.io/c4illin/convertx:v0.18.0
+    environment:
+      - JWT_SECRET=aLongAndSecretStringUsedToSignTheJSONWebToken1234
+      - HTTP_ALLOWED=true
+    volumes:
+      - convertx-data:/app/data
+
+volumes:
+  convertx-data:

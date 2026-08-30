@@ -1,0 +1,33 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  convertx:
+    image: ghcr.io/c4illin/convertx:v0.18.0
+    environment:
+      # The README recommends setting this; unset, ConvertX uses a random UUID, which
+      # means every session token is invalidated on every restart. It signs tokens and
+      # encrypts nothing in the database, so a restore does not need the original - but
+      # it is not in the backup either, it is in your compose file.
+      - JWT_SECRET=aLongAndSecretStringUsedToSignTheJSONWebToken1234
+      # The README's own warning: needed when the service is not reached over localhost
+      # or https, which is every check in this stack.
+      - HTTP_ALLOWED=true
+    volumes:
+      - ${RESTORED_INPUT_data}:/app/data
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    volumes:
+      - ${RESTORED_TEST_ASSETS}:/seed:ro
+    networks: [restored]
+
+networks:
+  restored:
+    internal: true
