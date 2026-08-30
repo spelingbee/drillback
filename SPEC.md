@@ -157,8 +157,8 @@ Flags:
       --log-level string   trace|debug|info|warn|error (default "info")
       --no-color           Disable ANSI colour (NO_COLOR is also honoured)
       --no-nudge           Never print the "contribute this recipe" invitation
-  -h, --help               help for restored
-  -v, --version            version for restored
+  -h, --help               help for drillback
+  -v, --version            version for drillback
 
 Exit codes:
   0    all checks passed
@@ -822,7 +822,7 @@ inputs:
     within: data           # this file is inside the `data` input; not restored twice
     required: true
     load:
-      integrity_check: true   # sqlite needs no loading; restored only verifies it
+      integrity_check: true   # sqlite needs no loading; drillback only verifies it
 
 ready:
   # Uptime Kuma answers / with a 302 to /dashboard, so the readiness question is asked

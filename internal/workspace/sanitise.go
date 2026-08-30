@@ -91,7 +91,18 @@ func (w *Workspace) Sanitise(root string) ([]Warning, error) {
 		}
 		resolved := target
 		if !filepath.IsAbs(resolved) {
-			resolved = filepath.Join(filepath.Dir(p), target)
+			if resolved != "" && (resolved[0] == '/' || resolved[0] == '\\') {
+				// Rooted but driveless - "\etc\shadow". Windows's filepath.IsAbs
+				// says false for it, and filepath.Join would glue it under the
+				// link's own directory, so an escaping link passed containment
+				// and stayed alive. Resolve it the way the OS does, against the
+				// volume the workspace lives on, and let Contains judge that.
+				// First caught by the first CI run's windows-latest job: every
+				// developer host before it either skipped the test or was POSIX.
+				resolved = filepath.VolumeName(w.Root) + filepath.FromSlash(resolved)
+			} else {
+				resolved = filepath.Join(filepath.Dir(p), target)
+			}
 		}
 		if w.Contains(resolved) {
 			return nil

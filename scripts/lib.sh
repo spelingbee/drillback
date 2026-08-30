@@ -118,13 +118,23 @@ wait_http() {
 
 # restic_in_container runs restic against $REPO with $SRV mounted at /srv, so the
 # snapshot carries clean POSIX paths that match the recipe defaults on every host.
+#
+# On Linux it runs as the caller, not as the image's root: the `drillback check`
+# that follows reads the repository as the caller, and a root-owned repo/keys is
+# `permission denied` on any real Linux host. The harness solved this in
+# containerUser (ADR-051); the first CI run caught these scripts missing it. On
+# Windows the daemon does not map ownership and the flag means nothing. --no-cache
+# for the same reason the harness uses it: a non-root restic has no writable HOME.
 restic_in_container() {
-  docker run --rm \
+  user_flag=""
+  [ "$(uname -s)" = "Linux" ] && user_flag="-u $(id -u):$(id -g)"
+  # shellcheck disable=SC2086
+  docker run --rm $user_flag \
     -v "$(hostpath "$REPO"):/repo" \
     -v "$(hostpath "$SRV"):/srv:ro" \
     -e RESTIC_REPOSITORY=/repo \
     -e RESTIC_PASSWORD="$DEMO_RESTIC_PASSWORD" \
-    "$IMAGE_RESTIC" "$@"
+    "$IMAGE_RESTIC" --no-cache "$@"
 }
 
 restic_init_and_backup() {

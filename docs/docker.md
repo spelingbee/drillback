@@ -66,7 +66,7 @@ backup repository, and this is the cheapest place to say so.
 | mount | why |
 |---|---|
 | `/var/run/docker.sock` | drillback has no daemon of its own. This is the whole mechanism, and the whole risk. |
-| `/var/lib/drillback` (same path both sides) | the drillback data, which the daemon must be able to see. |
+| `/var/lib/drillback` (same path both sides) | the restored data, which the daemon must be able to see. |
 | your restic repository | read by `restic` inside the container. Read-only. |
 | your restic password file | never passed as an argument; `RESTIC_PASSWORD_FILE` points at it. |
 
@@ -219,7 +219,7 @@ exit=0
 ```
 
 That is a real Gitea and a real PostgreSQL, seeded, dumped, backed up with restic,
-destroyed, and drillback - by the `drillback` binary out of the release archive, running
+destroyed, and restored - by the `drillback` binary out of the release archive, running
 in this image, driving the host's daemon.
 
 The one thing the run above does *not* prove is the failure mode the same-path rule

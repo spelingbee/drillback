@@ -49,7 +49,7 @@ dump carries `ALTER ... OWNER TO oc_admin` into a database where that role does 
 exist and psql stops. If you restore without it, `drillback` will tell you exactly that:
 hint `postgres/role-missing`.
 
-## What restored changes about your instance, and why
+## What drillback changes about your instance, and why
 
 A restore drill runs your Nextcloud somewhere it has never been, and two things in
 your own configuration would stop it before any check could speak. The `prepare`

@@ -299,7 +299,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		rep.Verdict = report.VerdictUnusable
 		rep.ExitCode = 1
 		rep.Error = e.Error()
-		// Unless the reason is that restored ran out of time. A cancelled runCtx
+		// Unless the reason is that drillback ran out of time. A cancelled runCtx
 		// looks exactly like a failed stage from in here - the probe records
 		// `context deadline exceeded` and the stage is marked failed - and calling
 		// that an unusable restore accuses a backup that may be perfectly good. The

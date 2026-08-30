@@ -190,4 +190,4 @@ esac
 
 say ""
 say "Next: $BINARY check --recipe gitea --source restic --from /path/to/repo"
-say "See https://github.com/$REPO#quick-start"
+say "See https://github.com/$REPO#quick-start-against-your-own-backup"

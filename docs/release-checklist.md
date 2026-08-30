@@ -55,10 +55,9 @@ so this comes before the repository is public and before any issue is filed.
 ## 3. Make the repository public
 
 **Stop point 4.** After this, everything in the repository is quotable and every link
-in it resolves. `docs/name-check.md` still recommends `drillback` over `drillback`, and
-ADR-036 records that the rename is one `grep -rl spelingbee/drillback | xargs sed -i`
-plus a `go mod edit` - *until something is published*. This step is the last cheap
-moment to change the name.
+in it resolves. The name question is closed: the human chose `drillback` - the
+`docs/name-check.md` recommendation - and ADR-070 records the executed rename. There
+is nothing left to decide here; going public is now only about stop point 4 itself.
 
 ---
 

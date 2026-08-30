@@ -38,7 +38,7 @@ inputs:
     within: data           # this file is inside the `data` input; not restored twice
     required: true
     load:
-      integrity_check: true   # sqlite needs no loading; restored only verifies it
+      integrity_check: true   # sqlite needs no loading; drillback only verifies it
 
 ready:
   # Uptime Kuma answers / with a 302 to /dashboard, so the readiness question is asked

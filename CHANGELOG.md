@@ -40,7 +40,7 @@ Compose stack, starts the application, and asserts that the data is actually the
   to be ready, runs the recipe's checks, and tears everything down. `PASS` is exit 0,
   `RESTORE UNUSABLE` is exit 1, a tool error is exit 2.
 - **Five recipes**, each of which proves itself: `gitea`, `nextcloud`,
-  `paperless-ngx`, `uptime-kuma`, `vaultwarden`. (Fourteen more arrived after this
+  `paperless-ngx`, `uptime-kuma`, `vaultwarden`. (Fifteen more arrived after this
   entry was written; see *Unreleased*.)
 - **`drillback recipe test`** - the round-trip harness. Stage A runs a recipe's checks
   against an empty application and requires one to fail; stage B seeds real data

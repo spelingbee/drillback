@@ -22,7 +22,7 @@ yourself.*
 
 > Pre-release, and not tagged. `drillback check` works end to end against restic and
 > against an already-restored tree; `drillback recipe test` runs the round trip that
-> proves a recipe both ways; five recipes ship. See [PROGRESS.md](PROGRESS.md) for what
+> proves a recipe both ways; twenty recipes ship. See [PROGRESS.md](PROGRESS.md) for what
 > is not built yet.
 
 ---

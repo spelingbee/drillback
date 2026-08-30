@@ -1538,6 +1538,39 @@ thing catch what every static check misses - twice in one session - and a blanke
 `sed -i` belongs on a file list that excludes what `grep -I` calls binary, the same
 mistake `lint-english.sh` already made and fixed in session 4.
 
+#### What the first CI run ever caught
+
+The push was the first time any workflow actually executed, and the first run failed
+three jobs - none of them rename bugs, all of them debts only a real runner could
+collect:
+
+1. **`unit (windows-latest)`: a real security hole in the symlink sanitiser.**
+   GitHub's Windows runners may create symlinks, so `TestSanitiseNeutralisesEscapingSymlinks`
+   ran on Windows for the first time in the project's life - every host before it
+   either skipped (no privilege, like this machine) or was POSIX - and it failed:
+   on Windows, a rooted-but-driveless symlink target (`\etc\shadow`) is not
+   `filepath.IsAbs`, so `Sanitise` glued it under the link's own directory,
+   containment passed, and the escaping link survived to be mounted. Fixed by
+   resolving rooted targets against the workspace's volume, the way the OS does;
+   the POSIX suite re-ran green in the CI image container.
+2. **`lint`: exit 126.** Every shell script was committed from Windows as mode
+   100644; `./scripts/lint-english.sh` was not executable on the runner.
+   `git update-index --chmod=+x` on all of `scripts/` and `install.sh`.
+3. **`integration`: `permission denied` on `repo/keys`.** The demo scripts run
+   restic in a container as the image's root, so on a real Linux host the
+   repository belongs to root and the `drillback check` that follows cannot read
+   it - invisible on Windows, where the daemon maps no ownership. The harness had
+   already solved this exact problem (`containerUser`, ADR-051); `scripts/lib.sh`
+   now does the same (`-u "$(id -u):$(id -g)"` on Linux, `--no-cache`), and
+   `scripts/demo.sh` re-ran green locally after the change.
+
+A rename-review agent also swept the live tree afterwards and found thirteen
+stragglers the collocation seds missed - among them the Ctrl-C message printing both
+names, `recipes-wanted.sh` introducing the tool under the old name in every issue it
+would file, and a double-rename that left the release checklist recommending
+"`drillback` over `drillback`" - plus three stale claims that predate the rename
+(README said five recipes ship; there are twenty). All fixed.
+
 #### Evidence
 
 The registry, both stages, all twenty recipes under the new name. The first sweep ran

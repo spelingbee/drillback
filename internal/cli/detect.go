@@ -126,7 +126,7 @@ func detectCompose(file string) (*detected, error) {
 		case mysqlImage.MatchString(svc.Image):
 			d.Infra[name] = true
 			d.Notes = append(d.Notes, fmt.Sprintf(
-				"service %q runs %s, and restored v0.1 has no mysql input kind: the recipe "+
+				"service %q runs %s, and drillback v0.1 has no mysql input kind: the recipe "+
 					"below cannot restore it yet. Adding one is a good first contribution; "+
 					"see CONTRIBUTING.md, \"Contributing a source\".", name, svc.Image))
 			if d.DB == nil {

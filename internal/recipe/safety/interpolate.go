@@ -11,7 +11,7 @@ import (
 // Interpolate expands ${NAME} and $NAME in a compose file from env, and turns the $$
 // escape into a literal $. An unknown name is an error, never an empty string.
 //
-// restored interpolates compose.yaml itself, writes the result into the workspace, and
+// drillback interpolates compose.yaml itself, writes the result into the workspace, and
 // runs docker compose against that file. Doing the substitution here is what lets the
 // resolved bind sources be checked for containment before a container ever exists.
 func Interpolate(raw []byte, env map[string]string) ([]byte, error) {

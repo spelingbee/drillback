@@ -1,7 +1,7 @@
-// Command restored verifies that a backup would actually come back.
+// Command drillback verifies that a backup would actually come back.
 //
 // This file is wiring only. Everything it needs lives in internal/, so that a future
-// second entry point, or restored used as a library, costs nothing.
+// second entry point, or drillback used as a library, costs nothing.
 package main
 
 import (

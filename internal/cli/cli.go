@@ -84,7 +84,7 @@ func interruptContext() (context.Context, func()) {
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
-		fmt.Fprintln(os.Stderr, "\nrestored: interrupted, tearing down (press Ctrl-C again to leave everything in place)")
+		fmt.Fprintln(os.Stderr, "\ndrillback: interrupted, tearing down (press Ctrl-C again to leave everything in place)")
 		cancel()
 		<-ch
 		fmt.Fprintln(os.Stderr, "drillback: leaving the workspace and the compose project in place")

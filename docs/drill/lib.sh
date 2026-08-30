@@ -109,7 +109,7 @@ drill_restic() {
     --no-cache --repo /repo backup --tag drill --host drill "${paths[@]}" | tail -5
 }
 
-# drill_check [extra restored flags...] - run the drill's verdict.
+# drill_check [extra drillback flags...] - run the drill's verdict.
 drill_check() {
   export RESTIC_PASSWORD="$DRILL_REPO_PASSWORD"
   unset RESTIC_PASSWORD_FILE RESTIC_PASSWORD_COMMAND RESTIC_REPOSITORY_FILE || true
