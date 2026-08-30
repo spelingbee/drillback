@@ -40,6 +40,9 @@ type Options struct {
 	Snapshot   string
 	Tags       []string
 	Host       string
+	// SourceEnv is extra KEY=VALUE entries for the source's child processes: a
+	// restored.yaml source's password settings and env block. Never logged.
+	SourceEnv []string
 
 	InputPaths map[string]string
 	SetVars    map[string]string
@@ -836,7 +839,8 @@ func newSource(o *Options) (source.Source, error) {
 	switch o.SourceKind {
 	case "restic":
 		return resticsource.New(resticsource.Options{
-			Repository: o.From, Snapshot: o.Snapshot, Tags: o.Tags, Host: o.Host, Debug: o.Debug,
+			Repository: o.From, Snapshot: o.Snapshot, Tags: o.Tags, Host: o.Host,
+			Env: o.SourceEnv, Debug: o.Debug,
 		}), nil
 	case "dir":
 		return dirsource.New(o.From), nil

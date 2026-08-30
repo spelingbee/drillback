@@ -1,0 +1,6 @@
+
+  target gitea        [32m[1mPASS            [0m  1m 21s
+  target vaultwarden  [31m[1mRESTORE UNUSABLE[0m   26.9s  · 3/5 checks
+  target paperless    [31m[1mERROR           [0m    1.2s  · no snapshot with tag "paperless" in t...
+
+  3 targets: 1 passed, 1 unusable, 1 errored, in 1m 49s

@@ -29,6 +29,10 @@ type Options struct {
 	Snapshot string
 	Tags     []string
 	Host     string
+	// Env is extra KEY=VALUE entries appended to the process environment for every
+	// restic invocation: RESTIC_PASSWORD_FILE and friends from a restored.yaml
+	// source block. Later entries win over the inherited environment.
+	Env []string
 	// Debug receives restic's stderr and the command lines. Never its environment.
 	Debug io.Writer
 }
@@ -44,7 +48,7 @@ func (o Options) baseArgs() []string {
 func (o Options) run(ctx context.Context, args ...string) (string, string, error) {
 	full := append(o.baseArgs(), args...)
 	cmd := exec.CommandContext(ctx, "restic", full...)
-	cmd.Env = os.Environ()
+	cmd.Env = append(os.Environ(), o.Env...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

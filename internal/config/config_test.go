@@ -93,7 +93,7 @@ func TestJobMergesDefaultsAndTarget(t *testing.T) {
 	}
 
 	// The target block beats the defaults.
-	j, err = cfg.Job("uptime-kuma")
+	_, err = cfg.Job("uptime-kuma")
 	if err == nil {
 		t.Fatal("offsite references ${AWS_*}; with the variables unset, Job must refuse loudly")
 	}

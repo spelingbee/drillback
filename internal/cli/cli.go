@@ -32,10 +32,11 @@ const (
 
 // globals are the flags every command shares.
 type globals struct {
-	json     bool
-	noColor  bool
-	noNudge  bool
-	logLevel string
+	json       bool
+	noColor    bool
+	noNudge    bool
+	logLevel   string
+	configPath string
 }
 
 // exitError carries an exit code out of a command.
@@ -107,6 +108,8 @@ func newRoot() *cobra.Command {
 		SilenceErrors: true,
 		Version:       Version,
 	}
+	root.PersistentFlags().StringVar(&g.configPath, "config", "",
+		"Path to restored.yaml. Default search order: ./restored.yaml, $XDG_CONFIG_HOME/restored/restored.yaml, /etc/restored/restored.yaml")
 	root.PersistentFlags().BoolVar(&g.json, "json", false,
 		"Emit the machine-readable report on stdout; human output goes to stderr")
 	root.PersistentFlags().StringVar(&g.logLevel, "log-level", "info", "trace|debug|info|warn|error")

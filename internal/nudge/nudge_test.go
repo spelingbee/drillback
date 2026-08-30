@@ -1,8 +1,6 @@
 package nudge
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -67,35 +65,9 @@ func TestFoldOverridesIsAnIdentityWithNoOverrides(t *testing.T) {
 	}
 }
 
-func TestSilencedReadsOnlyTheOneKey(t *testing.T) {
-	dir := t.TempDir()
-	write := func(body string) string {
-		p := filepath.Join(dir, ConfigName)
-		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		return p
-	}
-	cases := []struct {
-		name string
-		body string
-		want bool
-	}{
-		{"false silences", "version: 1\ndefaults:\n  nudge: false\n", true},
-		{"true does not", "version: 1\ndefaults:\n  nudge: true\n", false},
-		{"absent does not", "version: 1\ndefaults:\n  pull: missing\n", false},
-		{"an unrelated file does not", "targets:\n  gitea:\n    recipe: gitea\n", false},
-		{"a broken file does not", "defaults: [this is not a mapping\n", false},
-	}
-	for _, tc := range cases {
-		if got := Silenced(write(tc.body)); got != tc.want {
-			t.Errorf("%s: Silenced() = %v, want %v", tc.name, got, tc.want)
-		}
-	}
-	if Silenced(filepath.Join(dir, "does-not-exist.yaml")) {
-		t.Error("a missing configuration file must not silence the invitation")
-	}
-}
+// The one-key restored.yaml reader this package carried while internal/config did
+// not exist (ADR-045) moved there when it landed: config.NudgeSilenced, tested in
+// internal/config, with the same search order and the same semantics.
 
 // ADR-066. The invitation prints no URL at all. It used to print a prefilled GitHub
 // link, which produced a branch holding recipe.yaml and nothing else - a pull request
