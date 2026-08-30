@@ -21,6 +21,7 @@ Resume point for the official-docs restore drill. Updated after every applicatio
 | 4 | open-webui | SKIPPED (verbatim, host cannot restore its symlinks) / PASS (without cache/) | `recipes/open-webui`, passes `recipe test` | 1.1 GB of backup for 1 MB of data. |
 | 5 | filebrowser | PASS (all three volumes) / PARTIAL (files without the database) | `recipes/filebrowser`, passes `recipe test` | No backup documentation at all; project archived 2026-09-01. |
 | 6 | navidrome | FAIL (documented restore) / PASS (a copy of /data) | `recipes/navidrome`, passes `recipe test` | "Restore complete" and an empty instance. |
+| 7 | listmonk | PARTIAL (the documented pg_dump) / PASS (dump plus uploads) | `recipes/listmonk`, passes `recipe test` | The media rows come back; the files do not. |
 | 3 | gogs | FAIL (`gogs restore`) / PASS (the /data volume) | `recipes/gogs`, passes `recipe test` | The documented restore command does not run in the official image. |
 
 ## Next

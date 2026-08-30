@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "ggirk7vs",
+    "compose_project": "restored-ggirk7vs",
+    "started_at": "2026-08-30T12:45:06Z",
+    "finished_at": "2026-08-30T12:45:21Z",
+    "duration_ms": 14606,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-ggirk7vs"
+  },
+  "verdict": "PASS",
+  "exit_code": 0,
+  "recipe": {
+    "name": "listmonk",
+    "title": "listmonk (PostgreSQL)",
+    "source": "path",
+    "digest": "sha256:81c5a623563f74867d165855f8d0a2587a167092860740d6985e7fbf736ceea0"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/listmonk/restic-all",
+    "snapshot": {
+      "id": "a38ab9304443a6ba809042e543ae3c3fcc62541f83074f24f65cc69b715f3c9d",
+      "short_id": "a38ab930",
+      "time": "2026-08-30T12:45:05.505465947Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/srv/listmonk/db.sql",
+        "/srv/listmonk/uploads"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "db",
+      "kind": "postgres-dump",
+      "backup_path": "/srv/listmonk/db.sql",
+      "bytes": 72666,
+      "files": 1,
+      "detected_format": "plain",
+      "source": "recipe_default"
+    },
+    {
+      "name": "uploads",
+      "kind": "dir",
+      "backup_path": "/srv/listmonk/uploads",
+      "bytes": 884,
+      "files": 2,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1705,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1446,
+      "services": [
+        "db",
+        "app"
+      ],
+      "note": "2 services, db first for the dump"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 2807,
+      "detail": {
+        "db": {
+          "loader": "psql",
+          "format": "plain",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: psql, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 5671,
+      "probes": [
+        {
+          "name": "postgres accepts connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 527
+        },
+        {
+          "name": "listmonk answers its health endpoint",
+          "status": "ok",
+          "attempts": 2,
+          "duration_ms": 4342,
+          "error": "curl: (7) Failed to connect to app port 9000 after 1 ms: Could not connect to server"
+        }
+      ],
+      "note": "postgres accepts connections, listmonk answers its health endpoint"
+    }
+  ],
+  "checks": [
+    {
+      "id": "health",
+      "title": "The server reports itself healthy",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 576,
+      "expect": {
+        "status": 200,
+        "body_matches": "true"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 14,
+        "matched": true
+      },
+      "url": "http://app:9000/health"
+    },
+    {
+      "id": "lists-in-db",
+      "title": "The lists survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 447,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM lists WHERE name = 'drill-canary-list';"
+    },
+    {
+      "id": "subscribers-in-db",
+      "title": "The subscribers survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 426,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM subscribers WHERE email = 'drill-canary@example.invalid';"
+    },
+    {
+      "id": "users-in-db",
+      "title": "The admin account survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 430,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM users;"
+    },
+    {
+      "id": "media-row-in-db",
+      "title": "The media library still has its row",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 442,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM media;"
+    },
+    {
+      "id": "media-file-on-disk",
+      "title": "The uploaded file is on disk, not just in the database",
+      "kind": "file",
+      "status": "pass",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "glob": "*.png",
+        "glob_min_count": 1
+      },
+      "observed": {
+        "count": 2,
+        "entries": 2,
+        "exists": true,
+        "is_dir": true
+      }
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 6,
+    "checks_failed": 0,
+    "checks_skipped": 0
+  }
+}

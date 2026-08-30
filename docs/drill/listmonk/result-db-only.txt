@@ -1,0 +1,40 @@
+restored 0.1.0-dev · recipe listmonk · run sz6cerij
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/listmonk/restic-db-only
+  snapshot   c5e96e19  2026-08-30 12:44:42  host=drill  tags=[drill]
+  inputs     db       /srv/listmonk/db.sql    71.0 KiB  plain SQL
+             uploads  /srv/listmonk/uploads        0 B  0 files
+
+  restore    ok          1.9s   2 inputs
+  compose    ok          1.4s   2 services, db first for the dump
+  load db    ok          2.6s   db: psql, 0 stderr lines
+  ready      ok          5.5s   postgres accepts connections, listmonk answers its health endpoint
+
+  CHECKS
+  ✔  health              The server reports itself healthy               0.60s
+  ✔  lists-in-db         The lists survived the restore → 1              0.47s
+  ✔  subscribers-in-db   The subscribers survived the restore → 1        0.44s
+  ✔  users-in-db         The admin account survived the restore → 1      0.46s
+  ✔  media-row-in-db     The media library still has its row → 1         0.45s
+  ✘  media-file-on-disk  The uploaded file is on disk, not just in the   0.00s
+                         database
+                           expect  glob_min_count: 1 for *.png
+                           got     0 matches
+
+  RESTORE UNUSABLE  5/6 checks  ·  total 15.2s  ·  teardown ok
+
+  LIKELY CAUSE
+    The path exists in the snapshot but contains nothing
+
+    The backup ran, the directory was included, and it was empty when it
+    ran. The classic cause is backing up a bind-mount path while the
+    application actually stores its data in a *named volume* mounted over
+    the top of it, so the host directory the backup reads is a hollow shell.
+    `docker inspect <container> --format '{{ .Mounts }}'` on the live system
+    shows where the data really is.
+                                                  (hint: restore/empty-input)
+
+  warning: restored input "uploads" is empty (empty_input)
+
+  Service logs from the failure window are in the JSON report (--report).
+  Re-run with --keep to keep the stack up and poke at it yourself.

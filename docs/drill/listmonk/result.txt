@@ -1,0 +1,24 @@
+restored 0.1.0-dev · recipe listmonk · run ggirk7vs
+
+  source     restic  C:/Users/kadyr/AppData/Local/Temp/restored-drill/listmonk/restic-all
+  snapshot   a38ab930  2026-08-30 12:45:05  host=drill  tags=[drill]
+  inputs     db       /srv/listmonk/db.sql    71.0 KiB  plain SQL
+             uploads  /srv/listmonk/uploads      884 B  2 files
+
+  restore    ok          1.7s   2 inputs
+  compose    ok          1.4s   2 services, db first for the dump
+  load db    ok          2.8s   db: psql, 0 stderr lines
+  ready      ok          5.7s   postgres accepts connections, listmonk answers its health endpoint
+
+  CHECKS
+  ✔  health              The server reports itself healthy               0.58s
+  ✔  lists-in-db         The lists survived the restore → 1              0.45s
+  ✔  subscribers-in-db   The subscribers survived the restore → 1        0.43s
+  ✔  users-in-db         The admin account survived the restore → 1      0.43s
+  ✔  media-row-in-db     The media library still has its row → 1         0.44s
+  ✔  media-file-on-disk  The uploaded file is on disk, not just in the   0.00s
+                         database → 2 matches for *.png
+
+  PASS  6/6 checks  ·  total 14.6s  ·  teardown ok
+
+This backup boots.

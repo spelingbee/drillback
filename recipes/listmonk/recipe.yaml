@@ -1,0 +1,173 @@
+apiVersion: restored/v1
+kind: Recipe
+
+metadata:
+  name: listmonk
+  title: listmonk (PostgreSQL)
+  description: >
+    Verifies that a listmonk backup restores: the app comes up against the restored
+    database, the lists, subscribers and campaigns are in it, and the uploaded media
+    file is on disk next to the database row that points at it.
+  maintainers: ["@spelingbee"]
+  upstream: https://github.com/knadh/listmonk
+  tags: [newsletter, postgres]
+
+vars:
+  listmonk_port: 9000
+  db_name: listmonk
+  db_user: listmonk
+  db_password: listmonk
+
+inputs:
+  db:
+    kind: postgres-dump
+    title: listmonk database dump
+    description: >
+      Plain SQL from `pg_dump`, or a custom-format dump from `pg_dump -Fc`. The format
+      is detected from the file's magic bytes, not from its extension. This is the only
+      thing listmonk's documentation ever asks you to back up.
+    default_path: /srv/listmonk/db.sql
+    required: true
+    load:
+      service: db
+      database: "{{ .vars.db_name }}"
+      user: "{{ .vars.db_user }}"
+      timeout: 5m
+
+  uploads:
+    kind: dir
+    title: The media uploads directory
+    description: >
+      /listmonk/uploads, which is where the filesystem media provider writes by default
+      and what the project's own docker-compose.yml mounts. Every image in a campaign
+      lives here; the database only holds a row naming the file.
+    default_path: /srv/listmonk/uploads
+    required: true
+    mount:
+      env: RESTORED_INPUT_uploads
+      into: app:/listmonk/uploads
+
+ready:
+  - name: postgres accepts connections
+    kind: exec
+    service: db
+    command: ["pg_isready", "-U", "{{ .vars.db_user }}", "-d", "{{ .vars.db_name }}"]
+    timeout: 120s
+    interval: 2s
+
+  - name: listmonk answers its health endpoint
+    kind: http
+    url: http://app:{{ .vars.listmonk_port }}/health
+    expect_status: 200
+    timeout: 240s
+    interval: 3s
+
+checks:
+  - id: health
+    title: The server reports itself healthy
+    kind: http
+    url: http://app:{{ .vars.listmonk_port }}/health
+    expect:
+      status: 200
+      body_matches: "true"
+
+  - id: lists-in-db
+    title: The lists survived the restore
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM lists WHERE name = 'drill-canary-list';"
+    expect:
+      scalar_int_min: 1
+
+  - id: subscribers-in-db
+    title: The subscribers survived the restore
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM subscribers WHERE email = 'drill-canary@example.invalid';"
+    expect:
+      scalar_int_min: 1
+
+  - id: users-in-db
+    title: The admin account survived the restore
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM users;"
+    expect:
+      scalar_int_min: 1
+
+  - id: media-row-in-db
+    title: The media library still has its row
+    kind: sql
+    driver: postgres
+    service: db
+    database: "{{ .vars.db_name }}"
+    user: "{{ .vars.db_user }}"
+    query: "SELECT count(*) FROM media;"
+    expect:
+      scalar_int_min: 1
+
+  - id: media-file-on-disk
+    title: The uploaded file is on disk, not just in the database
+    kind: file
+    service: app
+    # The pair that matters. `media` is a table of file names; the files are in this
+    # directory. A backup of the database alone leaves every row pointing at nothing,
+    # and listmonk starts perfectly happily on top of that.
+    path: /listmonk/uploads
+    expect:
+      exists: true
+      glob: "*.png"
+      glob_min_count: 1
+
+test:
+  seed:
+    - name: log in, create a list, a subscriber and a media upload
+      kind: exec
+      service: seeder
+      timeout: 300s
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          B=http://app:9000
+          J=/tmp/jar
+          # listmonk's /api endpoints want either an API user's token or an admin
+          # session. The session is what a person has, so that is what this uses.
+          curl -sS -f -c $J -b $J -o /dev/null -X POST "$B/admin/login" \
+            -H 'content-type: application/x-www-form-urlencoded' \
+            -d 'username=drilladmin&password=Drill-Password-1'
+          curl -sS -f -c $J -b $J -X POST "$B/api/lists" \
+            -H 'content-type: application/json' \
+            -d '{"name":"drill-canary-list","type":"private","optin":"single","tags":["drill"]}' \
+            > /tmp/list.json
+          LIST_ID=`sed -e 's/.*"id"://' -e 's/,.*//' /tmp/list.json`
+          curl -sS -f -c $J -b $J -o /dev/null -X POST "$B/api/subscribers" \
+            -H 'content-type: application/json' \
+            -d "{\"email\":\"drill-canary@example.invalid\",\"name\":\"Drill Canary\",\"status\":\"enabled\",\"lists\":[$LIST_ID]}"
+          curl -sS -f -c $J -b $J -o /dev/null -X POST "$B/api/media" \
+            -F 'file=@/seed/drill-canary.png;type=image/png'
+          echo "seeded: one list, one subscriber, one media upload"
+
+  export:
+    # `uploads` is a dir input and the harness exports it by itself. The dump is not a
+    # directory, so it needs a step - and this is the same pg_dump the drill runs, which
+    # is the same pg_dump listmonk's documentation asks for without ever spelling out.
+    - name: dump the database into the staging tree
+      kind: exec
+      service: db
+      command:
+        - sh
+        - -c
+        - 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > "$RESTORED_EXPORT/db.sql"'
+      timeout: 5m
+      produces: db

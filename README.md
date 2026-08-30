@@ -298,6 +298,7 @@ rejects a recipe that breaks any of it.
 | [`filebrowser`](recipes/filebrowser/) | File Browser (Bolt database) | directories | 4 |
 | [`gitea`](recipes/gitea/) | Gitea + PostgreSQL | directories + PostgreSQL | 5 |
 | [`gogs`](recipes/gogs/) | Gogs (SQLite) | directories + SQLite | 7 |
+| [`listmonk`](recipes/listmonk/) | listmonk (PostgreSQL) | PostgreSQL + directories | 6 |
 | [`memos`](recipes/memos/) | Memos (SQLite) | directories + SQLite | 5 |
 | [`n8n`](recipes/n8n/) | n8n (SQLite) | directories + SQLite | 6 |
 | [`navidrome`](recipes/navidrome/) | Navidrome (SQLite) | directories + SQLite | 6 |

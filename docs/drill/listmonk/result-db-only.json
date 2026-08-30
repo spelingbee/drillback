@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "restored",
+    "version": "0.1.0-dev"
+  },
+  "run": {
+    "id": "sz6cerij",
+    "compose_project": "restored-sz6cerij",
+    "started_at": "2026-08-30T12:44:44Z",
+    "finished_at": "2026-08-30T12:44:59Z",
+    "duration_ms": 15202,
+    "workspace_removed": true,
+    "workspace": "C:\\Users\\kadyr\\AppData\\Local\\Temp\\restored-sz6cerij"
+  },
+  "verdict": "RESTORE_UNUSABLE",
+  "exit_code": 1,
+  "recipe": {
+    "name": "listmonk",
+    "title": "listmonk (PostgreSQL)",
+    "source": "path",
+    "digest": "sha256:81c5a623563f74867d165855f8d0a2587a167092860740d6985e7fbf736ceea0"
+  },
+  "source": {
+    "kind": "restic",
+    "repository": "C:/Users/kadyr/AppData/Local/Temp/restored-drill/listmonk/restic-db-only",
+    "snapshot": {
+      "id": "c5e96e19651e70bb233ccbf72e1181381c434eff68d1d30811993106e6971288",
+      "short_id": "c5e96e19",
+      "time": "2026-08-30T12:44:42.924109508Z",
+      "hostname": "drill",
+      "tags": [
+        "drill"
+      ],
+      "paths": [
+        "/srv/listmonk/db.sql",
+        "/srv/listmonk/uploads"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "name": "db",
+      "kind": "postgres-dump",
+      "backup_path": "/srv/listmonk/db.sql",
+      "bytes": 72666,
+      "files": 1,
+      "detected_format": "plain",
+      "source": "recipe_default"
+    },
+    {
+      "name": "uploads",
+      "kind": "dir",
+      "backup_path": "/srv/listmonk/uploads",
+      "bytes": 0,
+      "files": 0,
+      "source": "recipe_default"
+    }
+  ],
+  "stages": [
+    {
+      "name": "restore",
+      "status": "ok",
+      "duration_ms": 1867,
+      "note": "2 inputs"
+    },
+    {
+      "name": "compose",
+      "status": "ok",
+      "duration_ms": 1373,
+      "services": [
+        "db",
+        "app"
+      ],
+      "note": "2 services, db first for the dump"
+    },
+    {
+      "name": "load db",
+      "status": "ok",
+      "duration_ms": 2631,
+      "detail": {
+        "db": {
+          "loader": "psql",
+          "format": "plain",
+          "stderr_lines": 0
+        }
+      },
+      "note": "db: psql, 0 stderr lines"
+    },
+    {
+      "name": "ready",
+      "status": "ok",
+      "duration_ms": 5521,
+      "probes": [
+        {
+          "name": "postgres accepts connections",
+          "status": "ok",
+          "attempts": 1,
+          "duration_ms": 484
+        },
+        {
+          "name": "listmonk answers its health endpoint",
+          "status": "ok",
+          "attempts": 2,
+          "duration_ms": 4252,
+          "error": "curl: (7) Failed to connect to app port 9000 after 1 ms: Could not connect to server"
+        }
+      ],
+      "note": "postgres accepts connections, listmonk answers its health endpoint"
+    }
+  ],
+  "checks": [
+    {
+      "id": "health",
+      "title": "The server reports itself healthy",
+      "kind": "http",
+      "status": "pass",
+      "duration_ms": 602,
+      "expect": {
+        "status": 200,
+        "body_matches": "true"
+      },
+      "observed": {
+        "status": 200,
+        "body_bytes": 14,
+        "matched": true
+      },
+      "url": "http://app:9000/health"
+    },
+    {
+      "id": "lists-in-db",
+      "title": "The lists survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 473,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM lists WHERE name = 'drill-canary-list';"
+    },
+    {
+      "id": "subscribers-in-db",
+      "title": "The subscribers survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 439,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM subscribers WHERE email = 'drill-canary@example.invalid';"
+    },
+    {
+      "id": "users-in-db",
+      "title": "The admin account survived the restore",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 456,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM users;"
+    },
+    {
+      "id": "media-row-in-db",
+      "title": "The media library still has its row",
+      "kind": "sql",
+      "status": "pass",
+      "duration_ms": 452,
+      "expect": {
+        "scalar_int_min": 1
+      },
+      "observed": {
+        "value": "1",
+        "rows": 1
+      },
+      "query": "SELECT count(*) FROM media;"
+    },
+    {
+      "id": "media-file-on-disk",
+      "title": "The uploaded file is on disk, not just in the database",
+      "kind": "file",
+      "status": "fail",
+      "duration_ms": 0,
+      "expect": {
+        "exists": true,
+        "glob": "*.png",
+        "glob_min_count": 1
+      },
+      "observed": {
+        "count": 0,
+        "entries": 0,
+        "exists": true,
+        "is_dir": true
+      },
+      "failures": [
+        {
+          "expect": "glob_min_count: 1 for *.png",
+          "got": "0 matches"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks_total": 6,
+    "checks_passed": 5,
+    "checks_failed": 1,
+    "checks_skipped": 0
+  },
+  "hint": {
+    "id": "restore/empty-input",
+    "matched_on": "warnings",
+    "title": "The path exists in the snapshot but contains nothing",
+    "text": "The backup ran, the directory was included, and it was empty when it ran. The classic cause is backing up a bind-mount path while the application actually stores its data in a *named volume* mounted over the top of it, so the host directory the backup reads is a hollow shell. `docker inspect \u003ccontainer\u003e --format '{{ .Mounts }}'` on the live system shows where the data really is.\n"
+  },
+  "warnings": [
+    {
+      "code": "empty_input",
+      "detail": "restored input \"uploads\" is empty"
+    }
+  ],
+  "logs": {
+    "app": [
+      "Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]",
+      "2026/08/30 12:44:51.638874 main.go:106: v6.2.0 (ef0a7587 2026-06-26T10:21:29Z, linux/amd64)",
+      "2026/08/30 12:44:51.639081 init.go:331: connecting to db: db:5432/listmonk",
+      "",
+      "** first time (idempotent) installation **",
+      "",
+      "2026/08/30 12:44:51.719432 install.go:53: skipping install as database appears to be already setup",
+      "2026/08/30 12:44:51.725385 main.go:106: v6.2.0 (ef0a7587 2026-06-26T10:21:29Z, linux/amd64)",
+      "2026/08/30 12:44:51.725534 init.go:331: connecting to db: db:5432/listmonk",
+      "2026/08/30 12:44:51.794627 main.go:165: running upgrade...",
+      "2026/08/30 12:44:51.801400 upgrade.go:74: no upgrades to run. Database is up to date.",
+      "2026/08/30 12:44:51.808807 main.go:106: v6.2.0 (ef0a7587 2026-06-26T10:21:29Z, linux/amd64)",
+      "2026/08/30 12:44:51.808992 init.go:331: connecting to db: db:5432/listmonk",
+      "2026/08/30 12:44:52.737689 init.go:779: media upload provider: filesystem",
+      "2026/08/30 12:44:52.737916 init.go:687: initialized email (SMTP) messenger: username@smtp.yoursite.com",
+      "⇨ http server started on [::]:9000"
+    ],
+    "db": [
+      "The files belonging to this database system will be owned by user \"postgres\".",
+      "This user must also own the server process.",
+      "",
+      "The database cluster will be initialized with locale \"en_US.utf8\".",
+      "The default database encoding has accordingly been set to \"UTF8\".",
+      "The default text search configuration will be set to \"english\".",
+      "",
+      "Data page checksums are disabled.",
+      "",
+      "fixing permissions on existing directory /var/lib/postgresql/data ... ok",
+      "creating subdirectories ... ok",
+      "selecting dynamic shared memory implementation ... posix",
+      "selecting default \"max_connections\" ... 100",
+      "selecting default \"shared_buffers\" ... 128MB",
+      "selecting default time zone ... UTC",
+      "creating configuration files ... ok",
+      "running bootstrap script ... ok",
+      "sh: locale: not found",
+      "2026-08-30 12:44:48.043 UTC [35] WARNING:  no usable system locales were found",
+      "performing post-bootstrap initialization ... ok",
+      "initdb: warning: enabling \"trust\" authentication for local connections",
+      "initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.",
+      "syncing data to disk ... ok",
+      "",
+      "",
+      "Success. You can now start the database server using:",
+      "",
+      "    pg_ctl -D /var/lib/postgresql/data -l logfile start",
+      "",
+      "waiting for server to start....2026-08-30 12:44:48.717 UTC [42] LOG:  starting PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+      "2026-08-30 12:44:48.718 UTC [42] LOG:  listening on Unix socket \"/var/run/postgresql/.s.PGSQL.5432\"",
+      "2026-08-30 12:44:48.719 UTC [50] LOG:  database system was shut down at 2026-08-30 12:44:48 UTC",
+      "2026-08-30 12:44:48.724 UTC [42] LOG:  database system is ready to accept connections",
+      " done",
+      "server started",
+      "CREATE DATABASE",
+      "",
+      "",
+      "/usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*",
+      "",
+      "waiting for server to shut down....2026-08-30 12:44:48.840 UTC [42] LOG:  received fast shutdown request",
+      "2026-08-30 12:44:48.840 UTC [42] LOG:  aborting any active transactions",
+      "2026-08-30 12:44:48.842 UTC [42] LOG:  background worker \"logical replication launcher\" (PID 53) exited with exit code 1",
+      "2026-08-30 12:44:48.842 UTC [48] LOG:  shutting down",
+      "2026-08-30 12:44:48.842 UTC [48] LOG:  checkpoint starting: shutdown immediate",
+      "2026-08-30 12:44:48.848 UTC [48] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.006 s, sync=0.001 s, total=0.007 s; sync files=0, longest=0.000 s, average=0.000 s; distance=4265 kB, estimate=4265 kB; lsn=0/191E4A8, redo lsn=0/191E4A8",
+      "2026-08-30 12:44:48.854 UTC [42] LOG:  database system is shut down",
+      " done",
+      "server stopped",
+      "",
+      "PostgreSQL init process complete; ready for start up.",
+      "",
+      "2026-08-30 12:44:48.955 UTC [1] LOG:  starting PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+      "2026-08-30 12:44:48.955 UTC [1] LOG:  listening on IPv4 address \"0.0.0.0\", port 5432",
+      "2026-08-30 12:44:48.955 UTC [1] LOG:  listening on IPv6 address \"::\", port 5432",
+      "2026-08-30 12:44:48.955 UTC [1] LOG:  listening on Unix socket \"/var/run/postgresql/.s.PGSQL.5432\"",
+      "2026-08-30 12:44:48.957 UTC [63] LOG:  database system was shut down at 2026-08-30 12:44:48 UTC",
+      "2026-08-30 12:44:48.960 UTC [1] LOG:  database system is ready to accept connections"
+    ]
+  }
+}

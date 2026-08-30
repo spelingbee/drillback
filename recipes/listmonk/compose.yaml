@@ -1,0 +1,68 @@
+# Rendered by restored before `docker compose up`. The ${RESTORED_INPUT_*} values are
+# absolute paths inside the run workspace, and ${RESTORED_VAR_*} come from `vars:`.
+#
+# Do not add `ports:`, `privileged:`, `network_mode:`, `pid:`, `ipc:`, or a bind mount
+# to any path outside the workspace. `restored recipe validate` rejects all of them.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${RESTORED_VAR_db_name}
+      POSTGRES_USER: ${RESTORED_VAR_db_user}
+      POSTGRES_PASSWORD: ${RESTORED_VAR_db_password}
+    # Speed only. This database is thrown away; durability is not a goal.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [restored]
+
+  app:
+    image: listmonk/listmonk:v6.2.0
+    depends_on: [db]
+    # The command from the project's own docker-compose.yml, unchanged. On a restored
+    # database --install --idempotent does nothing and --upgrade runs any migrations,
+    # which is exactly the sequence a person's own stack would run after a restore.
+    command: [sh, -c, "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
+    # As in the official file, and it matters: the app does not wait for Postgres, it
+    # exits on "connection refused" and is restarted until the database is up.
+    restart: unless-stopped
+    environment:
+      LISTMONK_app__address: 0.0.0.0:${RESTORED_VAR_listmonk_port}
+      LISTMONK_db__user: ${RESTORED_VAR_db_user}
+      LISTMONK_db__password: ${RESTORED_VAR_db_password}
+      LISTMONK_db__database: ${RESTORED_VAR_db_name}
+      LISTMONK_db__host: db
+      LISTMONK_db__port: "5432"
+      LISTMONK_db__ssl_mode: disable
+      TZ: Etc/UTC
+      # Documented on the installation page as the way to create the Super Admin during
+      # setup. On a restored database the account comes from the dump and these are
+      # ignored, which is why no check here signs in: it would pass either way.
+      LISTMONK_ADMIN_USER: drilladmin
+      LISTMONK_ADMIN_PASSWORD: Drill-Password-1
+    volumes:
+      - ${RESTORED_INPUT_uploads}:/listmonk/uploads
+    networks: [restored]
+
+  # Started only by `restored recipe test`, via the "test" compose profile.
+  seeder:
+    image: curlimages/curl:8.10.1
+    profiles: [test]
+    command: ["sleep", "infinity"]
+    volumes:
+      - ${RESTORED_TEST_ASSETS}:/seed:ro
+    networks: [restored]
+
+volumes:
+  db-data:
+
+networks:
+  restored:
+    internal: true

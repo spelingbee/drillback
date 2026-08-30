@@ -41,6 +41,12 @@ nonascii=$(printf '[\200-\377]')
 for f in $files; do
   case "$f" in
   LICENSE) continue ;;
+  # Reports written by `restored --report`, kept as the evidence for a drill result.
+  # They embed the log output of somebody else's application verbatim - Navidrome
+  # prints elapsed times in microseconds, and "us" is not what it prints. These files
+  # are never hand-written and never edited (CLAUDE.md), so the rule that applies to
+  # everything else in this repository cannot apply to them.
+  docs/drill/*/result*.json) continue ;;
   esac
   [ -f "$f" ] || continue
 

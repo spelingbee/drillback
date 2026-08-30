@@ -1,0 +1,51 @@
+# listmonk, deployed from its own docker-compose.yml
+# (https://github.com/knadh/listmonk/raw/master/docker-compose.yml), with the image
+# pinned to a release and the two published ports removed.
+#
+# Deviations, recorded in steps.md: no published ports (the drill drives listmonk from a
+# curl container on this project's network), and LISTMONK_ADMIN_USER/PASSWORD are set,
+# which the installation page documents as the way to create the Super Admin during
+# setup. Nothing else is changed.
+services:
+  app:
+    image: listmonk/listmonk:v6.2.0
+    # As in the official file. It matters: the app does not wait for Postgres, it
+    # crashes on "connection refused" and is restarted until the database is up.
+    restart: unless-stopped
+    depends_on: [db]
+    command: [sh, -c, "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: listmonk
+      LISTMONK_db__database: listmonk
+      LISTMONK_db__host: db
+      LISTMONK_db__port: 5432
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_db__max_open: 25
+      LISTMONK_db__max_idle: 25
+      LISTMONK_db__max_lifetime: 300s
+      TZ: Etc/UTC
+      LISTMONK_ADMIN_USER: drilladmin
+      LISTMONK_ADMIN_PASSWORD: Drill-Password-1
+    volumes:
+      - listmonk-uploads:/listmonk/uploads
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U listmonk"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    environment:
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: listmonk
+      POSTGRES_DB: listmonk
+    volumes:
+      - listmonk-db:/var/lib/postgresql/data
+
+volumes:
+  listmonk-uploads:
+  listmonk-db:
