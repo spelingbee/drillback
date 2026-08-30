@@ -45,6 +45,13 @@ type checkFlags struct {
 }
 
 func newCheck(g *globals) *cobra.Command {
+	cmd, _ := newCheckCommand(g)
+	return cmd
+}
+
+// newCheckCommand also returns the flag struct, which is how the precedence tests
+// reach jobFromConfig with the exact flag set a user's invocation binds.
+func newCheckCommand(g *globals) (*cobra.Command, *checkFlags) {
 	f := &checkFlags{}
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -95,7 +102,7 @@ func newCheck(g *globals) *cobra.Command {
 	fl.StringVar(&f.hintsFile, "hints", "", "Load additional hint rules, matched before the built-in ones")
 	fl.BoolVar(&f.noNudge, "no-nudge", false, `Never print the "contribute this recipe" invitation`)
 	AddExitCodes(cmd, CheckExitCodes)
-	return cmd
+	return cmd, f
 }
 
 // job carries one resolved run: where its settings came from is already decided.
@@ -235,14 +242,30 @@ func jobFromConfig(cmd *cobra.Command, f *checkFlags, cj *config.Job, cliInputs,
 		tags = f.tags
 	}
 
+	// The source is one compound setting - kind, location, credentials - and
+	// replacing only its kind produces a job that fails downstream with an error
+	// that never says why ("no such directory sftp:..."). A typed --source replaces
+	// the whole triple, so it needs a typed --from and drops the config source's
+	// env; a typed --from alone repoints the config's source and keeps the rest.
+	sourceKind, from, sourceEnv := cj.SourceKind, cj.From, cj.Env
+	if changed("source") {
+		if !changed("from") {
+			return nil, fail(ExitError,
+				"target %q: --source replaces the config's source, so it needs --from too", cj.Target)
+		}
+		sourceKind, from, sourceEnv = f.source, f.from, nil
+	} else if changed("from") {
+		from = f.from
+	}
+
 	opts := runner.Options{
 		Recipe:     rec,
-		SourceKind: pick("source", f.source, cj.SourceKind),
-		From:       pick("from", f.from, cj.From),
+		SourceKind: sourceKind,
+		From:       from,
 		Snapshot:   f.snapshot,
 		Tags:       tags,
 		Host:       pick("host", f.host, cj.Host),
-		SourceEnv:  cj.Env,
+		SourceEnv:  sourceEnv,
 		InputPaths: inputs,
 		SetVars:    sets,
 
@@ -378,6 +401,11 @@ func runAll(cmd *cobra.Command, g *globals, f *checkFlags, jobs []*job) error {
 		printKept(human, kept)
 		multi.Add(j.target, rep)
 	}
+	// An interrupt between targets leaves the rest of the sweep unrun. Say so, in
+	// both documents, and exit 2: a target that never ran is unproven, and without
+	// this a SIGTERM after a passing teardown reported a clean sweep and the cron
+	// alert never fired for the backups nobody checked.
+	multi.SkipRemaining(len(jobs) - multi.Summary.TargetsTotal)
 
 	if err := multi.WriteTTY(human, renderOpts); err != nil {
 		return fail(ExitError, "%v", err)

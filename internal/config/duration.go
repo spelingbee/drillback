@@ -26,8 +26,11 @@ func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 	if err != nil {
 		return fmt.Errorf("line %d: %q is not a duration (write \"15m\", \"90s\", \"1h30m\")", node.Line, s)
 	}
-	if parsed < 0 {
-		return fmt.Errorf("line %d: a negative duration (%q) budgets nothing", node.Line, s)
+	if parsed <= 0 {
+		// Zero included: 0 is also this package's "the config said nothing"
+		// sentinel, so an explicit `0s` would silently mean "use the flag default"
+		// - the typo-that-does-nothing ADR-067's strictness exists to refuse.
+		return fmt.Errorf("line %d: a duration of %q budgets nothing - omit the key to use the default", node.Line, s)
 	}
 	*d = Duration(parsed)
 	return nil

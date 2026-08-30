@@ -92,6 +92,13 @@ func TestJobMergesDefaultsAndTarget(t *testing.T) {
 		t.Errorf("env %v missing %q", j.Env, want)
 	}
 
+	// The refusal below must hold even on a machine that exports real AWS
+	// credentials: t.Setenv registers the restore, Unsetenv makes it truly unset.
+	for _, name := range []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"} {
+		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+
 	// The target block beats the defaults.
 	_, err = cfg.Job("uptime-kuma")
 	if err == nil {
@@ -202,7 +209,8 @@ func TestValidationRefusals(t *testing.T) {
 		{"defaults with unknown source", "version: 1\ndefaults: {source: nope}\n", `defaults.source "nope"`},
 		{"bad pull", "version: 1\ndefaults: {pull: sometimes}\n", "always, missing or never"},
 		{"bare number duration", "version: 1\ndefaults: {timeout: 90}\n", "not a duration"},
-		{"negative duration", "version: 1\ndefaults: {timeout: -5m}\n", "negative"},
+		{"negative duration", "version: 1\ndefaults: {timeout: -5m}\n", "budgets nothing"},
+		{"zero duration", "version: 1\ndefaults: {check_timeout: 0s}\n", "budgets nothing"},
 	}
 	for _, tc := range cases {
 		_, err := loadString(t, FileName, tc.body)

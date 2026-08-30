@@ -33,12 +33,27 @@ type MultiSummary struct {
 	TargetsPassed   int   `json:"targets_passed"`
 	TargetsUnusable int   `json:"targets_unusable"`
 	TargetsErrored  int   `json:"targets_errored"`
+	TargetsSkipped  int   `json:"targets_skipped,omitempty"`
 	DurationMS      int64 `json:"duration_ms"`
 }
 
-// NewMulti returns an empty --all document.
+// NewMulti returns an empty --all document. Runs is an empty slice, not nil: an
+// interrupted sweep that ran nothing still owes SPEC.md 5.2 an array, not `null`.
 func NewMulti() *Multi {
-	return &Multi{SchemaVersion: SchemaVersion}
+	return &Multi{SchemaVersion: SchemaVersion, Runs: []TargetRun{}}
+}
+
+// SkipRemaining records that n configured targets never ran - an interrupted sweep.
+// The exit code becomes 2 regardless of the verdicts so far: what was skipped is
+// unproven, and unproven is a statement about the drill, not the backups (ADR-058).
+// Without this, a SIGTERM after a passing target's teardown reported the sweep as
+// clean and the cron alert never fired for the backups nobody checked.
+func (m *Multi) SkipRemaining(n int) {
+	if n <= 0 {
+		return
+	}
+	m.Summary.TargetsSkipped = n
+	m.ExitCode = 2
 }
 
 // Add appends one target's report and folds it into the summary and the exit code.
@@ -101,7 +116,9 @@ func (m *Multi) WriteTTY(w io.Writer, o Options) error {
 		}
 		// The verdict is padded before painting: ANSI codes have width on paper and
 		// none on screen, so painting first would misalign every coloured line.
-		fmt.Fprintf(b, "  target %-*s  %s  %6s", width, run.Target,
+		// %7s, because duration() needs seven columns for the [10m, 1h) band
+		// ("12m 04s") that a 30-minute default timeout makes ordinary.
+		fmt.Fprintf(b, "  target %-*s  %s  %7s", width, run.Target,
 			o.paint(fmt.Sprintf("%-16s", verdict), colour+colBold), duration(run.Run.DurationMS))
 		if note != "" {
 			fmt.Fprintf(b, "  %s %s", g.dot, note)
@@ -112,6 +129,11 @@ func (m *Multi) WriteTTY(w io.Writer, o Options) error {
 	s := m.Summary
 	fmt.Fprintf(b, "\n  %d targets: %d passed, %d unusable, %d errored, in %s\n",
 		s.TargetsTotal, s.TargetsPassed, s.TargetsUnusable, s.TargetsErrored, duration(s.DurationMS))
+	if s.TargetsSkipped > 0 {
+		fmt.Fprintf(b, "  %s\n", o.paint(fmt.Sprintf(
+			"interrupted - %d of %d targets never ran, and what never ran is unproven",
+			s.TargetsSkipped, s.TargetsTotal+s.TargetsSkipped), colRed+colBold))
+	}
 
 	_, err := io.WriteString(w, b.String())
 	return err

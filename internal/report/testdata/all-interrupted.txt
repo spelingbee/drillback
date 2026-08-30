@@ -4,3 +4,4 @@
   target paperless    ERROR                1.2s  · no snapshot with tag "paperless" in t...
 
   3 targets: 1 passed, 1 unusable, 1 errored, in 12m 32s
+  interrupted - 2 of 5 targets never ran, and what never ran is unproven

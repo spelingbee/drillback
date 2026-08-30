@@ -235,6 +235,8 @@ Flags:
                                 up by hand.
       --keep-on-fail            Tear down on PASS, keep everything on failure
       --report string           Also write the JSON report to this file
+      --hints string            Load additional hint rules, matched before the
+                                built-in ones (section 6.1)
       --no-nudge                Never print the "contribute this recipe" invitation
   -h, --help                    help for check
 

@@ -30,7 +30,9 @@ func sampleRun(verdict string, ms int64, passed, total int, errStr string) *Repo
 
 func sampleMulti() *Multi {
 	m := NewMulti()
-	m.Add("gitea", sampleRun(VerdictPass, 81_300, 5, 5, ""))
+	// 12m 04s on purpose: the [10m, 1h) band renders seven columns, and a golden
+	// with only sub-10m samples could not catch the alignment regressing.
+	m.Add("gitea", sampleRun(VerdictPass, 724_000, 5, 5, ""))
 	m.Add("vaultwarden", sampleRun(VerdictUnusable, 26_900, 3, 5, ""))
 	m.Add("paperless", sampleRun(VerdictError, 1_200, 0, 0,
 		"no snapshot with tag \"paperless\" in the repository\nsecond line the summary must not show"))
@@ -65,6 +67,32 @@ func TestMultiAggregatesTheWorstOutcome(t *testing.T) {
 	}
 	if s.DurationMS != 40 {
 		t.Errorf("duration = %d, want the sum", s.DurationMS)
+	}
+}
+
+func TestSkipRemainingMakesAnInterruptedSweepUnprovable(t *testing.T) {
+	m := NewMulti()
+	m.Add("a", sampleRun(VerdictPass, 10, 1, 1, ""))
+	m.SkipRemaining(0)
+	if m.ExitCode != 0 || m.Summary.TargetsSkipped != 0 {
+		t.Errorf("a completed sweep must stay as its verdicts left it: exit=%d skipped=%d", m.ExitCode, m.Summary.TargetsSkipped)
+	}
+	m.SkipRemaining(3)
+	if m.ExitCode != 2 {
+		t.Errorf("exit = %d; skipped targets are unproven, and unproven is exit 2 (ADR-058)", m.ExitCode)
+	}
+	if m.Summary.TargetsSkipped != 3 {
+		t.Errorf("skipped = %d", m.Summary.TargetsSkipped)
+	}
+}
+
+func TestEmptyMultiMarshalsRunsAsAnArray(t *testing.T) {
+	var buf bytes.Buffer
+	if err := NewMulti().WriteJSON(&buf); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte(`"runs": []`)) {
+		t.Errorf("an empty sweep owes SPEC 5.2 an array, not null:\n%s", buf.String())
 	}
 }
 
@@ -106,18 +134,25 @@ func TestMultiJSONIsTheSingleDocumentPlusTarget(t *testing.T) {
 // SPEC.md section 10 asks for golden renderings of the multi-target shape in both
 // colour and NO_COLOR. Rewrite with `go test ./internal/report -update`.
 func TestMultiTTYGolden(t *testing.T) {
+	interrupted := func() *Multi {
+		m := sampleMulti()
+		m.SkipRemaining(2)
+		return m
+	}
 	cases := []struct {
-		name string
-		opts Options
+		name  string
+		multi *Multi
+		opts  Options
 	}{
-		{"all-colour", Options{Color: true}},
-		{"all-plain", Options{Color: false}},
-		{"all-ascii", Options{Color: false, ASCII: true}},
+		{"all-colour", sampleMulti(), Options{Color: true}},
+		{"all-plain", sampleMulti(), Options{Color: false}},
+		{"all-ascii", sampleMulti(), Options{Color: false, ASCII: true}},
+		{"all-interrupted", interrupted(), Options{Color: false}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var b bytes.Buffer
-			if err := sampleMulti().WriteTTY(&b, tc.opts); err != nil {
+			if err := tc.multi.WriteTTY(&b, tc.opts); err != nil {
 				t.Fatal(err)
 			}
 			golden := filepath.Join("testdata", tc.name+".txt")

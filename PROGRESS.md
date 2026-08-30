@@ -1384,6 +1384,32 @@ $ git diff --stat -- docs/recipe-spec.md recipes/README.md README.md
    `.github/workflows/`), waiting on the human: `gh auth refresh -h github.com -s
    workflow`. Creating a *private* repository is not a stop point; making it public
    remains stop point 4, untouched.
+6. **An adversarial review pass, and its fixes.** An independent reviewer read the
+   three commits, confirmed the hard parts clean where it hunted hardest (the full
+   precedence walk, duplicate YAML keys, env-to-log leakage, restic 0.19.1 accepting
+   the quoted `RESTIC_PASSWORD_COMMAND` end to end) - and found two real defects plus
+   four smaller ones, all fixed in the follow-up commit:
+   - an interrupted `--all` could exit 0 claiming a clean sweep: a SIGTERM landing
+     during a passing target's teardown (which runs uncancelled, on purpose) completed
+     that target and silently skipped the rest. Skipped targets are now counted in
+     both documents (`targets_skipped`, and a red "never ran" line under the summary)
+     and force exit 2 - what never ran is unproven, and unproven is a statement about
+     the drill (ADR-058);
+   - the config suite failed on any machine that exports real AWS credentials,
+     because a test asserted `${AWS_*}` was unset. It now unsets them itself;
+   - the `--all` summary column misaligned for the [10m, 1h) duration band, which a
+     30-minute default timeout makes ordinary and which no golden exercised - one
+     does now;
+   - an explicit `check_timeout: 0s` silently meant "use the flag default" - the
+     exact typo-that-does-nothing ADR-067 exists to refuse, so a zero duration now
+     refuses like a negative one;
+   - `--target` with a typed `--source` but no `--from` built a job pointing a dir
+     source at a restic URL, failing downstream with an error that never said why.
+     It now refuses, naming `--from`; a full source replacement drops the config
+     source's env, while `--from` alone repoints the source and keeps it;
+   - the precedence chain had no automated coverage. `TestJobFromConfigPrecedence`
+     now walks it flag by flag, and a docker-free test drives `runAll` with a
+     cancelled context to hold the interrupted-sweep behaviour down.
 
 **Not done, deliberately:** README still says nothing about `restored.yaml` - the
 quick start stays `--recipe`, and the config's user documentation belongs with the
@@ -1444,6 +1470,17 @@ $ ./scripts/lint-english.sh
 lint-english: ok
 $ docker ps -aq --filter "label=com.restored.run" | wc -l
 0
+```
+
+After the review fixes, the battery was re-run on the final code: 13 packages ok
+uncached, both linters at 0 issues on both tag sets, the race detector green again in
+the CI image, and the config suite green with real AWS credentials exported - the
+exact environment that failed before:
+
+```text
+$ AWS_ACCESS_KEY_ID=AKIAREAL AWS_SECRET_ACCESS_KEY=real \
+    go test ./internal/config/ -run TestJobMergesDefaultsAndTarget -count=1
+ok  	github.com/spelingbee/restored/internal/config	0.736s
 ```
 
 ---
