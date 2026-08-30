@@ -1792,6 +1792,62 @@ element is exactly the document above, plus a top-level `summary` and the worst
 The 1/2 split exists so a cron job can tell "your backup is broken" from "your drill is
 broken". Conflating them is how a monitoring system trains its owner to ignore it.
 
+Exit 2 is a statement about `restored`, never about the backup. A run that exceeds
+`--timeout` is exit 2 for this reason: the drill did not finish, so nothing is known
+(ADR-058).
+
+### 5.4 The harness JSON report
+
+`restored recipe test --json` and `--report FILE` write a *different* document from
+`restored check`. It is one document per invocation, however many recipes it covered,
+and it nests a check report per stage.
+
+```json
+{
+  "schema_version": 1,
+  "tool": { "name": "restored", "version": "0.1.0" },
+  "started_at": "2026-08-30T02:38:11Z",
+  "finished_at": "2026-08-30T02:39:04Z",
+  "duration_ms": 53000,
+  "summary": { "total": 1, "passed": 1, "failed": 0, "errored": 0 },
+  "recipes": [
+    {
+      "recipe": "gitea",
+      "status": "pass",
+      "stages": [
+        {
+          "name": "A",
+          "status": "pass",
+          "reason": "3 of 5 checks failed against an empty stack: repos-in-db, ...",
+          "duration_ms": 21000,
+          "phases": [ { "name": "up", "status": "pass", "duration_ms": 4200 } ],
+          "command": "restored recipe test ./recipes/gitea --stage a --keep"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Two things about it are contracts.
+
+**`schema_version` is the integer `1`, the same field name and the same type as the
+check report's.** They are separate contracts with separate version numbers, but a
+consumer doing `jq -e '.schema_version == 1'` must not have to know which document it
+is holding. (It was a string here and an integer there until session 4; see
+`docs/review/ux.md` UX-06.)
+
+**`stages[].check` is the whole check report for a stage that did not pass**, in the
+shape of section 5.2 - the per-check query, expectation and observation, the service
+logs, and the hint. It is omitted for a stage that passed, because nobody reads a
+passing check's observations and this document is uploaded as a CI artifact. Without
+it, a contributor whose recipe fails in CI is told which checks failed and nothing
+else, while everything they need has already been computed and discarded (ADR-061).
+
+`stages[].command` is a command that still works after the run: the harness deletes its
+workspaces unless `--keep` was given, so it names `restored recipe test <ref> --stage
+<a|b> --keep` rather than a path that no longer exists.
+
 ---
 
 ## 6. Hints
@@ -2157,8 +2213,15 @@ When a `check` run finishes and **all** of these hold:
   ────────────────────────────────────────────────────────────────────────
   This recipe is not in the bundled registry, and it just proved a restore.
   Other people running Paperless-ngx would use it. Adding it is a fork and a
+  four-line pull request:
 
-    https://github.com/spelingbee/restored/new/main?filename=recipes/paperless/recipe.yaml&value=apiVersion%3A%20restored%2Fv1%0Akind%3A%20Recipe%0A…
+    1. fork  https://github.com/spelingbee/restored
+    2. cp -r /home/you/recipes/paperless recipes/paperless
+    3. restored recipe test ./recipes/paperless     # this is what CI runs
+    4. open a PR
+
+  restored does not touch your clipboard. Your recipe is at
+  /home/you/recipes/paperless.
 
   (silence this with --no-nudge, or `nudge: false` in restored.yaml)
   ────────────────────────────────────────────────────────────────────────
@@ -2171,58 +2234,35 @@ The invitation is one sentence, states the reason ("other people running X would
 it"), and is silenceable in the same breath. It appears at most once per run, after the
 verdict, never before it.
 
-### 8.2 The URL
+### 8.2 Why there is no URL
 
-```text
-https://github.com/spelingbee/restored/new/main
-  ?filename=recipes/<name>/recipe.yaml
-  &value=<percent-encoded recipe.yaml>
-```
+There used to be one: a `github.com/.../new/main?filename=...&value=...` link that
+opened GitHub's file editor with the recipe prefilled. It is gone, for two reasons that
+compound. See DECISIONS.md ADR-065 and ADR-066.
 
-GitHub's `/new/<branch>` route opens the file creation editor with `filename` and
-`value` prefilled, so the contributor lands on a page with the recipe already in it and
-a green "Propose new file" button.
+It produced a branch containing `recipe.yaml` and nothing else. A recipe is a
+directory; `compose.yaml` is not optional; and the first thing `recipes.yml` does to a
+branch is `recipe validate`, which cannot pass without it. So the highest-volume
+acquisition surface in the project pointed at a guaranteed red X - which is precisely
+what condition 5 above exists to prevent, one level up.
 
-The recipe is sent **as the user wrote it**, with two exceptions applied first:
+And it was unreadable. A recipe percent-encodes to a few thousand characters, and a few
+thousand characters of `%0A` and `%3A` wrapped across twenty lines of a terminal is not
+a shortcut; it pushes the report the user is reading off the screen. That went unnoticed
+for three sessions because the invitation only fires on a TTY and everything - tests,
+golden files, five independent reviewers - captured output through a pipe. Rendering
+`docs/demo/demo.tape` is what found it, and is now the regression test for it.
+
+What is sent instead is four lines of instruction. The recipe is left on disk, as the
+user wrote it, with two exceptions applied to the file the instructions point at:
 
 - any `--set` and `--input` overrides are folded back into `vars` and `default_path`, so
-  the submitted recipe reflects what actually worked;
+  the recipe that gets contributed reflects what actually worked;
 - `metadata.maintainers` is left exactly as it is. `restored` does not guess the
   contributor's GitHub handle and does not read git config for it.
 
-### 8.3 Length fallback
-
-Browsers and GitHub both cap URLs; the practical ceiling is about 8,000 characters, and
-percent-encoding YAML costs roughly 1.9x. The threshold is therefore **6,000 characters
-for the whole URL**, checked after encoding.
-
-Above it, `restored` prints instead:
-
-```text
-  ────────────────────────────────────────────────────────────────────────
-  This recipe is not in the bundled registry, and it just proved a restore.
-  It is too large for a prefilled link (7.4 KB encoded), so:
-
-    1. fork  https://github.com/spelingbee/restored
-    2. cp -r /home/you/recipes/immich recipes/immich
-    3. restored recipe test ./recipes/immich     # this is what CI runs
-    4. open a PR
-
-  Recipe copied to your clipboard? No — restored does not touch your
-  clipboard. The file is at /home/you/recipes/immich/recipe.yaml.
-
-  (silence this with --no-nudge, or `nudge: false` in restored.yaml)
-  ────────────────────────────────────────────────────────────────────────
-```
-
-Only `recipe.yaml` is ever prefilled. A recipe also needs `compose.yaml`, which the
-`/new/` route cannot carry in the same request, so the PR body template asks for it —
-and the fallback text, which tells the user to copy the whole directory, is the more
-honest path for anything non-trivial. The prefilled link is a hook, not the whole
-workflow.
-
 `restored` never opens a browser, never writes to the clipboard, and never sends
-anything anywhere. It prints a URL and stops.
+anything anywhere. It prints four lines and stops.
 
 ---
 
@@ -2284,9 +2324,13 @@ pretending otherwise would be the most dangerous thing in this document.
   logs credential values. The JSON report contains the repository *URL* but no
   credentials, and the URL is scrubbed of any `user:password@` userinfo.
 - *Mitigated:* recipe `vars` are printed in reports, so recipes must not contain real
-  secrets. The Gitea recipe's `db_password` is commented for exactly this reason, and
-  `recipe validate --strict` warns on any var whose name matches
-  `(?i)(secret|token|apikey|api_key|private)` and whose value has high entropy.
+  secrets. The Gitea recipe's `db_password` is commented for exactly this reason.
+- *NOT IMPLEMENTED:* the entropy warning described here - `recipe validate --strict`
+  warning on any var whose name matches `(?i)(secret|token|apikey|api_key|private)` and
+  whose value looks random - does not exist. It is SEC-11 in `docs/review/security.md`
+  and is in the backlog. Until it does, nothing mechanical stops a contributor pasting
+  a real credential into `vars`, and the line above is a convention rather than a
+  control.
 - *Accepted:* recipe-declared throwaway passwords are visible in reports and in
   `docker inspect`. They protect a database that exists for ninety seconds on an
   internal network. This is fine, and stating it prevents someone "fixing" it later

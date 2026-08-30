@@ -24,13 +24,16 @@ Require docker
 Require restic
 
 Set Shell "bash"
-Set FontSize 15
-Set Width 1180
-Set Height 760
+Set FontSize 14
+Set Width 1000
+Set Height 640
 Set Padding 24
 Set TypingSpeed 45ms
-Set PlaybackSpeed 1.0
-Set Framerate 12
+# Two real stack-ups take about four minutes of wall clock, and four minutes of GIF is
+# tens of megabytes nobody will wait for. This is a real recording played at double
+# speed - the README says so underneath it. Nothing is cut.
+Set PlaybackSpeed 2.0
+Set Framerate 8
 Set LoopOffset 0
 Set MarginFill "#12151c"
 Set Margin 14
