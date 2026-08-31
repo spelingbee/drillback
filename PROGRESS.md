@@ -1747,7 +1747,14 @@ them is a stop point in CLAUDE.md with the work up to it finished:
    CLAUDE.md says to prefer against. A `prepare:` block in the recipe format would be a
    mechanism. It would also be a new way for a recipe to run arbitrary code, which is
    exactly what the isolation rules exist to constrain.
-8. **The review promise in CONTRIBUTING.md is a promise.** "First response within
+8. **Answered by the human, 2026-08-31.** The promise was put to them with the option
+   to soften before going public; the instruction was to proceed with everything as
+   written, so "first response within 24 hours, merged within 48 when CI is green"
+   stands. The weekly maintainer session is not a 24-hour cadence, so the clock is
+   the human's - with the mitigations sessions 4 and 6 already built (a single
+   `verdict` check to read, and contributors warned their first run waits).
+   The original question, kept for the record:
+   **The review promise in CONTRIBUTING.md is a promise.** "First response within
    24 hours, merged within 48 when CI is green." It is the right promise - it is most of
    what makes a first contribution feel worth making - and there is one maintainer. It
    should be confirmed or changed before the repository is public, not after somebody
