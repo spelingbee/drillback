@@ -1640,9 +1640,50 @@ $ docker ps -aq --filter "label=com.drillback.run" | wc -l
 
 ---
 
+### Session 8, addendum - launch preparation on the human's "do everything"
+
+Done after the rename landed, all on 2026-08-31:
+
+1. **Repository settings** (checklist step 1): Discussions on, issue chooser verified,
+   branch protection on `main` with the six real check names pinned to the GitHub
+   Actions app, workflow permissions read+write. Two settings GitHub refuses on a
+   private repository (private vulnerability reporting, first-time-contributor
+   approval) moved to the go-public moment, recorded in the checklist.
+2. **Labels applied** (`scripts/labels.sh --apply`) - which paid for itself within the
+   hour, below.
+3. **The demo GIF re-rendered** under the new name via `render-demo.sh`'s documented
+   container route, verified frame by frame: act one ends PASS 5/5 exit=0, act two
+   RESTORE UNUSABLE exit=1. Open question 8 (the 24h/48h review promise) answered by
+   the human: it stands.
+4. **The first `recipe-health` run ever** (workflow_dispatch): **17 of 20 recipes
+   green on Linux runners**, and the pipeline worked exactly as designed - the three
+   failures each auto-filed a `recipe-broken` + `help wanted` issue with the labels
+   from step 2. The three failures are one class, diagnosed and reproduced locally
+   under a Linux uid (the repro rig is in issue #1): **an application image that
+   re-owns its mounted data directory on startup (FreshRSS chowns to 33:33/0770)
+   defeats every host-side read that follows** - the sqlite loader's `stat`, the
+   `file`-kind checks - invisible on Windows where the daemon maps no ownership.
+   freshrss and trilium are exactly this; nextcloud is almost certainly the same
+   class through its prepare service. Diagnoses are on issues #1-#3.
+
+**The three red recipes block the tag** (release checklist: all recipes green on the
+latest health run) **and nothing else**: going public is not blocked.
+
+---
+
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
+
+### Session 9 - host-side reads of container-owned trees (blocks the v0.1.0 tag)
+
+The class behind issues #1-#3: on Linux, an application that chowns its mounted data
+directory makes the workspace unreadable to the host process, and `load db` or a
+`file` check dies with `permission denied`. CopyOut's comment already states the
+principle to follow - let the daemon read the files. The sqlite integrity check
+already runs in a container; the host-side pre-stat is what breaks. Fix the class,
+not the recipes; the local repro rig is in issue #1; re-dispatch `recipe-health`
+until 20 of 20.
 
 ### `internal/config` - done
 
