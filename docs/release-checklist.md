@@ -26,17 +26,18 @@ labels before anything that applies one.
 
 ## 1. Repository settings
 
-None of these can be done from a shell, and three of them are load-bearing for
-documents that are already written.
+Mostly done on 2026-08-31, on the private repository, via the API and verified in the
+UI. Two settings turned out to be public-repository-only - GitHub refuses them on a
+private one - so they moved to the go-public moment and are listed under 3.
 
-| # | Setting | Where | Why it cannot wait |
-|---|---|---|---|
-| 1.1 | **Private vulnerability reporting: on** | Settings > Code security | `SECURITY.md` and `CODE_OF_CONDUCT.md` both route here. Off by default; if it is off when the repository goes public, the only advertised security channel and the only advertised conduct channel both 404 (MNT-07). |
-| 1.2 | **Discussions: on** | Settings > General > Features | It is the first entry in the issue chooser and the channel `CONTRIBUTING.md` now sends questions to. Off by default (MNT-08). |
-| 1.3 | **Issue templates** | already in `.github/ISSUE_TEMPLATE/` | Nothing to enable; confirm the chooser renders after 1.2. |
-| 1.4 | **Actions: require approval for first-time contributors** | Settings > Actions > General | Leave this **on**. `recipes.yml` runs container images a pull request names. `CONTRIBUTING.md` now warns contributors that their first run waits, so the setting and the documentation agree (MNT-06). |
-| 1.5 | **Branch protection on `main`** | Settings > Rules | Required checks, exactly these names: `ci / lint`, `ci / generated`, `ci / unit`, `recipes / verdict`. **Not** `recipes / test (<name>)` - those are matrix jobs whose names depend on which recipes a pull request touched, and they are skipped entirely when a change touches none. `recipes / verdict` is the aggregate that always runs. `ci / integration` is real and green, but it needs Docker and is the slowest job here; require it only if you are willing to wait for it on every merge. |
-| 1.6 | **Allow `refresh-registry.yml` to push to `main`** | Settings > Actions > General > Workflow permissions | It needs read and write. If branch protection blocks it, add the GitHub Actions bot as an exception - otherwise the recipe tables silently stop updating and the next contributor gets the red check ADR-060 removed. |
+| # | Setting | State on 2026-08-31 |
+|---|---|---|
+| 1.1 | **Private vulnerability reporting: on** | **Moved to step 3**: the API answers 404 on a private repository - the feature exists only on public ones. Flip it the moment the repository is public, before anything is announced; `SECURITY.md` and `CODE_OF_CONDUCT.md` both route here (MNT-07). |
+| 1.2 | **Discussions: on** | **Done** (`gh repo edit --enable-discussions`), verified in Settings > Features. |
+| 1.3 | **Issue templates** | **Done**: the chooser renders all four templates plus the three `config.yml` contact links, verified at `/issues/new/choose`. |
+| 1.4 | **Actions: require approval for first-time contributors** | **Moved to step 3**: the API answers "Fork PR approval is not allowed for private repositories". Verify it is **on** (it is the default) the moment the repository is public (MNT-06). |
+| 1.5 | **Branch protection on `main`** | **Done**, with the names the checks actually have - the `ci / ` prefix was a UI rendering, and `unit` is a matrix: required checks are `lint`, `generated`, `unit (ubuntu-latest)`, `unit (macos-latest)`, `unit (windows-latest)`, `verdict`, each pinned to the GitHub Actions app (id 15368). `integration` is deliberately not required: it is real and green, but it is the slowest job. Not `test (<name>)` - the recipes matrix is skipped entirely when a change touches no recipe; `verdict` is the aggregate that always runs. |
+| 1.6 | **Allow `refresh-registry.yml` to push to `main`** | **Done**: workflow permissions are read and write (verified in the UI). One caveat now written down instead of discovered later: classic branch protection applies required checks to the Actions bot's direct pushes too, so `refresh-registry.yml`'s push may be rejected on its first real run. If it is, convert the protection to a ruleset with the GitHub Actions app as a bypass actor - the "exception" this row always meant - and retire this caveat. |
 
 ---
 
@@ -58,6 +59,16 @@ so this comes before the repository is public and before any issue is filed.
 in it resolves. The name question is closed: the human chose `drillback` - the
 `docs/name-check.md` recommendation - and ADR-070 records the executed rename. There
 is nothing left to decide here; going public is now only about stop point 4 itself.
+
+The moment the repository is public, two settings that GitHub refuses on a private
+one (see step 1) become available and must be done immediately, before anything is
+announced:
+
+- **Private vulnerability reporting: on** (Settings > Code security) - the channel
+  `SECURITY.md` and `CODE_OF_CONDUCT.md` both advertise;
+- **Actions: require approval for first-time contributors** - verify it is on
+  (Settings > Actions > General); it is the default, and `recipes.yml` runs container
+  images a pull request names.
 
 ---
 
