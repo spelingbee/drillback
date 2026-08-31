@@ -68,6 +68,7 @@ source|1d76db|Reading a backup: restic, borg, kopia, a tarball
 notifier|5319e7|Telling somebody the drill failed
 hint|fbca04|A rule in docs/hints.yaml that turns an error into an explanation
 check-type|c2e0c6|The expect vocabulary a recipe asserts with
+security|B60205|Changes a trust boundary; wants a design note before code
 bug|d73a4a|drillback did something wrong
 enhancement|a2eeef|Something drillback should be able to do and cannot
 '

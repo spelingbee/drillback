@@ -121,7 +121,7 @@ while IFS='|' read -r name stars repo description; do
     cat <<BODY
 **$name** has no recipe yet. https://github.com/$repo - $description
 
-A recipe teaches \`restored\` how to stand this application up from a backup and how to
+A recipe teaches \`drillback\` how to stand this application up from a backup and how to
 tell whether the restore actually worked. It is two YAML files, it needs no Go, and if
 you run $name yourself you are the best-placed person to write it.
 
