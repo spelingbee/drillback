@@ -33,10 +33,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # goreleaser shells out to syft for the SBOMs and the runner does not have it.
+      # The first real tag found that out, because `build --snapshot` never reached
+      # the SBOM step; the snapshot now runs the same `release` path, minus the
+      # network, so it proves the archives and the SBOMs too.
+      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           version: "~> v2"
-          args: build --snapshot --clean
+          args: release --snapshot --clean
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -68,6 +73,7 @@ jobs:
           ./scripts/lint-english.sh
           go test ./... -race
 
+      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           version: "~> v2"
