@@ -1881,10 +1881,16 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
     private
     ```
 
-    The package is private and not linked to the repository, and GitHub exposes no
-    API for either: Package settings > Change visibility > Public, and connect the
-    repository, are the human's, before `docs/docker.md`'s `docker run` line works
-    for anyone else.
+    The package arrived private and unlinked, and GitHub exposes no API for either;
+    the human did both in the UI the same hour. Verified after `docker logout ghcr.io`:
+
+    ```text
+    $ docker pull ghcr.io/spelingbee/drillback:0.1.0 && docker run --rm ghcr.io/spelingbee/drillback:0.1.0 version
+    drillback 0.1.0
+      commit:    7d9305399d173b135a64fb377b4ab5b46804b2ce
+    $ gh api user/packages/container/drillback --jq '{visibility, repo: .repository.full_name}'
+    {"visibility":"public","repo":"spelingbee/drillback"}
+    ```
 
 13. **The tap.** `spelingbee/homebrew-tap` created public; `Casks/drillback.rb` is
     goreleaser's own rendering (snapshot `release` in the `goreleaser/goreleaser`
