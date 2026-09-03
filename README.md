@@ -20,10 +20,10 @@ typed by [`docs/demo/demo.tape`](docs/demo/demo.tape); everything underneath the
 what the tool printed, unedited, and it is the same `scripts/demo.sh` you can run
 yourself.*
 
-> Pre-release, and not tagged. `drillback check` works end to end against restic and
+> v0.1.0 is the first release. `drillback check` works end to end against restic and
 > against an already-restored tree; `drillback recipe test` runs the round trip that
-> proves a recipe both ways; twenty recipes ship. See [PROGRESS.md](PROGRESS.md) for what
-> is not built yet.
+> proves a recipe both ways; twenty recipes ship. [CHANGELOG.md](CHANGELOG.md) says
+> what is in it and what is not built yet.
 
 ---
 
@@ -93,30 +93,30 @@ A Gitea backup that is fine:
 
 <!-- BEGIN docs/demo/pass.txt -->
 ```text
-drillback 0.1.0-dev · recipe gitea · run fyd34mcf
+drillback 0.1.0-dev · recipe gitea · run ikb22jon
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/drillback-demo/repo
-  snapshot   a8dc39bc  2026-08-30 17:50:59  host=demo-host  tags=[gitea]
+  snapshot   53ca6608  2026-09-03 04:37:57  host=demo-host  tags=[gitea]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql  231.1 KiB  plain SQL
 
-  restore    ok          4.1s   2 inputs
-  compose    ok          2.9s   2 services, db first for the dump
-  load db    ok         12.8s   db: psql, 0 stderr lines
-  ready      ok         11.5s   postgres accepts connections, gitea answers on the internal network
+  restore    ok          2.4s   2 inputs
+  compose    ok          3.7s   2 services, db first for the dump
+  load db    ok          4.4s   db: psql, 0 stderr lines
+  ready      ok         11.3s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.75s
-  ✔  repos-in-db         The database contains at least one repository   0.52s
+  ✔  web-ui-renders      The web UI renders the instance home page        1.3s
+  ✔  repos-in-db         The database contains at least one repository   0.89s
                          row → 1
-  ✔  users-in-db         The database contains at least one real user    0.52s
+  ✔  users-in-db         The database contains at least one real user    0.57s
                          account → 1
-  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
+  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.80s
                          → 1 match for */*.git/HEAD
-  ✔  api-lists-repos     The API lists repositories, so the database     0.82s
+  ✔  api-lists-repos     The API lists repositories, so the database      1.1s
                          and the disk agree → 1 item
 
-  PASS  5/5 checks  ·  total 35.1s  ·  teardown ok
+  PASS  5/5 checks  ·  total 28.6s  ·  teardown ok
 
 This backup boots.
 ```
@@ -127,38 +127,38 @@ runs every night, it exits 0, and it produces a file:
 
 <!-- BEGIN docs/demo/fail.txt -->
 ```text
-drillback 0.1.0-dev · recipe gitea · run tdlgj2lv
+drillback 0.1.0-dev · recipe gitea · run v6wk3voi
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/drillback-demo/repo
-  snapshot   fcc2819c  2026-08-30 17:52:15  host=demo-host  tags=[gitea-broken]
+  snapshot   22bb5fb3  2026-09-03 04:39:19  host=demo-host  tags=[gitea-broken]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql      489 B  plain SQL
 
-  restore    ok          1.9s   2 inputs
-  compose    ok          1.4s   2 services, db first for the dump
-  load db    ok          2.0s   db: psql, 0 stderr lines
-  ready      ok          5.8s   postgres accepts connections, gitea answers on the internal network
+  restore    ok          2.2s   2 inputs
+  compose    ok          1.8s   2 services, db first for the dump
+  load db    ok          2.8s   db: psql, 0 stderr lines
+  ready      ok          6.8s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.84s
-  ✘  repos-in-db         The database contains at least one repository   0.53s
+  ✔  web-ui-renders      The web UI renders the instance home page       0.99s
+  ✘  repos-in-db         The database contains at least one repository   0.69s
                          row
                            query   SELECT count(*) FROM repository;
                            expect  scalar_int_min: 1
                            got     0
-  ✘  users-in-db         The database contains at least one real user    0.66s
+  ✘  users-in-db         The database contains at least one real user    0.77s
                          account
                            query   SELECT count(*) FROM "user" WHERE lower_name <> 'ghost';
                            expect  scalar_int_min: 1
                            got     0
-  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
+  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.69s
                          → 1 match for */*.git/HEAD
-  ✘  api-lists-repos     The API lists repositories, so the database      1.0s
+  ✘  api-lists-repos     The API lists repositories, so the database     0.86s
                          and the disk agree
                            expect  json_path_len_min: 1
                            got     0
 
-  RESTORE UNUSABLE  2/5 checks  ·  total 15.6s  ·  teardown ok
+  RESTORE UNUSABLE  2/5 checks  ·  total 20.1s  ·  teardown ok
 
   LIKELY CAUSE
     The application's tables are there, but they are empty

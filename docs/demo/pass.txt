@@ -1,26 +1,26 @@
-drillback 0.1.0-dev · recipe gitea · run fyd34mcf
+drillback 0.1.0-dev · recipe gitea · run ikb22jon
 
   source     restic  C:/Users/kadyr/AppData/Local/Temp/drillback-demo/repo
-  snapshot   a8dc39bc  2026-08-30 17:50:59  host=demo-host  tags=[gitea]
+  snapshot   53ca6608  2026-09-03 04:37:57  host=demo-host  tags=[gitea]
   inputs     data  /srv/gitea/data    102.2 KiB  54 files
              db    /srv/gitea/db.sql  231.1 KiB  plain SQL
 
-  restore    ok          4.1s   2 inputs
-  compose    ok          2.9s   2 services, db first for the dump
-  load db    ok         12.8s   db: psql, 0 stderr lines
-  ready      ok         11.5s   postgres accepts connections, gitea answers on the internal network
+  restore    ok          2.4s   2 inputs
+  compose    ok          3.7s   2 services, db first for the dump
+  load db    ok          4.4s   db: psql, 0 stderr lines
+  ready      ok         11.3s   postgres accepts connections, gitea answers on the internal network
 
   CHECKS
-  ✔  web-ui-renders      The web UI renders the instance home page       0.75s
-  ✔  repos-in-db         The database contains at least one repository   0.52s
+  ✔  web-ui-renders      The web UI renders the instance home page        1.3s
+  ✔  repos-in-db         The database contains at least one repository   0.89s
                          row → 1
-  ✔  users-in-db         The database contains at least one real user    0.52s
+  ✔  users-in-db         The database contains at least one real user    0.57s
                          account → 1
-  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.00s
+  ✔  repo-files-on-disk  At least one bare repository exists on disk     0.80s
                          → 1 match for */*.git/HEAD
-  ✔  api-lists-repos     The API lists repositories, so the database     0.82s
+  ✔  api-lists-repos     The API lists repositories, so the database      1.1s
                          and the disk agree → 1 item
 
-  PASS  5/5 checks  ·  total 35.1s  ·  teardown ok
+  PASS  5/5 checks  ·  total 28.6s  ·  teardown ok
 
 This backup boots.

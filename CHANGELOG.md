@@ -8,29 +8,29 @@ report and the harness report, and within a major version fields are only ever a
 
 ## [Unreleased]
 
-### Added
+Nothing yet.
 
-- **Fifteen more recipes**, one for each application in the official-docs restore
-  drill: `beszel`, `changedetection`, `convertx`, `filebrowser`, `freshrss`, `gogs`,
-  `gotify`, `listmonk`, `mealie`, `memos`, `n8n`, `navidrome`, `open-webui`, `siyuan`,
-  `trilium`. Every one passes both stages of `drillback recipe test`, which brings the
-  registry to twenty.
-- **`docs/drill/`** - the drill itself. For each application: the official backup
-  documentation quoted as written, the commands that were run, the reports the tool
-  produced, the root cause of every failure, and a draft issue that has not been filed.
-  `docs/drill/summary.md` has the totals and the patterns; `docs/drill/SKIPPED.md` says
-  what was passed over and why.
-
-### Changed
-
-- `scripts/lint-english.sh` skips `docs/drill/*/result*.json`. Those files are written
-  by `drillback --report` and carry another application's log output verbatim, which is
-  not this repository's to anglicise.
-
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-09-03
 
 The first release. `drillback` restores a backup into a throwaway, isolated Docker
 Compose stack, starts the application, and asserts that the data is actually there.
+
+### Highlights
+
+- **One command, one exit code.** `drillback check --recipe gitea --source restic
+  --from /srv/backups` restores, boots, checks and cleans up in about a minute, and
+  answers `PASS` (0), `RESTORE UNUSABLE` (1) or a tool error (2). A cron line is all
+  the integration a NAS needs.
+- **Twenty recipes, every one proved both ways.** Each ships in the binary and each
+  has passed the round trip in CI: its checks must fail against an empty application
+  and must pass against data that went out through a real restic backup and came
+  back. That harness, not a reviewer's judgement, is what lets a stranger's recipe be
+  merged.
+- **Isolation is a schema, not a promise.** No privileged containers, no host
+  namespaces, no published ports, no bind mount outside the run's own workspace, no
+  Docker socket. A compose key the tool has not considered is rejected by name.
+- **Failures come with a next step.** Eighteen hint rules turn `permission denied`,
+  a schema-only dump, or a missing `config.php` into a sentence about what to fix.
 
 ### Added
 
@@ -39,9 +39,15 @@ Compose stack, starts the application, and asserts that the data is actually the
   network with no published ports, loads any database dump, waits for the application
   to be ready, runs the recipe's checks, and tears everything down. `PASS` is exit 0,
   `RESTORE UNUSABLE` is exit 1, a tool error is exit 2.
-- **Five recipes**, each of which proves itself: `gitea`, `nextcloud`,
-  `paperless-ngx`, `uptime-kuma`, `vaultwarden`. (Fifteen more arrived after this
-  entry was written; see *Unreleased*.)
+- **`drillback.yaml`**, with `check --config`, `--target` and `--all`: sources,
+  targets and defaults in one file, relative paths resolved against the file, an
+  unknown key refused rather than ignored. `--all` runs every enabled target in file
+  order, prints each report as it finishes, and exits with the worst outcome; a target
+  that never ran is counted and forces exit 2 (ADR-067, ADR-068).
+- **Twenty recipes**, each of which proves itself: `beszel`, `changedetection`,
+  `convertx`, `filebrowser`, `freshrss`, `gitea`, `gogs`, `gotify`, `listmonk`,
+  `mealie`, `memos`, `n8n`, `navidrome`, `nextcloud`, `open-webui`, `paperless-ngx`,
+  `siyuan`, `trilium`, `uptime-kuma`, `vaultwarden`.
 - **`drillback recipe test`** - the round-trip harness. Stage A runs a recipe's checks
   against an empty application and requires one to fail; stage B seeds real data
   through the application's own front door, backs it up with restic, destroys
@@ -61,6 +67,10 @@ Compose stack, starts the application, and asserts that the data is actually the
   `--hints FILE` and, deliberately, the easiest useful contribution to the project.
 - **A JSON report** at `schema_version 1`, from `--json` or `--report FILE`, with the
   repository string scrubbed of any password.
+- **`docs/drill/`** - a restore drill against fifteen applications' official backup
+  documentation, quoted as written: the commands that were run, the reports the tool
+  produced, and the root cause of every failure. `docs/drill/summary.md` has the
+  totals and the patterns.
 - **`install.sh`**, which detects the OS and architecture, verifies the release
   checksum, and refuses to run as root without `--system`.
 - **A container image** bundling `drillback`, the Docker CLI, the Compose plugin and
@@ -88,6 +98,11 @@ in that directory.
 
 ### Fixed
 
+- On Linux, an application image that re-owns its mounted data directory on startup
+  (FreshRSS, Trilium, Nextcloud) made the restored files unreadable to `drillback`
+  itself, and `load db` failed with `permission denied` before a single check ran.
+  Every read of the workspace after the stack is up now goes through the Docker
+  daemon, on every platform (ADR-071).
 - A run that exceeded its `--timeout` was reported as `RESTORE UNUSABLE`, which
   accuses a backup that may be perfectly good. It is now a tool error, and the default
   budget is larger than the stage budgets inside it (ADR-058).
@@ -103,16 +118,19 @@ in that directory.
 - A recipe whose application refuses to start without data could pass the round trip
   with no check that counts anything, which is the false PASS this tool exists to
   destroy (ADR-064).
+- An interrupted `--all` could exit 0 claiming a clean sweep when a signal landed
+  during one target's teardown and the rest never ran.
 
 ### Known gaps
 
-- `drillback.yaml`, `--target`, `--all` and `--config` are specified and not
-  implemented. An invocation that uses one fails loudly rather than silently doing
-  nothing (ADR-045).
-- `borg` and `kopia` sources are not implemented. `source.Source` is a real interface
-  now, so a third source is one `case` (ADR-063).
+- `borg` and `kopia` sources are not implemented. `source.Source` is a real interface,
+  so a third source is one `case` (ADR-063).
 - A `mysql-dump` input kind. `recipe init --compose` recognises a MySQL service and
   says so in the file it writes.
+- Binaries are not signed. Checksums and SBOMs ship with every release; signatures are
+  a decision for a later version.
+- 38 smaller findings from the pre-release reviews are open as `help wanted` issues
+  on purpose: they are the places a first contribution fits.
 
 [Unreleased]: https://github.com/spelingbee/drillback/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/spelingbee/drillback/releases/tag/v0.1.0
