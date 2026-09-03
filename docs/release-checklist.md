@@ -20,7 +20,8 @@ labels before anything that applies one.
   binaries, six archives, six SBOMs, a checksum file and a Homebrew cask.
 - The Linux binary out of that archive was run through `scripts/demo.sh` against real
   Gitea and PostgreSQL stacks and reached `PASS 5/5`, exit 0.
-- Nothing has been published, tagged, pushed, posted or filed.
+- Nothing has been tagged, published to a registry, or posted. The repository is
+  public, the labels exist and the issues are filed (steps 2, 3 and 7 below).
 
 ---
 
@@ -32,10 +33,10 @@ private one - so they moved to the go-public moment and are listed under 3.
 
 | # | Setting | State on 2026-08-31 |
 |---|---|---|
-| 1.1 | **Private vulnerability reporting: on** | **Moved to step 3**: the API answers 404 on a private repository - the feature exists only on public ones. Flip it the moment the repository is public, before anything is announced; `SECURITY.md` and `CODE_OF_CONDUCT.md` both route here (MNT-07). |
+| 1.1 | **Private vulnerability reporting: on** | **Done on 2026-09-03**, by the human, once the repository was public; the Advanced Security page shows *Disable* for it. Dependency graph, Dependabot alerts, security updates and grouped security updates were switched on at the same time (`dependabot_security_updates: enabled` via the API). `SECURITY.md` and `CODE_OF_CONDUCT.md` both route here (MNT-07). |
 | 1.2 | **Discussions: on** | **Done** (`gh repo edit --enable-discussions`), verified in Settings > Features. |
 | 1.3 | **Issue templates** | **Done**: the chooser renders all four templates plus the three `config.yml` contact links, verified at `/issues/new/choose`. |
-| 1.4 | **Actions: require approval for first-time contributors** | **Moved to step 3**: the API answers "Fork PR approval is not allowed for private repositories". Verify it is **on** (it is the default) the moment the repository is public (MNT-06). |
+| 1.4 | **Actions: require approval for first-time contributors** | **Done, verified on 2026-09-03** via the API: `actions/permissions/fork-pr-contributor-approval` answers `first_time_contributors` (MNT-06). |
 | 1.5 | **Branch protection on `main`** | **Done**, with the names the checks actually have - the `ci / ` prefix was a UI rendering, and `unit` is a matrix: required checks are `lint`, `generated`, `unit (ubuntu-latest)`, `unit (macos-latest)`, `unit (windows-latest)`, `verdict`, each pinned to the GitHub Actions app (id 15368). `integration` is deliberately not required: it is real and green, but it is the slowest job. Not `test (<name>)` - the recipes matrix is skipped entirely when a change touches no recipe; `verdict` is the aggregate that always runs. |
 | 1.6 | **Allow `refresh-registry.yml` to push to `main`** | **Done**: workflow permissions are read and write (verified in the UI). One caveat now written down instead of discovered later: classic branch protection applies required checks to the Actions bot's direct pushes too, so `refresh-registry.yml`'s push may be rejected on its first real run. If it is, convert the protection to a ruleset with the GitHub Actions app as a bypass actor - the "exception" this row always meant - and retire this caveat. |
 
@@ -53,7 +54,12 @@ so this comes before the repository is public and before any issue is filed.
 
 ---
 
-## 3. Make the repository public
+## 3. Make the repository public - done
+
+**Done by the human** before 2026-09-03 (session 9 found `isPrivate: false` on
+arrival), and the two settings below were switched on and verified the same day; the
+table in step 1 has the evidence. Kept here as written, because the order still
+matters for anyone doing this again.
 
 **Stop point 4.** After this, everything in the repository is quotable and every link
 in it resolves. The name question is closed: the human chose `drillback` - the
@@ -143,7 +149,12 @@ surprise.
 
 ---
 
-## 7. Seed the work a stranger can pick up
+## 7. Seed the work a stranger can pick up - done
+
+**Done on 2026-08-31**: the 38 review findings are issues #4-#46 (`help wanted`),
+the recipe requests are the 35 `recipes-wanted` issues up to #76, and `recipe-health`
+filed #1-#3 itself. The commands stay here because both scripts are idempotent by
+title and are how a later batch gets filed.
 
 ```sh
 ./scripts/backlog-issues.sh                  # dry run: 38 issues from the reviews

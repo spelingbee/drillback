@@ -67,11 +67,14 @@ What does **not** work yet, deliberately:
   `docs/docker.md`, `docs/homebrew-tap.md`, `docs/release-checklist.md` and
   `docs/recipe-spec.md` all exist now.
 - **The 38 P2 and P3 findings** in `docs/review/backlog.md`. Deliberately not fixed:
-  they are the contributor entry points, and `scripts/backlog-issues.sh` files them the
-  hour the repository goes public.
-- **Nothing is published.** No tag, no image pushed, no tap, no issues filed, no labels
-  created, and the repository is not public. Those are stop points; see CLAUDE.md and
-  `docs/release-checklist.md`, which is the ordered list.
+  they are the contributor entry points. They are filed - issues #4-#46 carry the
+  `help wanted` label, the 35 `recipes-wanted` issues run to #76, all on 2026-08-31.
+- **No release yet.** No tag, no image pushed, no tap. The repository **is public**
+  (found so by session 9 on 2026-09-03; the human's stop-point-4 decision), the
+  labels exist, the 76 issues are filed, and the two public-only settings - private
+  vulnerability reporting, first-time-contributor approval - are on and verified via
+  the API. What remains is stop points 1 and 6 and the announcement;
+  `docs/release-checklist.md` is the ordered list.
 
 Repository layout now matches SPEC.md section 13, plus `internal/runner` (ADR-038),
 `internal/sqlite`, `internal/harness`, `tools/gen`, and `assets.go` at the root
@@ -1671,19 +1674,134 @@ latest health run) **and nothing else**: going public is not blocked.
 
 ---
 
+### Session 9 - 2026-09-03 - The workspace is read through the daemon
+
+The brief, from the human's "what is next" after the launch-day settings: clear the
+one thing blocking the tag. Found on arrival, and now recorded above: the repository
+was already public, the labels and all 76 issues already existed, and the two
+public-only settings had just been switched on by the human; verified via the API
+(`approval_policy: first_time_contributors`, `dependabot_security_updates: enabled`,
+private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
+--apply` re-run was a no-op, as designed.
+
+**Done:**
+
+1. **The class behind issues #1-#3, reproduced first.** Docker Desktop was not
+   running; started it, built the Linux binary, and ran issue #1's rig (`docker:cli`
+   plus `apk add restic`, uid 1001, `TMPDIR=/var/lib/drillback-health`). The failure
+   is exactly CI's:
+
+   ```text
+   $ ./bin/drillback-linux recipe test ./recipes/freshrss --stage b   (as uid 1001)
+       load db    FAILED     0.00s
+                  input "db": opening db.sqlite: stat
+                  /var/lib/drillback-health/drillback-v6ebhqgm/inputs/data/users/drilladmin/db.sqlite:
+                  permission denied
+       RESTORE UNUSABLE  0/5 checks  ·  total 4.1s  ·  teardown ok
+   ```
+
+2. **`compose.Reader`**, the one place that reads the workspace after `compose up`:
+   root in the curl helper, inputs bound read-only at `/inputs`. `List` (`find
+   -maxdepth N -exec stat`) backs `file` checks, judged by `observeTree` the way the
+   host used to judge the tree, with `path.Match` on `filepath.Glob`'s own pattern
+   syntax. `Fetch` copies a SQLite file plus `-wal`/`-shm` into the workspace's new
+   `reads/` and the in-process opener reads the copy, so ADR-040 stands. A missing
+   path is helper exit 3 and comes back as `exists: false` / `fs.ErrNotExist`, which
+   stage A's refusal verdict depends on. No host fast path, no platform branch:
+   Windows takes the same route. ADR-071 records it, and records the rejected
+   alternative - `chmod -R a+rX` on the live tree - which Nextcloud forbids outright.
+
+3. **Verified under the rig, all three formerly red recipes:**
+
+   ```text
+   $ ./bin/drillback-linux recipe test ./recipes/freshrss --timeout 10m   (as uid 1001)
+     stage A  negative: the checks must fail against an empty sta… PASS      13.4s
+              3 of 5 checks failed against an empty stack: feeds-present,
+              entries-present, user-config-present
+     stage B  round trip: seed, export, back up, restore, check    PASS      29.8s
+              the round trip restored and all 5 checks passed
+     PASS   freshrss in 43.4s
+
+   $ ./bin/drillback-linux recipe test ./recipes/trilium ./recipes/nextcloud --timeout 15m
+     PASS   trilium in 1m15s        (stage A: 2 of 4 checks failed against an empty stack)
+     PASS   nextcloud in 2m01s      (stage A: 3 of 6 checks failed against an empty stack)
+     2 recipes: 2 passed, 0 failed, 0 errored, in 3m17s
+   ```
+
+   Stage A got stronger as a side effect: the loader now reads the application's
+   fresh database instead of dying on its permissions, so freshrss goes from
+   PASS-BY-STARTUP-REFUSAL to three checks genuinely failing.
+
+4. **Verified on Windows**, the same binary path:
+
+   ```text
+   $ ./bin/drillback recipe test ./recipes/uptime-kuma --timeout 10m
+     PASS   uptime-kuma in 1m50s    (stage B: all 6 checks passed)
+   ```
+
+5. **The usual gates, locally:**
+
+   ```text
+   $ gofmt -l .                       (nothing)
+   $ go vet ./... && go vet -tags integration ./...
+   VET_OK
+   $ go test ./...
+   ok      github.com/spelingbee/drillback/internal/check          2.264s
+   ok      github.com/spelingbee/drillback/internal/compose        0.993s
+   ok      github.com/spelingbee/drillback/internal/loader         2.240s
+   ok      github.com/spelingbee/drillback/internal/runner         1.613s
+   ok      github.com/spelingbee/drillback/internal/workspace      0.993s
+   (every other package ok or without tests; nothing skipped)
+   $ golangci-lint run ./...
+   0 issues.
+   $ ./scripts/lint-english.sh
+   lint-english: ok
+   ```
+
+   `-race` was not run on this host (no C compiler, as always); CI's `unit` job runs
+   it.
+
+6. **Pull request #77** from `session-9-daemon-reads`, "Fixes #1, #2, #3". Because
+   the change touches `internal/`, `recipes.yml` on the PR ran the whole twenty-recipe
+   matrix on Linux runners. Every check passed:
+
+   ```text
+   $ gh pr checks 77 --watch
+   integration            pass  3m3s     (run 33712501300)
+   lint                   pass  49s
+   unit (ubuntu-latest)   pass  1m10s    <- the -race run this host cannot do
+   unit (macos-latest)    pass  36s
+   unit (windows-latest)  pass  1m21s
+   test (freshrss)        pass  1m12s    (run 33712501221, 20 recipes)
+   test (trilium)         pass  1m46s
+   test (nextcloud)       pass  2m17s
+   test (beszel) ... test (vaultwarden): pass, all 17 others
+   verdict                pass  4s
+   ```
+
+   And `recipes.yml` dispatched on the branch for exactly the three
+   (run 33712510323): `test (freshrss)`, `test (trilium)`, `test (nextcloud)` all
+   `completed success`, `verdict` success.
+
+---
+
 ## Next steps
 
 In order. Each is sized to be finishable and committable on its own.
 
-### Session 9 - host-side reads of container-owned trees (blocks the v0.1.0 tag)
+### Session 9 - host-side reads of container-owned trees - done
 
-The class behind issues #1-#3: on Linux, an application that chowns its mounted data
-directory makes the workspace unreadable to the host process, and `load db` or a
-`file` check dies with `permission denied`. CopyOut's comment already states the
-principle to follow - let the daemon read the files. The sqlite integrity check
-already runs in a container; the host-side pre-stat is what breaks. Fix the class,
-not the recipes; the local repro rig is in issue #1; re-dispatch `recipe-health`
-until 20 of 20.
+**Answered by session 9.** `compose.Reader` reads the workspace through the daemon
+once the application is up; `file` checks, the sqlite integrity check and
+`driver: sqlite` queries all go through it; ADR-071 records it. freshrss, trilium and
+nextcloud pass both stages under the uid-1001 rig from issue #1. See the session 9
+log entry for the evidence and for the CI runs.
+
+### The tag - a human's
+
+The three red recipes were the only thing in the way of stop point 1. Once
+`recipe-health` on `main` is 20 of 20 with the session 9 change merged, the release
+checklist's step 4 is the next thing, and it is not a session's to do.
 
 ### `internal/config` - done
 
