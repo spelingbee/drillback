@@ -1866,11 +1866,25 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
     `go install ...@latest` also builds and runs, but reports `0.1.0-dev` with an
     unknown commit: ldflags do not reach it. Filed as #78, `good first issue`.
 
-12. **The container image, built and not pushed.** `docker build` with the checklist's
+12. **The container image, built and pushed.** `docker build` with the checklist's
     exact command; `version` inside it says `drillback 0.1.0`, restic 0.18.0. The
-    `gh` token has no `write:packages`, so the push is the human's next keystroke
-    (`gh auth refresh -h github.com -s write:packages`), as is the package's
-    visibility flip in the UI.
+    `gh` token had no `write:packages`; the human added it, and then:
+
+    ```text
+    $ gh auth token | docker login ghcr.io -u spelingbee --password-stdin
+    Login Succeeded
+    $ docker push ghcr.io/spelingbee/drillback:0.1.0
+    0.1.0: digest: sha256:539cac8391ca2daac28de508ba36e77672f444d0041eee8e30e90228ee68888d size: 856
+    $ docker push ghcr.io/spelingbee/drillback:latest
+    latest: digest: sha256:539cac8391ca2daac28de508ba36e77672f444d0041eee8e30e90228ee68888d size: 856
+    $ gh api user/packages/container/drillback --jq .visibility
+    private
+    ```
+
+    The package is private and not linked to the repository, and GitHub exposes no
+    API for either: Package settings > Change visibility > Public, and connect the
+    repository, are the human's, before `docs/docker.md`'s `docker run` line works
+    for anyone else.
 
 13. **The tap.** `spelingbee/homebrew-tap` created public; `Casks/drillback.rb` is
     goreleaser's own rendering (snapshot `release` in the `goreleaser/goreleaser`

@@ -115,14 +115,15 @@ Then publish the draft in the GitHub UI. **Stop point 6** - that is the moment
 
 ---
 
-## 5. The container image - built, not pushed
+## 5. The container image - pushed, still private
 
-**Built on 2026-09-03** with exactly the command below at `7d93053`;
-`docker run --rm ghcr.io/spelingbee/drillback:0.1.0 version` reports `drillback 0.1.0`,
-restic 0.18.0, 20 recipes (and `docker: not found`, correctly: no socket is mounted).
-**Not pushed**: the `gh` token on this machine has `repo` and `workflow` scopes and no
-`write:packages`. `gh auth refresh -h github.com -s write:packages` and then the
-login and push lines below; then the two UI steps.
+**Built and pushed on 2026-09-03** with exactly the commands below at `7d93053`, after
+the human added `write:packages` to the `gh` token: `0.1.0` and `latest`, both at
+`sha256:539cac83...`. `docker run --rm ghcr.io/spelingbee/drillback:0.1.0 version`
+reports `drillback 0.1.0`, restic 0.18.0, 20 recipes (and `docker: not found`,
+correctly: no socket is mounted). **Still private and not linked to the repository**
+(`gh api user/packages/container/drillback` says `visibility: private`); GitHub has
+no API for either, so the two UI steps below are the human's.
 
 **Stop point 6.** Nothing pushes an image today: there is no workflow step that does,
 on purpose. To publish one:
