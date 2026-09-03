@@ -155,8 +155,11 @@ Then, in the GitHub UI:
 public, and `Casks/drillback.rb` is the file goreleaser rendered in a snapshot run
 (`release --snapshot` in the goreleaser container, which carries syft) with
 `version "0.1.0"` and the four `darwin`/`linux` checksums from the release's own
-`checksums.txt`. Not verified with `brew install`: there is no macOS on this side, so
-step 6 below is still open, and it is the first thing to do from a Mac.
+`checksums.txt`. Verified the way a user would, on a hosted macOS runner: the tap's
+own `install.yml` workflow (run 33742243334, `macos-latest`, darwin/arm64) did
+`brew tap spelingbee/tap && brew install spelingbee/tap/drillback`, and
+`drillback version` printed `drillback 0.1.0` with the release commit. It runs on every
+push to the tap, so a broken cask is red before anyone installs it.
 **Still open**: step 3 (the fine-grained token and the `HOMEBREW_TAP_GITHUB_TOKEN`
 secret, both UI) and step 4 (flipping `skip_upload`, which must wait for the secret
 or the next tag fails at the cask step).

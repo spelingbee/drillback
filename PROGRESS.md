@@ -1897,8 +1897,19 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
     container, which carries syft; the stale `dist/` from session 4 had to be removed
     first) with `version "0.1.0"` and the release's four tar.gz checksums substituted
     and cross-checked against `checksums.txt`. Pushed with LF endings (verified: zero
-    CR bytes in the blob). **Not verified with `brew install`**: no macOS here.
-    `skip_upload` stays `true` until `HOMEBREW_TAP_GITHUB_TOKEN` exists.
+    CR bytes in the blob). No macOS here, so the tap got an `install.yml` that runs
+    on `macos-latest` and does what a user does:
+
+    ```text
+    $ brew tap spelingbee/tap && brew install spelingbee/tap/drillback && drillback version
+    ==> Installing Cask drillback
+    drillback 0.1.0
+      commit:    7d9305399d173b135a64fb377b4ab5b46804b2ce
+      platform:  darwin/arm64
+    ```
+
+    Run 33742243334 in `spelingbee/homebrew-tap`, green. `skip_upload` stays `true`
+    until `HOMEBREW_TAP_GITHUB_TOKEN` exists.
 
 **Not done, deliberately:** the announcement (stop point 3). Where and with what
 words is a conversation, not a session's decision.
