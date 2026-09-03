@@ -22,8 +22,13 @@ Rules for this file:
 (stop point 1). Five independent reviewers went through the repository before strangers
 could; all 9 P0 and all 21 P1 findings are fixed; the remaining 38 are written up as
 `help wanted` issues waiting for the repository to be public.
-**Version:** unreleased. No tags. `0.1.0-dev` is what a local build reports; the release
-version comes from the tag through ldflags and from nowhere else.
+**Version:** **v0.1.0, released 2026-09-03** at `7d93053`:
+https://github.com/spelingbee/drillback/releases/tag/v0.1.0 - six archives, six SBOMs,
+checksums; `install.sh` verified end to end from a clean Ubuntu container. `0.1.0-dev`
+is what a local build reports; the release version comes from the tag through ldflags
+and from nowhere else (which is issue #78 for `go install` users). Still open from the
+release checklist: the ghcr push (needs a `write:packages` token), the tap's token and
+secret, and the announcement.
 **Module:** `github.com/spelingbee/drillback`. The name is settled: the human chose
 the rename at stop point 7 on 2026-08-30, session 8 executed it, ADR-070 records it.
 Pre-rename history in this file says `restored`, deliberately.
@@ -1805,7 +1810,78 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
    comments on an issue; #1-#3 carry no stray comment. Chain merge-then-dispatch
    with `&&`, never `;`.
 
-**Not done, deliberately:** the tag (stop point 1), and everything after it.
+**Then the human said "do it", and the release followed, all on 2026-09-03:**
+
+8. **Pre-tag items of SPEC.md 12.6.** CHANGELOG.md's Unreleased folded into a dated
+   0.1.0 with a highlights block and a Known gaps list that stopped claiming config
+   is unimplemented; README's pre-release note replaced. `scripts/capture-demo.sh` on
+   this host rewrote `docs/demo/*.txt` and the README blocks from real runs; the GIF
+   re-rendered through the vhs container route with `DRILLBACK_BIN=./bin/drillback-linux`
+   (800,541 bytes), and two frames pulled with ffmpeg and looked at: act one ends
+   `PASS 5/5 checks`, `exit=0`; act two `RESTORE UNUSABLE 2/5 checks`, `exit=1`.
+   Commit `614ad89`; `ci.yml` run 33716474505 green on it.
+
+9. **The tag, twice.** `v0.1.0` at `614ad89` failed in `release.yml`:
+
+   ```text
+   ⨯ release failed after 1m39s  error=exec: "syft": executable file not found in $PATH
+   ```
+
+   The snapshot job ran `build --snapshot`, which stops before SBOMs, so the dry run
+   had never proved the step that failed. Fixed in `7d93053`: `anchore/sbom-action/
+   download-syft` pinned by commit in both jobs, snapshot runs `release --snapshot`.
+   Dispatched the snapshot (run 33716984493, green), then deleted and re-created the
+   tag on `7d93053` - the tag was ten minutes old, no release existed, nothing had
+   been downloaded. Run 33717166107 green; draft with 13 assets.
+
+10. **Checklist 12.6.4, against the draft's own assets** (drafts have no public URL,
+    so `gh release download`, then):
+
+    ```text
+    $ sha256sum -c checksums.txt        all 12: OK
+    $ docker run --rm -v .../linux:/rel:ro -v .../recipes:/recipes:ro alpine:3.20 \
+        sh -c '/rel/drillback version && /rel/drillback recipe validate /recipes/*/ --strict'
+    drillback 0.1.0
+      commit:    7d9305399d173b135a64fb377b4ab5b46804b2ce
+      recipes:   20 bundled
+    ok       /recipes/vaultwarden/      (and the other nineteen)
+    ```
+
+    goreleaser's generated notes were a fifty-line commit list; replaced with the
+    CHANGELOG section plus the footer, and `.goreleaser.yaml` now `changelog:
+    disable: true`. Published 05:06 UTC (stop point 6, on the same "do it").
+
+11. **The install path users will take, from a clean container:**
+
+    ```text
+    $ docker run --rm ubuntu:24.04 sh -c '... su tester -c "curl -fsSL \
+        https://raw.githubusercontent.com/spelingbee/drillback/main/install.sh | sh \
+        && ~/.local/bin/drillback version"'
+    drillback 0.1.0
+      commit:    7d9305399d173b135a64fb377b4ab5b46804b2ce
+      platform:  linux/amd64
+      recipes:   20 bundled
+    ```
+
+    `go install ...@latest` also builds and runs, but reports `0.1.0-dev` with an
+    unknown commit: ldflags do not reach it. Filed as #78, `good first issue`.
+
+12. **The container image, built and not pushed.** `docker build` with the checklist's
+    exact command; `version` inside it says `drillback 0.1.0`, restic 0.18.0. The
+    `gh` token has no `write:packages`, so the push is the human's next keystroke
+    (`gh auth refresh -h github.com -s write:packages`), as is the package's
+    visibility flip in the UI.
+
+13. **The tap.** `spelingbee/homebrew-tap` created public; `Casks/drillback.rb` is
+    goreleaser's own rendering (snapshot `release` in the `goreleaser/goreleaser`
+    container, which carries syft; the stale `dist/` from session 4 had to be removed
+    first) with `version "0.1.0"` and the release's four tar.gz checksums substituted
+    and cross-checked against `checksums.txt`. Pushed with LF endings (verified: zero
+    CR bytes in the blob). **Not verified with `brew install`**: no macOS here.
+    `skip_upload` stays `true` until `HOMEBREW_TAP_GITHUB_TOKEN` exists.
+
+**Not done, deliberately:** the announcement (stop point 3). Where and with what
+words is a conversation, not a session's decision.
 
 ---
 

@@ -65,15 +65,12 @@ sboms:
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot"
 
+# The release notes are the version's section of CHANGELOG.md, pasted into the draft
+# by whoever publishes it. goreleaser's own changelog is a commit list, and the first
+# draft showed what that looks like for this repository: fifty subject lines that were
+# written for git log, not for a stranger deciding whether to install something.
 changelog:
-  use: git
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - '^ci:'
+  disable: true
       - '^style:'
       - "^Merge branch"
       - "^Merge pull request"

@@ -78,7 +78,18 @@ announced:
 
 ---
 
-## 4. Tag and release
+## 4. Tag and release - done
+
+**Done on 2026-09-03**, on the human's go-ahead: `v0.1.0` at `7d93053`, run
+33717166107 green, draft reviewed, published at 05:06 UTC. Two things happened on the
+way that the next release should know about. The first tag, at `614ad89`, failed in
+goreleaser because the runner has no `syft` and the snapshot job had never exercised
+the SBOM step; the fix is in `release.yml`, and the tag was deleted and re-created on
+the fixed commit ten minutes later, before any release existed and before anyone
+could have fetched it. That is the one time this is acceptable. And goreleaser's
+generated notes were a commit list, so the draft's body was replaced with the
+CHANGELOG section by hand and `.goreleaser.yaml` now disables the generated
+changelog: pasting the section is part of publishing.
 
 **Stop point 1.** Work through SPEC.md 12.6 first, then:
 
@@ -104,7 +115,14 @@ Then publish the draft in the GitHub UI. **Stop point 6** - that is the moment
 
 ---
 
-## 5. The container image
+## 5. The container image - built, not pushed
+
+**Built on 2026-09-03** with exactly the command below at `7d93053`;
+`docker run --rm ghcr.io/spelingbee/drillback:0.1.0 version` reports `drillback 0.1.0`,
+restic 0.18.0, 20 recipes (and `docker: not found`, correctly: no socket is mounted).
+**Not pushed**: the `gh` token on this machine has `repo` and `workflow` scopes and no
+`write:packages`. `gh auth refresh -h github.com -s write:packages` and then the
+login and push lines below; then the two UI steps.
 
 **Stop point 6.** Nothing pushes an image today: there is no workflow step that does,
 on purpose. To publish one:
@@ -129,7 +147,17 @@ Then, in the GitHub UI:
 
 ---
 
-## 6. The Homebrew tap
+## 6. The Homebrew tap - exists, first cask pushed by hand
+
+**Done on 2026-09-03**, steps 1, 2 and a manual 5: `spelingbee/homebrew-tap` is
+public, and `Casks/drillback.rb` is the file goreleaser rendered in a snapshot run
+(`release --snapshot` in the goreleaser container, which carries syft) with
+`version "0.1.0"` and the four `darwin`/`linux` checksums from the release's own
+`checksums.txt`. Not verified with `brew install`: there is no macOS on this side, so
+step 6 below is still open, and it is the first thing to do from a Mac.
+**Still open**: step 3 (the fine-grained token and the `HOMEBREW_TAP_GITHUB_TOKEN`
+secret, both UI) and step 4 (flipping `skip_upload`, which must wait for the secret
+or the next tag fails at the cask step).
 
 **Stop points 4 and 6.** Full instructions in
 [docs/homebrew-tap.md](homebrew-tap.md). In order:
