@@ -18,7 +18,7 @@ Rules for this file:
 
 ## Current state
 
-**Phase:** reviewed, hardened, and ready to release - up to the tag, which is a human's
+**Phase:** reviewed, hardened, green on every recipe, and ready to release - up to the tag, which is a human's
 (stop point 1). Five independent reviewers went through the repository before strangers
 could; all 9 P0 and all 21 P1 findings are fixed; the remaining 38 are written up as
 `help wanted` issues waiting for the repository to be public.
@@ -1782,6 +1782,30 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
    And `recipes.yml` dispatched on the branch for exactly the three
    (run 33712510323): `test (freshrss)`, `test (trilium)`, `test (nextcloud)` all
    `completed success`, `verdict` success.
+
+7. **Merged (rebase, two commits, `8f683e8` and `ca12a66`), issues #1-#3 closed by
+   the merge, and `recipe-health` dispatched on the new `main`:**
+
+   ```text
+   $ gh run view 33713094057 --json status,conclusion,jobs
+   completed success
+   list: success
+   health (freshrss): success
+   health (trilium): success
+   health (nextcloud): success
+   health (beszel) ... health (vaultwarden): success, all 17 others
+   ```
+
+   **20 of 20.** Release checklist item 2 ("all recipes green on the latest
+   `recipe-health` run") is met for the first time. One mistake on the way, recorded
+   so it is not repeated: the first merge attempt failed because the docs commit had
+   just re-triggered CI, and the command chain behind it still checked out `main`
+   and dispatched `recipe-health` against the old code. That run (33712835979) was
+   cancelled within two minutes, before any health job reached the step that
+   comments on an issue; #1-#3 carry no stray comment. Chain merge-then-dispatch
+   with `&&`, never `;`.
+
+**Not done, deliberately:** the tag (stop point 1), and everything after it.
 
 ---
 
