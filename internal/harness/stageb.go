@@ -168,6 +168,12 @@ func (o Options) stageB(ctx context.Context, b budget) (st Stage, kept *Kept, er
 		Network:     network,
 		HelperImage: runner.DefaultHelperImage,
 		Mounts:      harnessMounts(res),
+		Reader: &compose.Reader{
+			Client:      cli,
+			HelperImage: runner.DefaultHelperImage,
+			InputsDir:   ws.InputsDir(),
+			ReadsDir:    ws.ReadsDir(),
+		},
 	}
 
 	// ---- ready -------------------------------------------------------------

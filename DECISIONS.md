@@ -1832,3 +1832,60 @@ that is correct. GitHub redirects the old repository name for as long as nobody
 claims it; nothing else published ever carried the old name. The name question is
 closed - ADR-036's escape hatch is spent, and a third name would need a human's
 explicit instruction and a new ADR.
+
+---
+
+## ADR-071: Once the application is up, the workspace is read through the daemon
+
+**Status:** accepted (session 9)
+
+**Context.** The first `recipe-health` run on Linux runners turned three recipes red -
+freshrss, trilium, nextcloud (issues #1-#3) - with `load db` dying on
+`stat .../inputs/data/users/drilladmin/db.sqlite: permission denied` before a single
+check had run. The class, reproduced under a Linux uid on this machine: an application
+image that re-owns its mounted data directory on startup (FreshRSS chowns to 33:33 and
+0770; Trilium and Nextcloud's prepare service do the equivalent) leaves the calling
+process unable to stat what it restored a moment earlier. Every host-side read that
+followed `compose up` was exposed: the sqlite loader's stat and open, `sql` checks
+with `driver: sqlite`, and `file` checks' stat, ReadDir and Glob. Windows maps no
+ownership onto bind mounts, which is why eight sessions of Windows-hosted runs never
+saw it. ADR-055 (Relax) handles the opposite direction - a restored tree the
+application cannot read - and could not help here: the application has already
+re-owned the tree by the time the read happens, and opening the modes back up from
+the host is exactly what the host can no longer do.
+
+The alternative considered and rejected: a `chmod -R a+rX` on the inputs tree after
+`compose up`, the way `compose.Scrub` makes a workspace removable at teardown. It
+mutates the modes of a tree the application is running on, and Nextcloud refuses to
+serve at all when its data directory is readable by others, so the fix would have
+broken the recipe it was meant to fix.
+
+**Decision.** Every read of the workspace after `compose up` goes through the
+daemon, as root in the same throwaway helper container the HTTP checks already use,
+with the inputs tree bound read-only at `/inputs`. `compose.Reader` is the one place
+that does it:
+
+- `List` runs `find -maxdepth N -exec stat` over a path and returns entries; a `file`
+  check judges those the way it used to judge the tree itself, with `path.Match`
+  standing in for `filepath.Glob` on the same pattern syntax;
+- `Fetch` copies one regular file - and a SQLite database's `-wal` and `-shm`
+  sidecars when they exist - into a fresh directory under the workspace's new
+  `reads/`, opens the copies' modes, and hands back the copy's path; the sqlite
+  integrity check and `driver: sqlite` queries open that copy in-process, so ADR-040
+  stands.
+
+A missing path is exit 3 from the helper and comes back as `exists: false` or
+`fs.ErrNotExist`, not as an error: the harness's stage A depends on a missing
+database being a refusal, not a tool failure. There is no host-side fast path and no
+platform branch: Windows takes the same route, so the one code path is the one every
+platform's tests exercise - the lesson of this bug, and of the teardown scrub before it.
+
+**Consequences.** One helper container per `file` check and per SQLite read, at
+roughly half a second each on CI; `up 2.4s · check 15.9s` for freshrss's five checks
+under the rig is the measured cost. A large SQLite database is copied once per read
+and removed straight after. Stage A got stronger as a side effect: against the empty
+stack the loader now reads the application's fresh database instead of dying on its
+permissions, so the checks are exercised negatively (freshrss: 3 of 5 fail) rather
+than passing by startup refusal. `internal/check` and `internal/loader` no longer
+touch the filesystem under an input; `internal/compose` is still the only package
+that shells out.

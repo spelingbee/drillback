@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -159,9 +160,20 @@ func waitForPostgres(ctx context.Context, cli *compose.Client, load *recipe.Load
 
 // IntegrityCheck runs PRAGMA integrity_check against a restored SQLite file. A
 // malformed database is a restore failure, not a tool error.
-func IntegrityCheck(ctx context.Context, in *recipe.ResolvedInput) (Detail, error) {
+//
+// The file is read through rd, not opened in place: by now the application has
+// started, and an image that re-owns its data directory on startup has made the
+// original unreadable to this process. See compose.Reader.
+func IntegrityCheck(ctx context.Context, rd *compose.Reader, in *recipe.ResolvedInput) (Detail, error) {
 	d := Detail{Loader: "sqlite integrity_check"}
-	rows, err := sqlite.Query(ctx, in.LocalPath, "PRAGMA integrity_check;")
+	local, done, err := rd.Fetch(ctx, in.LocalPath)
+	if err != nil {
+		err = fmt.Errorf("opening %s: %w", filepath.Base(in.LocalPath), err)
+		d.Error = err.Error()
+		return d, fmt.Errorf("input %q: %w", in.Name, err)
+	}
+	defer done()
+	rows, err := sqlite.Query(ctx, local, "PRAGMA integrity_check;")
 	if err != nil {
 		d.Error = err.Error()
 		return d, fmt.Errorf("input %q: %w", in.Name, err)
