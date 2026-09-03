@@ -1824,7 +1824,7 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
 9. **The tag, twice.** `v0.1.0` at `614ad89` failed in `release.yml`:
 
    ```text
-   ⨯ release failed after 1m39s  error=exec: "syft": executable file not found in $PATH
+   x release failed after 1m39s  error=exec: "syft": executable file not found in $PATH
    ```
 
    The snapshot job ran `build --snapshot`, which stops before SBOMs, so the dry run
