@@ -300,11 +300,20 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 		Note:       composeNote,
 	})
 
+	// Everything that reads the workspace from here on goes through the daemon: the
+	// application is up, and it may own its data directory by now. See ADR-071.
+	reader := &compose.Reader{
+		Client:      cli,
+		HelperImage: helperImage(),
+		InputsDir:   ws.InputsDir(),
+		ReadsDir:    ws.ReadsDir(),
+	}
 	exec := &check.Executor{
 		Compose:     cli,
 		Network:     network,
 		HelperImage: helperImage(),
 		Mounts:      mountsOf(res),
+		Reader:      reader,
 	}
 
 	// From here on, a failure is a verdict about the backup, not a tool error.
@@ -359,7 +368,7 @@ func Run(ctx context.Context, o Options) (rep *report.Report, kept *Kept, err er
 			if in.Load == nil || !in.Load.IntegrityCheck {
 				continue
 			}
-			d, loadErr := loader.IntegrityCheck(runCtx, in)
+			d, loadErr := loader.IntegrityCheck(runCtx, reader, in)
 			detail[in.Name] = d
 			if loadErr != nil {
 				rep.Stages = append(rep.Stages, report.Stage{

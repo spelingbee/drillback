@@ -3,6 +3,10 @@
 // The database is opened in this process rather than inside a container, because the
 // file is a workspace path and because it means a recipe does not have to ship a
 // sqlite3 binary in the application's image to be checkable. See DECISIONS.md ADR-040.
+//
+// The file this package is handed is a copy compose.Reader made, not the restored
+// original: once the application has started it may own the original, and this
+// process may no longer be able to open it. See DECISIONS.md ADR-071.
 package sqlite
 
 import (

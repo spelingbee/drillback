@@ -56,7 +56,7 @@ func NewWithID(parent, id string) (*Workspace, error) {
 	}
 	ws := &Workspace{RunID: id, Root: root}
 	for _, d := range []string{ws.InputsDir(), ws.RestoreDir(), ws.LogsDir(),
-		ws.TestAssetsDir(), ws.ExportDir()} {
+		ws.TestAssetsDir(), ws.ExportDir(), ws.ReadsDir()} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return nil, fmt.Errorf("creating %q: %w", d, err)
 		}
@@ -91,6 +91,11 @@ func (w *Workspace) TestAssetsDir() string { return filepath.Join(w.Root, "test-
 
 // ExportDir backs ${DRILLBACK_EXPORT}, where the harness collects what it exported.
 func (w *Workspace) ExportDir() string { return filepath.Join(w.Root, "export") }
+
+// ReadsDir holds the copies compose.Reader makes of files a check reads once the
+// application is running. Root in a helper container writes them; the directory is
+// the caller's, which is what lets the caller open and then remove them.
+func (w *Workspace) ReadsDir() string { return filepath.Join(w.Root, "reads") }
 
 // ComposeFile is the interpolated compose file drillback writes and runs.
 func (w *Workspace) ComposeFile() string { return filepath.Join(w.Root, "compose.yaml") }

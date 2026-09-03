@@ -6,7 +6,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -37,6 +36,9 @@ type Executor struct {
 	Network     string
 	HelperImage string
 	Mounts      []Mount
+	// Reader is how a check reads the workspace once the application is running,
+	// which may by then own what it was handed. See compose.Reader.
+	Reader *compose.Reader
 }
 
 // Result is one check, run and judged.
@@ -73,7 +75,7 @@ func Run(ctx context.Context, e *Executor, c *recipe.Check, timeout time.Duratio
 	case "sql":
 		obs = e.SQL(ctx, c, timeout)
 	case "file":
-		obs = e.File(c)
+		obs = e.File(ctx, c)
 	default:
 		obs = Observation{Error: fmt.Sprintf("unknown check kind %q", c.Kind)}
 	}
@@ -189,7 +191,7 @@ func (e *Executor) TCP(ctx context.Context, service string, port int, timeout ti
 func (e *Executor) SQL(ctx context.Context, c *recipe.Check, timeout time.Duration) Observation {
 	switch c.Driver {
 	case "sqlite":
-		return sqliteQuery(ctx, c.File, c.Query, timeout)
+		return e.sqliteQuery(ctx, c.File, c.Query, timeout)
 	case "postgres":
 		return e.postgresQuery(ctx, c, timeout)
 	default:
@@ -197,10 +199,20 @@ func (e *Executor) SQL(ctx context.Context, c *recipe.Check, timeout time.Durati
 	}
 }
 
-func sqliteQuery(ctx context.Context, file, query string, timeout time.Duration) Observation {
+// sqliteQuery opens a copy the daemon made, not the restored file itself: the
+// application that has just started may own that file by now. See compose.Reader.
+func (e *Executor) sqliteQuery(ctx context.Context, file, query string, timeout time.Duration) Observation {
+	if e.Reader == nil {
+		return Observation{Error: "no workspace reader is configured for this run"}
+	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	rows, err := sqlite.Query(runCtx, file, query)
+	local, done, err := e.Reader.Fetch(runCtx, file)
+	if err != nil {
+		return Observation{Error: fmt.Sprintf("opening %s: %v", filepath.Base(file), err)}
+	}
+	defer done()
+	rows, err := sqlite.Query(runCtx, local, query)
 	if err != nil {
 		return Observation{Error: err.Error()}
 	}
@@ -250,41 +262,88 @@ func rowsObservation(rows [][]string) Observation {
 }
 
 // File inspects a path a service sees, through the workspace rather than through the
-// container, so a check costs no process in the application's image.
-func (e *Executor) File(c *recipe.Check) Observation {
+// container, so a check costs no process in the application's image. The workspace is
+// listed by the daemon rather than by this process, because the application that has
+// just started may own that path by now. See compose.Reader.
+func (e *Executor) File(ctx context.Context, c *recipe.Check) Observation {
+	if e.Reader == nil {
+		return Observation{Error: "no workspace reader is configured for this run"}
+	}
 	host, err := e.HostPath(c.Service, c.Path)
 	if err != nil {
 		return Observation{Error: err.Error()}
 	}
+	entries, exists, err := e.Reader.List(ctx, host, globDepth(c.Expect.Glob))
+	if err != nil {
+		return Observation{Error: err.Error()}
+	}
+	return observeTree(entries, exists, c.Expect.Glob)
+}
+
+// globDepth is how far below the path a listing has to reach: one level for the
+// entries `not_empty` counts, and one per segment for a glob to be judged.
+func globDepth(glob string) int {
+	glob = strings.Trim(glob, "/")
+	if glob == "" {
+		return 1
+	}
+	return strings.Count(glob, "/") + 1
+}
+
+// observeTree judges a listing the way the host used to judge the tree itself: the
+// path's own type and size, the number of direct entries under a directory, and the
+// number of matches for a glob. path.Match is filepath.Glob's own matcher, so a
+// pattern means what it always meant.
+func observeTree(entries []compose.Entry, exists bool, glob string) Observation {
 	var obs Observation
-	info, statErr := os.Stat(host)
-	exists := statErr == nil
 	obs.Exists = &exists
 	if !exists {
 		return obs
 	}
-	isDir := info.IsDir()
+	var self *compose.Entry
+	for i := range entries {
+		if entries[i].Rel == "" {
+			self = &entries[i]
+			break
+		}
+	}
+	if self == nil {
+		obs.Error = "the listing did not include the path itself"
+		return obs
+	}
+	isDir := self.IsDir
 	obs.IsDir = &isDir
 	if !isDir {
-		size := info.Size()
+		size := self.Size
 		obs.Bytes = &size
 		obs.Summary = fmt.Sprintf("%d bytes", size)
 	} else {
-		entries, readErr := os.ReadDir(host)
-		if readErr == nil {
-			n := len(entries)
-			obs.Entries = &n
+		n := 0
+		for _, en := range entries {
+			if en.Rel != "" && !strings.Contains(en.Rel, "/") {
+				n++
+			}
 		}
+		obs.Entries = &n
 	}
-	if c.Expect.Glob != "" {
-		matches, globErr := filepath.Glob(filepath.Join(host, filepath.FromSlash(c.Expect.Glob)))
-		if globErr != nil {
-			obs.Error = fmt.Sprintf("glob %q: %v", c.Expect.Glob, globErr)
-			return obs
+	if glob != "" {
+		pattern := strings.Trim(glob, "/")
+		n := 0
+		for _, en := range entries {
+			if en.Rel == "" {
+				continue
+			}
+			ok, matchErr := path.Match(pattern, en.Rel)
+			if matchErr != nil {
+				obs.Error = fmt.Sprintf("glob %q: %v", glob, matchErr)
+				return obs
+			}
+			if ok {
+				n++
+			}
 		}
-		n := len(matches)
 		obs.Count = &n
-		obs.Summary = fmt.Sprintf("%d match%s for %s", n, matchPlural(n), c.Expect.Glob)
+		obs.Summary = fmt.Sprintf("%d match%s for %s", n, matchPlural(n), glob)
 	}
 	return obs
 }
