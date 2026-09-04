@@ -1,6 +1,6 @@
-# Draft issue for Gotify - NOT FILED
+# Draft issue for Gotify - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/gotify/website/issues/106>, on the documentation repository.
 
 Where it would go: <https://github.com/gotify/server/issues>, or the documentation
 repository if the site is generated separately.

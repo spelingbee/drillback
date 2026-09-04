@@ -1,6 +1,6 @@
-# Draft issue for listmonk - NOT FILED
+# Draft issue for listmonk - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/knadh/listmonk/issues/3215>.
 
 Where it would go: <https://github.com/knadh/listmonk/issues>.
 

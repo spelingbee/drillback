@@ -27,8 +27,9 @@ https://github.com/spelingbee/drillback/releases/tag/v0.1.0 - six archives, six 
 checksums; `install.sh` verified end to end from a clean Ubuntu container. `0.1.0-dev`
 is what a local build reports; the release version comes from the tag through ldflags
 and from nowhere else (which is issue #78 for `go install` users). Still open from the
-release checklist: the ghcr push (needs a `write:packages` token), the tap's token and
-secret, and the announcement.
+release checklist: the tap's token and secret, and the announcement. The drill's
+findings went upstream on 2026-09-04 (session 10): nine issues and one comment, listed
+in `docs/drill/summary.md`.
 **Module:** `github.com/spelingbee/drillback`. The name is settled: the human chose
 the rename at stop point 7 on 2026-08-30, session 8 executed it, ADR-070 records it.
 Pre-rename history in this file says `restored`, deliberately.
@@ -1913,6 +1914,56 @@ private vulnerability reporting showing *Disable* in the UI). `scripts/labels.sh
 
 **Not done, deliberately:** the announcement (stop point 3). Where and with what
 words is a conversation, not a session's decision.
+
+### Session 10 - 2026-09-04 - The drill's findings go upstream
+
+The launch plan wants the upstream projects to hear about their findings a week or
+more before anybody else does, so this session put the `docs/drill/*/upstream-issue.md`
+drafts in front of the human and filed what was approved. Nothing was posted anywhere
+else.
+
+1. **Every draft re-checked against its target on 2026-09-04** (open issues, latest
+   release, current documentation), before it was shown. Three changed: Gogs #4339 is
+   closed, so the comment went to #7684 and links #7840, the same rename wall seen
+   through `--tempdir`; SiYuan's README already writes `serve`, so that item was
+   withdrawn; the n8n `import:credentials` bug was reproduced a third time, on 2.37.9
+   released the day before, with a stand-alone script outside the harness (the tail is
+   in `docs/drill/n8n/result.md`). PR #79.
+
+2. **Filed, with the human's sign-off on the full list (stop point 2):** nine issues
+   and one comment, each from its draft, each shaped to the target repository's issue
+   form where the repository refuses blank issues (Navidrome, n8n, Memos), each
+   linking `docs/drill/<app>/` for the unedited logs. The links are in each draft's
+   status line and in `docs/drill/summary.md`. n8n's bot answered within a minute with
+   a Linear ticket (GHC-9412); nothing else has replied yet.
+
+    ```text
+    $ for x in ...; do gh issue view "$2" --repo "$1" --json state,labels,comments ...; done
+    navidrome/navidrome    #6083   OPEN labels= comments=0
+    n8n-io/n8n             #37814  OPEN labels=status:in-linear, comments=1
+    navidrome/website      #436    OPEN labels= comments=0
+    n8n-io/n8n-docs        #5325   OPEN labels= comments=0
+    usememos/memos         #6271   OPEN labels= comments=0
+    henrygd/beszel-docs    #76     OPEN labels= comments=0
+    knadh/listmonk         #3215   OPEN labels= comments=0
+    gotify/website         #106    OPEN labels= comments=0
+    C4illin/ConvertX       #630    OPEN labels= comments=0
+    open-webui/docs        #1378   OPEN labels= comments=0
+    ```
+
+    The Gogs comment is
+    <https://github.com/gogs/gogs/issues/7684#issuecomment-5537700663>.
+
+3. **Not filed, on the same review:** the SiYuan draft and the separate Gogs
+   documentation issue. The reasons are in the drafts.
+
+**What this commits the human to:** eight of the texts offer a documentation PR if it
+is welcome. A maintainer who says yes should get one within a few days; the drafts hold
+the suggested wording, so each is a small PR.
+
+**Not done, deliberately:** the announcement (stop point 3), still. The upstream
+issues are the last prerequisite the launch plan named before it; the launch date is
+the human's.
 
 ---
 

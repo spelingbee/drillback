@@ -6,8 +6,8 @@ whether the application comes back with its data in it.
 
 Every verdict below was produced by `drillback check` against a restic repository, and
 every FAIL and PARTIAL was reproduced twice from an empty scratch directory. The reports
-are in each application's folder. Nothing has been filed anywhere: the `upstream-issue.md`
-drafts are for a human to review.
+are in each application's folder. The `upstream-issue.md` drafts were reviewed by a human and
+nine issues and one comment were filed on 2026-09-04; the list is at the end of this page.
 
 ## Totals
 
@@ -185,3 +185,27 @@ Numbers only as measured, over the fifteen applications tested.
 - **Where a page could be read two ways, the drill chose one as primary.** That choice is
   stated in each `docs.md` and it is arguable; the other reading was tested too wherever
   it was cheap.
+
+## What was filed upstream
+
+Filed on 2026-09-04, after the human's review (CLAUDE.md stop point 2), each one from
+the draft in its folder and each one linking that folder for the full logs:
+
+| App | Filed | Kind |
+|---|---|---|
+| Navidrome | [navidrome/navidrome#6083](https://github.com/navidrome/navidrome/issues/6083) | bug: `backup restore` reports success and restores nothing |
+| Navidrome | [navidrome/website#436](https://github.com/navidrome/website/issues/436) | docs: the restore section is missing three steps |
+| n8n | [n8n-io/n8n#37814](https://github.com/n8n-io/n8n/issues/37814) | bug: `import:credentials --separate` fails on the documented export directory (reproduced again on 2.37.9) |
+| n8n | [n8n-io/n8n-docs#5325](https://github.com/n8n-io/n8n-docs/issues/5325) | docs: what `--backup` does and does not contain |
+| Gogs | [gogs/gogs#7684 (comment)](https://github.com/gogs/gogs/issues/7684#issuecomment-5537700663) | reproduction on 0.14.3 added to the open issue; #4339 is closed, #7840 is the same wall |
+| Memos | [usememos/memos#6271](https://github.com/usememos/memos/issues/6271) | docs: "the database" is mostly in the `-wal` |
+| Beszel | [henrygd/beszel-docs#76](https://github.com/henrygd/beszel-docs/issues/76) | docs: no backup page; `data.db` alone is an empty hub you can sign in to |
+| listmonk | [knadh/listmonk#3215](https://github.com/knadh/listmonk/issues/3215) | docs: the Postgres dump leaves the uploads behind |
+| Gotify | [gotify/website#106](https://github.com/gotify/website/issues/106) | docs: `gotify.db` alone leaves the icons behind |
+| ConvertX | [C4illin/ConvertX#630](https://github.com/C4illin/ConvertX/issues/630) | README: `mydb.sqlite` alone gives a 403 at login |
+| Open WebUI | [open-webui/docs#1378](https://github.com/open-webui/docs/issues/1378) | docs: `cache/` is regenerable, and there is no restore section |
+
+Not filed, on the same review: the SiYuan draft (too thin, and its second item was
+already fixed upstream), the separate Gogs documentation issue (the comment is enough
+while seven restore issues sit open there), and nothing for changedetection.io,
+FreshRSS, Mealie, Trilium (no gap) or File Browser (archived 2026-09-01).

@@ -18,7 +18,7 @@ reader:
 - Ambiguity in the documentation is itself a finding. Where a page can be read two ways,
   the most obvious reading is the verdict and the other one is tested too when it is
   cheap.
-- **Nothing is filed anywhere.** `upstream-issue.md` in each folder is a draft.
+- **Nothing is filed without a human.** `upstream-issue.md` in each folder was written as a draft; the ones that were filed say so at the top, with the link, and were filed on 2026-09-04 with the human's sign-off. The list is in [summary.md](summary.md#what-was-filed-upstream).
 
 **Start here:** [summary.md](summary.md) has the totals, the three most instructive
 cases, the patterns that repeat, and the caveats. [SKIPPED.md](SKIPPED.md) records every
@@ -63,7 +63,7 @@ Verdicts:
 | `recipe/` | The recipe used against the documented backup, when it differs from the registry one. |
 | `result.md` | The verdict, the report, the root cause with evidence, and what the docs would need to say. |
 | `result-*.txt`, `result-*.json` | The reports, written by the tool. Never by hand. |
-| `upstream-issue.md` | A draft issue. Not filed. |
+| `upstream-issue.md` | The draft issue, and at the top whether it was filed and where. |
 
 ## Running one
 

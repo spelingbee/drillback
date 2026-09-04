@@ -1,6 +1,6 @@
-# Draft issue for Navidrome - NOT FILED
+# Draft issue for Navidrome - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2).** Issue 1 is <https://github.com/navidrome/navidrome/issues/6083>, in the shape of the repository's bug form; issue 2 is <https://github.com/navidrome/website/issues/436>, on the documentation repository, and links the first.
 
 Where it would go: <https://github.com/navidrome/navidrome/issues>. A human should
 search for an existing issue about `backup restore` before opening this; the reproduction

@@ -1,6 +1,6 @@
-# Draft issue for ConvertX - NOT FILED
+# Draft issue for ConvertX - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/C4illin/ConvertX/issues/630>.
 
 Where it would go: <https://github.com/C4illin/ConvertX/issues>.
 
