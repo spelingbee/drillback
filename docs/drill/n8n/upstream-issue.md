@@ -88,7 +88,8 @@ useful - please say which shape you would prefer.
 
 **Environment**
 
-- n8n 2.36.8, `n8nio/n8n:2.36.8`, Docker, SQLite.
+- n8n 2.36.8, `n8nio/n8n:2.36.8`, Docker, SQLite. Reproduced again on 2.37.9
+  (`n8nio/n8n:2.37.9`, released 2026-09-03) on 2026-09-04, with the same output.
 
 **Steps to reproduce**
 

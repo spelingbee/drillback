@@ -37,6 +37,12 @@ Suggested addition:
 
 ## 2 (documentation) - the Docker command in the README does not start v3.8.2
 
+**Withdrawn on 2026-09-04.** The README on `master` now writes `serve` before
+`--workspace` in both `docker run` examples and in the compose `command:`, and
+[#17866](https://github.com/siyuan-note/siyuan/issues/17866), closed 2026-06-16, is the
+project's own migration note for the change. The drill read a stale copy of the page.
+Nothing to file. The draft is kept below as it was written, for the record.
+
 **Title:** `README: the Docker command fails with "unknown flag: --accessAuthCode" on v3.8.2`
 
 The README's Docker section gives:
