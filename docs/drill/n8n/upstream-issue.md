@@ -1,7 +1,6 @@
-# Draft issue for n8n - NOT FILED
+# Draft issue for n8n - filed 2026-09-04
 
-**Status: draft. Nothing has been filed, and nothing may be filed without a human
-reviewing it first (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2).** Issue 2 is <https://github.com/n8n-io/n8n/issues/37814>, in the shape of the repository's bug form; issue 1 is <https://github.com/n8n-io/n8n-docs/issues/5325>, on the documentation repository, and links the bug.
 
 Where it would go: <https://github.com/n8n-io/n8n-docs/issues> (the documentation repo),
 or n8n's docs feedback route if that is preferred. Two separate issues are proposed,

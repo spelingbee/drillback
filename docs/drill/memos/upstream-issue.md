@@ -1,6 +1,6 @@
-# Draft issue for Memos - NOT FILED
+# Draft issue for Memos - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/usememos/memos/issues/6271>.
 
 Where it would go: <https://github.com/usememos/memos/issues>, or the documentation
 source if the site is generated from a separate repository.

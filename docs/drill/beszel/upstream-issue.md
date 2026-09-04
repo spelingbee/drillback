@@ -1,6 +1,6 @@
-# Draft issue for Beszel - NOT FILED
+# Draft issue for Beszel - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/henrygd/beszel-docs/issues/76>, on the documentation repository.
 
 Where it would go: <https://github.com/henrygd/beszel/issues>.
 

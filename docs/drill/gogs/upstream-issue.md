@@ -1,6 +1,6 @@
-# Draft comment / issue for Gogs - NOT FILED
+# Draft comment / issue for Gogs - comment posted 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: the comment was posted on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/gogs/gogs/issues/7684#issuecomment-5537700663>. The separate documentation issue below was **not** filed: seven restore issues are already open there and #7684 has waited two years, so the comment is enough.
 
 **Important: this is a comment on an existing issue, not a new one.** Checked on
 2026-09-04:

@@ -1,6 +1,6 @@
-# Draft issue for Open WebUI - NOT FILED
+# Draft issue for Open WebUI - filed 2026-09-04
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/open-webui/docs/issues/1378>, on the documentation repository.
 
 Where it would go: <https://github.com/open-webui/open-webui/issues>, or the
 documentation repository if the docs site is generated separately.

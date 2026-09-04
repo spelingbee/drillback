@@ -1,6 +1,6 @@
-# Draft issue for SiYuan - NOT FILED
+# Draft issue for SiYuan - not filed
 
-**Status: draft. Nothing has been filed (CLAUDE.md stop point 2).**
+**Status: not filed, on the human's decision of 2026-09-04.** Item 1 is too thin for an issue, and item 2 is withdrawn below.
 
 Where it would go: <https://github.com/siyuan-note/siyuan/issues>. Two small things,
 neither of them a data-loss finding; a human should decide whether either is worth an
