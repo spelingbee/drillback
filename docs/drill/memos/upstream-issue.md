@@ -1,6 +1,10 @@
 # Draft issue for Memos - filed 2026-09-04
 
 **Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/usememos/memos/issues/6271>.
+**Corrected the same day, with the human's sign-off:** the claim below that "there is no
+backup page" is wrong - see [docs.md](docs.md). The issue was retitled to *Docs: link
+Backup & Restore from the deploy pages, and name the -wal in "What to back up"* and a
+correction comment was posted. The draft is kept as filed, for the record.
 
 Where it would go: <https://github.com/usememos/memos/issues>, or the documentation
 source if the site is generated from a separate repository.

@@ -8,13 +8,26 @@
 
 ## Is there a backup page?
 
-No. There is deployment guidance that tells you what to keep, and that is all.
-
-Pages read:
+**Yes, and the drill missed it.** On 2026-08-30 this section said "No", on the strength
+of three pages:
 
 - <https://usememos.com/docs/deploy/docker-compose>
 - <https://usememos.com/docs/deploy/docker>
 - <https://usememos.com/docs/faq>
+
+On 2026-09-04, while preparing a documentation PR, the session found
+<https://usememos.com/docs/operations/backup-restore> - *Backup & Restore*, under
+Operations, linked from a card on the documentation index page since March 2026. It
+says to stop Memos and copy the whole data directory, or to use `sqlite3 .backup`,
+"which handles WAL mode correctly", and it names the assets directory. That is the
+right guidance, and the issue filed on the strength of the "No" above was corrected
+and retitled the same day: <https://github.com/usememos/memos/issues/6271>.
+
+What is still true: the verdict below was produced by following the deploy pages,
+which are the pages a person deploying with Docker reads, and neither of them links
+the Backup & Restore page. The compose page's production note says "back up both the
+database and any local assets", and *the database* read alone is `memos_prod.db`.
+That is the remaining gap, and it is one link and half a sentence.
 
 ## What the documentation says
 

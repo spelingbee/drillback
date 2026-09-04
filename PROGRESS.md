@@ -1957,6 +1957,22 @@ else.
 3. **Not filed, on the same review:** the SiYuan draft and the separate Gogs
    documentation issue. The reasons are in the drafts.
 
+4. **Two corrections, the same afternoon, with the human's sign-off.** Preparing the
+   documentation PRs meant cloning the documentation repositories, and the clone of
+   `usememos/dotcom` has `content/docs/operations/backup-restore.mdx`: Memos has had a
+   *Backup & Restore* page since March 2026, linked from the docs index, and it
+   handles WAL correctly. The drill read the deploy pages and the FAQ and said "no
+   backup page". The issue was retitled and a correction comment posted
+   (<https://github.com/usememos/memos/issues/6271#issuecomment-5538092936>); the
+   summary's "8 of 15" is now "7 of 15" and "one project names the -wal" is now two;
+   `memos/docs.md` says what was missed and what still stands (the deploy page does
+   not link the page). Beszel's draft said the built-in backup feature is not
+   mentioned in the docs; it is, on *What is Beszel*, and a correction comment says so
+   (<https://github.com/henrygd/beszel-docs/issues/76#issuecomment-5538093226>). The
+   lesson for the next drill: grep the documentation *repository* for the word, not
+   only the pages a deployer reads. The method was right for the verdict and wrong
+   for the claim about the documentation.
+
 **What this commits the human to:** eight of the texts offer a documentation PR if it
 is welcome. A maintainer who says yes should get one within a few days; the drafts hold
 the suggested wording, so each is a small PR.
