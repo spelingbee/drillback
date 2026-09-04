@@ -1,6 +1,10 @@
 # Draft issue for Beszel - filed 2026-09-04
 
 **Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/henrygd/beszel-docs/issues/76>, on the documentation repository.
+**Corrected the same day:** the last sentence of "Why I think this is worth a
+documentation change" is wrong - the built-in backup feature *is* mentioned, on *What
+is Beszel* and *User accounts*. What is missing is a page on what to back up by hand.
+A correction comment is on the issue; the draft is kept as filed.
 
 Where it would go: <https://github.com/henrygd/beszel/issues>.
 

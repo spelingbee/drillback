@@ -81,13 +81,19 @@ mysteriously forgot everybody.
 
 ## What the documentation would need to say instead
 
-One sentence on the deployment pages, or a short backup page:
+**Corrected 2026-09-04:** most of this already exists, on a page the drill missed -
+*Backup & Restore* under Operations (see [docs.md](docs.md)). It says to stop and copy
+the whole directory or to use `sqlite3 .backup`. What the deploy pages would need is a
+link to it, and the page's "What to back up: the database itself" would need half a
+sentence:
 
 > Back up the whole `/var/opt/memos` directory. If you copy the SQLite database on its
-> own, copy `memos_prod.db-wal` and `memos_prod.db-shm` with it, or stop Memos first -
-> otherwise the copy will be missing everything written since the last checkpoint.
+> own, copy `memos_prod.db-wal` and `memos_prod.db-shm` with it, stop Memos first, or
+> use `sqlite3 .backup` - otherwise the copy will be missing everything written since
+> the last checkpoint.
 
-A restore procedure would be worth as much: there is none today, in either direction.
+The Backup & Restore page also has the restore direction for MySQL and PostgreSQL and,
+for SQLite, the stop-copy-start sequence covers it.
 
 ## Not tested
 

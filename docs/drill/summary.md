@@ -34,12 +34,15 @@ more failed:
 
 And the documentation itself:
 
-- **8 of 15 have no page about backups.** n8n, File Browser, Memos, listmonk, Gotify,
+- **7 of 15 have no page about backups.** n8n, File Browser, listmonk, Gotify,
   Beszel, SiYuan, ConvertX. In File Browser's and ConvertX's case the word does not
-  appear anywhere in the documentation at all.
-- **6 have a page whose subject is backups**: Open WebUI, Navidrome, Trilium, Mealie,
-  FreshRSS, and changedetection.io (a wiki page about restoring, plus the feature in the
-  application). Gogs has a section on its CLI reference page.
+  appear anywhere in the documentation at all. (Until 2026-09-04 this list said eight
+  and included Memos. Memos has a *Backup & Restore* page under Operations, linked from
+  the documentation index; the drill read the deploy pages and the FAQ and missed it.
+  The correction is on the issue that was filed, and in [memos/docs.md](memos/docs.md).)
+- **7 have a page whose subject is backups**: Open WebUI, Navidrome, Trilium, Mealie,
+  FreshRSS, Memos, and changedetection.io (a wiki page about restoring, plus the
+  feature in the application). Gogs has a section on its CLI reference page.
 - **7 of the 15 describe a restore at all**: n8n, Gogs, Navidrome, Trilium, changedetection.io,
   Mealie and FreshRSS. The drill followed five of those procedures step by step, and
   **three of the five did not work as written**: Gogs' `restore` cannot run in its own
@@ -119,8 +122,12 @@ that the split is normal rather than exotic, not to claim a failure that was not
 measured: on Open WebUI in particular the main file held most of the data, so a `.db`
 copy would have lost the newest writes rather than everything.
 
-Exactly one project's documentation names the `-wal` and `-shm` files: Trilium's, in its
-restore procedure. Nobody else mentions they exist.
+Two projects' documentation deals with the `-wal`: Trilium's restore procedure names
+`-wal` and `-shm` outright, and Memos' Backup & Restore page says to stop and copy the
+whole directory or to use `sqlite3 .backup`, "which handles WAL mode correctly". Nobody
+else mentions the files exist - and Memos' own deploy page, which is where the compose
+file is, still says only "back up the database", without a link to the page that gets
+it right.
 
 **3. An empty restore looks healthy.** This is what makes the two patterns above
 dangerous rather than merely annoying. In every case where the restore came back empty -
@@ -152,7 +159,7 @@ FreshRSS rebuilds it."
 
 Numbers only as measured, over the fifteen applications tested.
 
-1. **"We followed fifteen self-hosted apps' own backup instructions. Eight of them have
+1. **"We followed fifteen self-hosted apps' own backup instructions. Seven of them have
    no backup page at all, and of the five documented restore procedures we could follow
    step by step, three did not work as written."**
 
@@ -165,8 +172,9 @@ Numbers only as measured, over the fifteen applications tested.
    nothing."** - Memos' `.db` was 4 KiB against a 160 KiB `-wal`, Beszel's 4 KiB against
    700 KiB, ConvertX's 20 KiB against 16 KiB.
    Restore the `.db` alone and the application starts, passes its own integrity check,
-   and asks you to create your first account. One project out of fourteen tells you
-   those files exist.
+   and asks you to create your first account. Two projects out of fifteen tell you
+   those files exist, and one of them is Memos - on a page its deploy guide does not
+   link.
 
 ## Caveats a reader is owed
 
@@ -198,8 +206,8 @@ the draft in its folder and each one linking that folder for the full logs:
 | n8n | [n8n-io/n8n#37814](https://github.com/n8n-io/n8n/issues/37814) | bug: `import:credentials --separate` fails on the documented export directory (reproduced again on 2.37.9) |
 | n8n | [n8n-io/n8n-docs#5325](https://github.com/n8n-io/n8n-docs/issues/5325) | docs: what `--backup` does and does not contain |
 | Gogs | [gogs/gogs#7684 (comment)](https://github.com/gogs/gogs/issues/7684#issuecomment-5537700663) | reproduction on 0.14.3 added to the open issue; #4339 is closed, #7840 is the same wall |
-| Memos | [usememos/memos#6271](https://github.com/usememos/memos/issues/6271) | docs: "the database" is mostly in the `-wal` |
-| Beszel | [henrygd/beszel-docs#76](https://github.com/henrygd/beszel-docs/issues/76) | docs: no backup page; `data.db` alone is an empty hub you can sign in to |
+| Memos | [usememos/memos#6271](https://github.com/usememos/memos/issues/6271) | docs: as filed, "there is no backup page" - wrong, corrected and retitled the same day; what stands is that the deploy page does not link the Backup & Restore page and its "What to back up" list does not name the `-wal` |
+| Beszel | [henrygd/beszel-docs#76](https://github.com/henrygd/beszel-docs/issues/76) | docs: no page on what to back up; `data.db` alone is an empty hub you can sign in to (corrected the same day: the built-in backup feature *is* mentioned in the docs) |
 | listmonk | [knadh/listmonk#3215](https://github.com/knadh/listmonk/issues/3215) | docs: the Postgres dump leaves the uploads behind |
 | Gotify | [gotify/website#106](https://github.com/gotify/website/issues/106) | docs: `gotify.db` alone leaves the icons behind |
 | ConvertX | [C4illin/ConvertX#630](https://github.com/C4illin/ConvertX/issues/630) | README: `mydb.sqlite` alone gives a 403 at login |
