@@ -1973,6 +1973,17 @@ else.
    only the pages a deployer reads. The method was right for the verdict and wrong
    for the claim about the documentation.
 
+5. **A third and a fourth, after auditing every filed issue against its docs source.**
+   Gotify's installation page has said "include this directory in your backups" since
+   2026-07-07, which is the line the issue asked for; the issue was closed by its
+   author with an apology (<https://github.com/gotify/website/issues/106>). Open
+   WebUI's page already excludes `cache/` in two of its three scripts; a comment
+   narrows the ask (<https://github.com/open-webui/docs/issues/1378#issuecomment-5538524079>).
+   The other seven hold: Navidrome's restore section has none of the three steps, n8n
+   has no backup page and the CLI page calls `--backup` "for backups", listmonk's docs
+   mention backups twice and only the database, ConvertX's README never uses the
+   word. `summary.md` now says three of eleven needed a correction within hours.
+
 **What this commits the human to:** eight of the texts offer a documentation PR if it
 is welcome. A maintainer who says yes should get one within a few days; the drafts hold
 the suggested wording, so each is a small PR.

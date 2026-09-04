@@ -1,6 +1,10 @@
 # Draft issue for Open WebUI - filed 2026-09-04
 
 **Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/open-webui/docs/issues/1378>, on the documentation repository.
+**Clarified the same day:** two of the page's three example scripts already exclude
+`cache/`; "1.1 GB per snapshot" applies to its point-in-time rsync snapshot script and
+to copying the directory whole, which the page also suggests. The ask narrowed to a
+line in the files table and a restore section, in a comment on the issue.
 
 Where it would go: <https://github.com/open-webui/open-webui/issues>, or the
 documentation repository if the docs site is generated separately.

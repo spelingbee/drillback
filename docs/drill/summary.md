@@ -94,8 +94,11 @@ finds nothing there.
 ## The patterns, in order of how often they came up
 
 **1. The database is not the data.** Six applications keep something a person would call
-their data outside the database, and the documentation of every one of them points only
-at the database:
+their data outside the database, and the documentation of five of them points only at
+the database. Gotify's installation page is the exception, and the drill missed it: it
+says to include the whole `/app/data` in your backups (see
+[gotify/docs.md](gotify/docs.md)). The table keeps Gotify because the split is real
+and the configuration reference still names `data/gotify.db` as "the database":
 
 | App | What is outside it |
 |---|---|
@@ -209,9 +212,16 @@ the draft in its folder and each one linking that folder for the full logs:
 | Memos | [usememos/memos#6271](https://github.com/usememos/memos/issues/6271) | docs: as filed, "there is no backup page" - wrong, corrected and retitled the same day; what stands is that the deploy page does not link the Backup & Restore page and its "What to back up" list does not name the `-wal` |
 | Beszel | [henrygd/beszel-docs#76](https://github.com/henrygd/beszel-docs/issues/76) | docs: no page on what to back up; `data.db` alone is an empty hub you can sign in to (corrected the same day: the built-in backup feature *is* mentioned in the docs) |
 | listmonk | [knadh/listmonk#3215](https://github.com/knadh/listmonk/issues/3215) | docs: the Postgres dump leaves the uploads behind |
-| Gotify | [gotify/website#106](https://github.com/gotify/website/issues/106) | docs: `gotify.db` alone leaves the icons behind |
+| Gotify | [gotify/website#106](https://github.com/gotify/website/issues/106) | docs: `gotify.db` alone leaves the icons behind - **closed by its author the same day**: the installation page already says to back up `/app/data`, the drill missed the sentence |
 | ConvertX | [C4illin/ConvertX#630](https://github.com/C4illin/ConvertX/issues/630) | README: `mydb.sqlite` alone gives a 403 at login |
-| Open WebUI | [open-webui/docs#1378](https://github.com/open-webui/docs/issues/1378) | docs: `cache/` is regenerable, and there is no restore section |
+| Open WebUI | [open-webui/docs#1378](https://github.com/open-webui/docs/issues/1378) | docs: `cache/` is regenerable, and there is no restore section (clarified the same day: two of the page's three scripts already exclude `cache/`) |
+
+Three of the eleven needed a correction within hours of being filed, and one of them
+was closed: Memos has a backup page, Gotify's installation page says what to back up,
+and Beszel's docs do mention the built-in backup feature. In each case the drill had
+read the pages a deployer reads and searched them, and the sentence was on a page it
+did not open. The verdicts were not affected; the claims about the documentation were.
+The next drill greps the documentation *repository* before it says a word is absent.
 
 Not filed, on the same review: the SiYuan draft (too thin, and its second item was
 already fixed upstream), the separate Gogs documentation issue (the comment is enough
