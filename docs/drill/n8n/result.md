@@ -174,3 +174,22 @@ A page under *Host n8n* called *Back up and restore*, saying:
 Both verdicts were produced twice, from an empty scratch directory each time: once while
 the recipes were being written (2026-08-30 10:49 UTC) and once from `run.sh` end to end
 (2026-08-30 11:19 UTC). The failing checks and the exit codes were identical.
+
+Root cause 2 was reproduced a third time on 2026-09-04, on the release from the day
+before, with a stand-alone script outside the harness (two throwaway containers, the
+documented export written into one directory, the documented import on a fresh instance
+after `/healthz/readiness` answered 200):
+
+```text
+== image 2.37.9: 2.37.9
+-- import:workflow --separate
+Skipping invalid workflow file: /home/node/restore/xbNcOFBmxn4eb05i.json
+Importing 1 workflows...
+Successfully imported 1 workflow.
+-- import:credentials --separate (same directory)
+An error occurred while importing credentials. See log messages for details.
+SQLITE_CONSTRAINT: NOT NULL constraint failed: credentials_entity.data
+exit: 1
+-- control: credentials only
+Successfully imported 1 credential.
+```
