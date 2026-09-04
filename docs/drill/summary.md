@@ -216,6 +216,16 @@ the draft in its folder and each one linking that folder for the full logs:
 | ConvertX | [C4illin/ConvertX#630](https://github.com/C4illin/ConvertX/issues/630) | README: `mydb.sqlite` alone gives a 403 at login |
 | Open WebUI | [open-webui/docs#1378](https://github.com/open-webui/docs/issues/1378) | docs: `cache/` is regenerable, and there is no restore section (clarified the same day: two of the page's three scripts already exclude `cache/`) |
 
+Five of the issues have a documentation PR, opened the same day from the wording in
+the drafts, each one linking its issue and nothing else:
+[C4illin/ConvertX#631](https://github.com/C4illin/ConvertX/pull/631),
+[knadh/listmonk#3216](https://github.com/knadh/listmonk/pull/3216),
+[usememos/dotcom#266](https://github.com/usememos/dotcom/pull/266),
+[henrygd/beszel-docs#77](https://github.com/henrygd/beszel-docs/pull/77),
+[open-webui/docs#1379](https://github.com/open-webui/docs/pull/1379). The n8n docs page
+and the Navidrome restore section wait for the maintainers' answer on shape and on the
+bug respectively.
+
 Three of the eleven needed a correction within hours of being filed, and one of them
 was closed: Memos has a backup page, Gotify's installation page says what to back up,
 and Beszel's docs do mention the built-in backup feature. In each case the drill had
