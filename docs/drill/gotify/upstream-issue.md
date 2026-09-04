@@ -1,6 +1,10 @@
 # Draft issue for Gotify - filed 2026-09-04
 
-**Status: filed on 2026-09-04, with the human's sign-off (stop point 2):** <https://github.com/gotify/website/issues/106>, on the documentation repository.
+**Status: filed on 2026-09-04, with the human's sign-off (stop point 2), and closed
+by its author the same day, with the human's sign-off:**
+<https://github.com/gotify/website/issues/106>. The installation page has said "include
+this directory in your backups" since July; the drill's search missed it (see
+[docs.md](docs.md)). The draft is kept as filed, for the record.
 
 Where it would go: <https://github.com/gotify/server/issues>, or the documentation
 repository if the site is generated separately.

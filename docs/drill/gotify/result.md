@@ -46,10 +46,9 @@ summary of it is that "the database" is almost never the whole answer.
 
 ## What the documentation would need to say instead
 
-One line on the installation page:
-
-> Back up the whole `/app/data` directory. It holds `gotify.db`, the uploaded
-> application icons in `images/`, and any plugins.
+**Corrected 2026-09-04:** nothing. The installation page already says to include
+`/app/data` in your backups and lists what it holds; see [docs.md](docs.md). The
+drill missed the sentence, and the issue it filed was closed by its author.
 
 ## Not tested
 

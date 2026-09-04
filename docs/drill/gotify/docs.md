@@ -7,9 +7,20 @@
 
 ## Is there a backup page?
 
-No. <https://gotify.net/docs/> has installation, configuration, plugins, an API
-reference and an FAQ. Searching the FAQ, the configuration page and the installation
-pages for "backup" returns nothing.
+No page, but a sentence - **and the drill missed it.** On 2026-08-30 this section said
+that searching the installation page for "backup" returns nothing. It does not: since
+2026-07-07 the [installation page](https://gotify.net/docs/install) has said
+
+> `/app/data` contains the database file (if SQLite is used), application images and
+> certificates (if Let's Encrypt is enabled). In this example the directory is mounted
+> to `/var/gotify/data`, include this directory in your backups.
+
+which is exactly the line the issue filed on 2026-09-04 asked for. The issue was
+closed by its author the same day with an apology:
+<https://github.com/gotify/website/issues/106>. The verdicts below stand - reading A
+is what that sentence describes, and it restores everything; reading B is the
+configuration reference's `data/gotify.db` read as "the database", and it loses the
+icons - but the claim that the documentation never says which to keep was wrong.
 
 ## What the documentation does say
 
