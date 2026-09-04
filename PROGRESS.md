@@ -1984,6 +1984,18 @@ else.
    mention backups twice and only the database, ConvertX's README never uses the
    word. `summary.md` now says three of eleven needed a correction within hours.
 
+6. **Five documentation PRs, with the human's sign-off, from the drafts' wording:**
+   ConvertX#631 (+2), listmonk#3216 (+2/-2), usememos/dotcom#266 (+3/-3),
+   beszel-docs#77 (+4), open-webui/docs#1379 (+17/-1). Each PR body links its issue and
+   nothing else - Open WebUI's template forbids promotion, and the same rule is right
+   everywhere. One mistake on the way: the first push of three of them carried a
+   whole-repository CRLF rewrite, because the clones were made under the global
+   `core.autocrlf=true` and then committed with it off; re-cloned with
+   `-c core.autocrlf=false`, re-applied, force-pushed within ten minutes, before any
+   review. Clone upstream repositories with autocrlf off on this machine, always.
+   Not sent: the n8n docs page (a page, not a line; waiting for the shape they want)
+   and Navidrome's restore section (waiting for the bug).
+
 **What this commits the human to:** eight of the texts offer a documentation PR if it
 is welcome. A maintainer who says yes should get one within a few days; the drafts hold
 the suggested wording, so each is a small PR.
