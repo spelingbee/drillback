@@ -1996,6 +1996,21 @@ else.
    Not sent: the n8n docs page (a page, not a line; waiting for the shape they want)
    and Navidrome's restore section (waiting for the bug).
 
+7. **First answers, 2026-09-05.** listmonk's maintainer closed #3215 and asked on
+   #3216 why the uploads belong in the *upgrade* warning, since an upgrade never
+   touches the files. He is right about the place: the fact (a pg_dump-only restore
+   loses every upload, tested twice) stands, and the issue itself said the warning
+   should live elsewhere; the PR put it on the upgrade page because that was the
+   smallest diff. Replied with the reason, offered a two-line note elsewhere or to
+   close, and will take his call either way
+   (<https://github.com/knadh/listmonk/pull/3216#issuecomment-5550128860>). On the
+   Memos PR a review bot pointed at the page's own `.backup` example; tested with
+   sqlite 3.45.3 in an alpine container, `".backup ~/.memos/memos_backup.db"` fails
+   with `cannot open` because nothing expands `~` inside the quotes. A second commit
+   on the PR changes it to `$HOME`, explained in a comment. That is a documented
+   backup command that does not run - the drill's own kind of finding, on a page
+   the drill had missed.
+
 **What this commits the human to:** eight of the texts offer a documentation PR if it
 is welcome. A maintainer who says yes should get one within a few days; the drafts hold
 the suggested wording, so each is a small PR.
