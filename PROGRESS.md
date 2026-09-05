@@ -2017,7 +2017,14 @@ the suggested wording, so each is a small PR.
 
 **Not done, deliberately:** the announcement (stop point 3), still. The upstream
 issues are the last prerequisite the launch plan named before it; the launch date is
-the human's.
+the human's, and the human will run it alone: a step-by-step runbook and a comment
+watcher for the HN post live outside the repository, with the launch texts. What a
+later session should know: r/selfhosted takes projects under three months old only
+in its weekly New Project Megathread (a main-feed post is a December item);
+r/homelab needs subreddit karma and a "Project: Software" flair; r/DataHoarder does
+not take built-with-AI projects at all; every venue asks for AI disclosure and the
+texts give it up front. The accounts are `ktbFuntik` on both, with the GitHub link
+in the profiles.
 
 ---
 
